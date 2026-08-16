@@ -1,0 +1,405 @@
+/* 灰度模式 */
+/*html {
+  filter: grayscale(95%);
+  -webkit-filter: grayscale(95%);
+  -moz-filter: grayscale(95%);
+  -ms-filter: grayscale(95%);
+  -o-filter: grayscale(95%);
+  filter:progid:DXImageTransform.Microsoft.BasicImage(grayscale=.95);
+}*/
+
+body {
+  font-size: 16px;
+}
+
+pre, code, kbd, samp {
+  font-family: var(--vp-font-family-mono);
+}
+
+.vp-doc h2 {
+  margin: 15px 0 0;
+  padding-top: 10px;
+  border-top: none;
+}
+
+.vp-doc h3,h4,h5 {
+  margin: 10px 0 0;
+}
+
+.vp-doc h4 {
+  font-size: 18px;
+}
+
+.VPDoc .content-container img {
+  border-radius: 5px;
+}
+
+/* slim scroll bar for windows based web browsers - works on firefox */
+* {
+  scrollbar-color: var(--vp-c-gutter) var(--vp-button-alt-bg);
+  scrollbar-width: thin;
+}
+
+/* slim scroll bar for windows based web browsers - works on chrome, edge, and safari */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+/* scrolling handle */
+::-webkit-scrollbar-thumb {
+  background: var(--vp-c-gutter);
+}
+
+/* handle on hover */
+::-webkit-scrollbar-thumb:hover {
+  background: var(--vp-button-alt-hover-bg);
+}
+
+/* scrolling track/backgronund color */
+::-webkit-scrollbar-track {
+  background: var(--vp-button-alt-bg);
+}
+
+/* mathjax3.css */
+mjx-container {
+  display: inline-block;
+  margin: auto 2px -2px;
+}
+
+mjx-container > svg {
+  margin: auto;
+}
+
+.chinese-zodiac {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  position: absolute;
+  left: -10.5px;
+  top: -1px;
+  background: #fff;
+  border: 1px solid #84b9e5;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.text-color-red {
+  --color-red: 254 45 70;
+  --tw-text-opacity: 1;
+  color: rgb(var(--color-red)/var(--tw-text-opacity));
+}
+
+.text-color-orange {
+  --color-orange: 255 102 0;
+  --tw-text-opacity: 1;
+  color: rgb(var(--color-orange)/var(--tw-text-opacity));
+}
+
+.text-color-yellow {
+  --color-yellow: 250 169 14;
+  --tw-text-opacity: 1;
+  color: rgb(var(--color-yellow)/var(--tw-text-opacity));
+}
+
+.text-color-gray {
+  --color-gray: 145 149 163;
+  --tw-text-opacity: 1;
+  color: rgb(var(--color-gray)/var(--tw-text-opacity));
+}
+
+.mr-\[6px\] {
+  margin-right: 6px;
+}
+
+/* ============================================================
+ * MathJax3 隐藏公式旁边的菜单/上下文按钮（可拖拽/调整位置按钮）
+ * 重点：markdown-it-mathjax3 会强制注入 mjx-assistive-mml
+ *       （无障碍辅助 MathML），它字符泄漏就是 ┆┆ 两个竖点
+ * ============================================================ */
+
+/* 核心元凶：mjx-assistive-mml —— 给屏幕阅读器用的，普通用户完全不需要 */
+mjx-assistive-mml,
+mjx-container mjx-assistive-mml,
+mjx-block mjx-assistive-mml,
+mjx-inline mjx-assistive-mml,
+mjx-container > mjx-assistive-mml,
+* > mjx-assistive-mml {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  width: 0 !important;
+  height: 0 !important;
+  overflow: hidden !important;
+  position: absolute !important;
+  clip: rect(0 0 0 0) !important;
+  clip-path: inset(100%) !important;
+  pointer-events: none !important;
+  user-select: none !important;
+  font-size: 0 !important;
+  line-height: 0 !important;
+  color: transparent !important;
+}
+
+/* 同时屏蔽 mjx-assistive-mml 内部可能溢出的所有子节点 */
+mjx-assistive-mml *,
+mjx-assistive-mml > * {
+  display: none !important;
+  visibility: hidden !important;
+  font-size: 0 !important;
+  line-height: 0 !important;
+  color: transparent !important;
+}
+
+/* 兜底：有些版本会注入成 data- 属性的 assistive mml 节点 */
+[data-mjx-assistive],
+[data-mjx-alternate],
+[aria-hidden="true"][role="presentation"] {
+  display: none !important;
+  visibility: hidden !important;
+}
+
+/* 方案1：直接隐藏 MathJax 注入的菜单触发按钮 / 上下文指示器
+ * mjx-context-menu 是右键菜单，mjx-assistive-mml 是无障碍标签，
+ * 那个「可点击调整位置」的按钮通常是 mjx-menu / mjx-toolbar 类或 data 属性标识
+ */
+mjx-container mjx-menu,
+mjx-container [data-mjx-menu],
+mjx-container .mjx-context,
+mjx-container .MathJax_MenuButton,
+.MathJax mjx-menu,
+.MathJax_ContextMenu,
+mjx-container[contextmenu],
+.MathJax[data-mathml] + mjx-menu {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+/* 方案2：屏蔽 mjx-container 上的右键菜单按钮与 toolbar
+ * 按钮通常作为 mjx-container 的伪元素或紧邻兄弟节点出现
+ */
+mjx-container::after,
+mjx-container::before {
+  display: none !important;
+}
+
+/* 方案3：有些版本的 MathJax 会在公式左上角/右上角放一个小的可拖动点，
+ * 这个会以 inline-block 的小方块形式出现，颜色半透明，hover 才明显
+ */
+mjx-container > svg > g[aria-label],
+mjx-container > svg > g[data-mjx],
+mjx-container .mjx-drag,
+mjx-container .mjx-resize {
+  display: none !important;
+}
+
+/* 兜底：MathJax 会在 body 末尾注入全局的菜单层，也一并隐藏 */
+body > mjx-menu,
+body > mjx-context-menu,
+#MathJax_MenuFrame,
+#MathJax_About,
+#MathJax_Help {
+  display: none !important;
+}
+
+/* ============================================================
+ * 侧边栏样式优化：一级分组大标题 + 二级文章层次感
+ * 保留：年份归档生肖图标、自动标号颜色
+ * ============================================================ */
+
+/* 一级分组（大标题）：年份 / 置顶 / 课程分组章节
+ * 对应 .VPSidebarItem.level-0 的 .item > .text 或 .item > .link > .text
+ * 视觉上做成醒目的「卡片式大标题」
+ */
+.VPSidebar .VPSidebarItem.level-0 > .item {
+  border-radius: 8px;
+  padding: 2px 4px;
+  transition: background-color 0.25s ease;
+}
+
+.VPSidebar .VPSidebarItem.level-0 > .item:hover {
+  background-color: var(--vp-c-bg-soft);
+}
+
+.VPSidebar .VPSidebarItem.level-0 > .item > .text,
+.VPSidebar .VPSidebarItem.level-0 > .item > .link > .text {
+  /* 大标题字号和行距 */
+  font-size: 16px;
+  line-height: 28px;
+  font-weight: 700;
+  padding: 8px 10px 8px 14px;
+  /* 渐变文字效果，类似用户截图的深色粗体标题 */
+  color: var(--vp-c-text-1);
+  letter-spacing: 0.2px;
+  border-radius: 6px;
+}
+
+/* 一级大标题下方增加一个细微的渐变分隔条，提升层次感 */
+.VPSidebar .VPSidebarItem.level-0 > .item::after {
+  content: '';
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  bottom: -2px;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    var(--vp-c-brand-1) 0%,
+    transparent 70%
+  );
+  border-radius: 2px;
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+/* 一级分组（level-0）展开时：与二级文章之间增加一点呼吸空间 */
+.VPSidebar .VPSidebarItem.level-0 {
+  padding-bottom: 20px !important;
+}
+
+.VPSidebar .VPSidebarItem.collapsed.level-0 {
+  padding-bottom: 14px !important;
+}
+
+/* 生肖图标位置兼容：因为大标题增加了 padding，需要调整生肖 svg 的偏移
+ * 原样式用了 position:absolute + left:-10.5px top:-1px，这里做一下微调
+ */
+.VPSidebar .VPSidebarItem.level-0 > .item .chinese-zodiac {
+  left: 4px;
+  top: 10px;
+  width: 22px;
+  height: 22px;
+}
+
+/* ============================================================
+ * 二级文章（level-1）：更清晰的缩进、hover 高亮、行高
+ * ============================================================ */
+
+/* 二级文章容器：去掉默认左侧细线，改成 hover 高亮整块背景，更现代化 */
+.VPSidebar .VPSidebarItem.level-1 .items,
+.VPSidebar .VPSidebarItem.level-2 .items,
+.VPSidebar .VPSidebarItem.level-3 .items {
+  border-left: none;
+  padding-left: 6px;
+  margin-top: 6px;
+}
+
+/* 二级文章每一项 */
+.VPSidebar .VPSidebarItem.level-1 > .item,
+.VPSidebar .VPSidebarItem.level-2 > .item,
+.VPSidebar .VPSidebarItem.level-3 > .item {
+  border-radius: 6px;
+  margin: 2px 0;
+  transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+.VPSidebar .VPSidebarItem.level-1 > .item:hover,
+.VPSidebar .VPSidebarItem.level-2 > .item:hover,
+.VPSidebar .VPSidebarItem.level-3 > .item:hover {
+  background-color: var(--vp-c-bg-soft);
+  transform: translateX(2px);
+}
+
+/* 二级文章文字 */
+.VPSidebar .VPSidebarItem.level-1 > .item > .text,
+.VPSidebar .VPSidebarItem.level-1 > .item > .link > .text,
+.VPSidebar .VPSidebarItem.level-2 > .item > .text,
+.VPSidebar .VPSidebarItem.level-2 > .item > .link > .text,
+.VPSidebar .VPSidebarItem.level-3 > .item > .text,
+.VPSidebar .VPSidebarItem.level-3 > .item > .link > .text {
+  font-size: 14px;
+  line-height: 24px;
+  padding: 6px 10px 6px 14px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+}
+
+/* 二级文章激活态（当前页）：左侧竖条高亮 + 背景色 */
+.VPSidebar .VPSidebarItem.level-1.is-active > .item,
+.VPSidebar .VPSidebarItem.level-2.is-active > .item,
+.VPSidebar .VPSidebarItem.level-3.is-active > .item {
+  background-color: var(--vp-c-brand-soft);
+}
+
+.VPSidebar .VPSidebarItem.level-1.is-active > .item > .indicator,
+.VPSidebar .VPSidebarItem.level-2.is-active > .item > .indicator,
+.VPSidebar .VPSidebarItem.level-3.is-active > .item > .indicator {
+  top: 6px;
+  bottom: 6px;
+  left: 0;
+  width: 3px;
+  background-color: var(--vp-c-brand-1) !important;
+  border-radius: 0 3px 3px 0;
+}
+
+/* 二级文章激活态文字颜色 */
+.VPSidebar .VPSidebarItem.level-1.is-active > .item .link > .text,
+.VPSidebar .VPSidebarItem.level-2.is-active > .item .link > .text,
+.VPSidebar .VPSidebarItem.level-3.is-active > .item .link > .text {
+  color: var(--vp-c-brand-1) !important;
+  font-weight: 600;
+}
+
+/* ============================================================
+ * 自动标号兼容：序号的 inline-block 与大字号标题对齐
+ * ============================================================ */
+
+/* 一级分组内如果有标号（理论上一般不会，但以防万一） */
+.VPSidebar .VPSidebarItem.level-0 > .item > .text > div:first-child,
+.VPSidebar .VPSidebarItem.level-0 > .item > .link > .text > div:first-child {
+  font-size: 14px !important;
+  line-height: 1 !important;
+}
+
+/* 二级文章标号字号稍微小一点，和正文视觉更统一 */
+.VPSidebar .VPSidebarItem.level-1 > .item > .text > div:first-child,
+.VPSidebar .VPSidebarItem.level-1 > .item > .link > .text > div:first-child,
+.VPSidebar .VPSidebarItem.level-2 > .item > .text > div:first-child,
+.VPSidebar .VPSidebarItem.level-2 > .item > .link > .text > div:first-child {
+  font-size: 12px !important;
+  min-width: 18px;
+  text-align: center;
+  line-height: 1 !important;
+}
+
+/* ============================================================
+ * 折叠箭头（caret）视觉优化：更大、更醒目
+ * ============================================================ */
+
+.VPSidebar .VPSidebarItem.level-0 > .item .caret {
+  width: 36px;
+  height: 36px;
+  margin-right: -4px;
+}
+
+.VPSidebar .VPSidebarItem.level-0 > .item .caret-icon {
+  font-size: 20px;
+  color: var(--vp-c-text-2);
+}
+
+/* ============================================================
+ * 分组与分组之间的分隔线：做淡一点，间距大一点
+ * ============================================================ */
+
+.VPSidebar .group + .group {
+  border-top: 1px solid var(--vp-c-divider-light);
+  padding-top: 18px;
+  margin-top: 6px;
+}
+
+/* 暗色模式适配 */
+.dark .VPSidebar .VPSidebarItem.level-0 > .item::after {
+  opacity: 0.8;
+}
+
+.dark .VPSidebar .VPSidebarItem.level-0 > .item:hover,
+.dark .VPSidebar .VPSidebarItem.level-1 > .item:hover {
+  background-color: rgba(255, 255, 255, 0.04);
+}
+
+.dark .VPSidebar .VPSidebarItem.level-1.is-active > .item {
+  background-color: rgba(66, 211, 146, 0.08);
+}
