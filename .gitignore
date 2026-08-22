@@ -27,3 +27,5 @@ cache/
 /src/node/shared.ts
 pnpm-global
 TODOs.md
+# VitePress build cache
+docs/.vitepress/*.timestamp-*.mjs
