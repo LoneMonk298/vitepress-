@@ -29,3 +29,6 @@ pnpm-global
 TODOs.md
 # VitePress build cache
 docs/.vitepress/*.timestamp-*.mjs
+
+# Independent admin build output
+admin-dist/

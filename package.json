@@ -7,8 +7,12 @@
   "type": "module",
   "scripts": {
     "dev": "vitepress dev docs",
+    "local:dev": "node scripts/local-dev.mjs",
     "build": "vitepress build docs",
-    "preview": "vitepress preview docs"
+    "preview": "vitepress preview docs",
+    "admin:dev": "vite --config admin/vite.config.js",
+    "admin:build": "vite build --config admin/vite.config.js",
+    "admin:preview": "vite preview --config admin/vite.config.js"
   },
   "devDependencies": {
     "@arco-design/web-vue": "2.57.0",

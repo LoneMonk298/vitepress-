@@ -10,7 +10,8 @@ export default {
     // 排除不必要文件
     const articleFiles = watchedFiles.filter(file => {
       const filename = path.basename(file);
-      return !excludedFiles.includes(filename);
+      const normalizedPath = file.replaceAll('\\', '/');
+      return !excludedFiles.includes(filename) && !normalizedPath.includes('/docs/courses/') && !normalizedPath.includes('/docs/templates/');
     });
     // 解析文章 Frontmatter
     return articleFiles.map(articleFile => {

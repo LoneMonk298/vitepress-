@@ -1,10 +1,11 @@
 ---
 title: 个人常用 Linux 命令
 author: 查尔斯
-date: 2019/12/31 21:00
+date: '2019/12/31 21:00'
 isTop: true
 categories:
   - 常用命令
+  - 服务器萌新
 tags:
   - Linux
 ---

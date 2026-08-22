@@ -4,12 +4,13 @@ import matter from 'gray-matter';
 import { getChineseZodiac, getChineseZodiacAlias } from '../theme/utils.ts';
 const sync = fg.sync;
 
-export const sidebar: DefaultTheme.Config['sidebar'] = {
-  '/categories/data-structures/': getItemsByDate("categories/data-structures"),
-  '/categories/os/': getItemsByDate("categories/os"),
-  '/categories/network/': getItemsByDate("categories/network"),
-  '/categories/computer-architecture/': getItemsByDate("categories/computer-architecture"),
+const categorySidebar = Object.fromEntries(
+  sync('docs/categories/*', { onlyDirectories: true, objectMode: true })
+    .map(({ name }) => [`/categories/${name}/`, getItemsByDate(`categories/${name}`)])
+);
 
+export const sidebar: DefaultTheme.Config['sidebar'] = {
+  ...categorySidebar,
   '/courses/course1/': getItems("courses/course1"),
 }
 
@@ -56,7 +57,7 @@ function getItemsByDate (path: string) {
         }).forEach((article) => {
           const articleFile = matter.read(`${article.path}`);
           const { data } = articleFile;
-          if (data.isTop) {
+          if (data.isTop === true || data.istop === true || String(data.isTop).toLowerCase() === 'true' || String(data.istop).toLowerCase() === 'true') {
             // 向置顶分组前追加标题
             topArticleItems.unshift({
               text: data.title,
@@ -95,7 +96,7 @@ function getItemsByDate (path: string) {
     yearGroups[1].collapsed = false;
   } else {
     // 将最近年份分组展开
-    yearGroups[0].collapsed = false;
+    if (yearGroups[0]) yearGroups[0].collapsed = false;
   }
 
   // 添加序号
