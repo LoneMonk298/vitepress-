@@ -8,6 +8,9 @@ on:
 permissions:
   contents: write
 
+env:
+  WALINE_SERVER_URL: https://waline-ten-coral.vercel.app
+
 jobs:
   deploy-github-pages:
     runs-on: ubuntu-latest
