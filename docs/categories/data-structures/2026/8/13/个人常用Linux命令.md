@@ -2,6 +2,7 @@
 title: 个人常用 Linux 命令
 author: 查尔斯
 date: 2019/12/31 21:00
+description: 从数据结构学习环境出发整理常用 Linux 系统操作、软件管理和排查命令。
 isTop: true
 categories:
   - 常用命令

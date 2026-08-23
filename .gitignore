@@ -32,3 +32,10 @@ docs/.vitepress/*.timestamp-*.mjs
 
 # Independent admin build output
 admin-dist/
+
+# Local environment settings
+.env
+.env.local
+.env.*.local
+.local-dev.lock
+.pnpm-store/

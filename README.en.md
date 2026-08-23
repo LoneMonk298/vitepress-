@@ -22,14 +22,54 @@ The repository also includes an independent local admin panel. It indexes articl
 
 ## Requirements
 
-- Node.js 18 or newer
-- pnpm 8 or newer
+- Node.js `22.14.0`
+- pnpm `11.22.0`
 
-Install dependencies:
+The project is verified with Node.js `22.14.0` and pnpm `11.22.0`. Other versions may work, but the doctor check will report a warning.
+
+Install dependencies (recommended):
 
 ```bash
+nvm use
+corepack enable
+corepack prepare pnpm@11.22.0 --activate
 pnpm install
 ```
+
+On Windows without nvm, install Node.js `22.14.0`, then run:
+
+```powershell
+corepack enable
+corepack prepare pnpm@11.22.0 --activate
+pnpm install
+```
+
+Copy the environment template and adjust it for the deployment environment:
+
+```bash
+copy .env.example .env
+```
+
+PowerShell alternative:
+
+```powershell
+Copy-Item .env.example .env
+```
+
+Keep `.env` local and do not commit it. The `.env.example` template is safe to commit.
+
+Important variables:
+
+- `VITEPRESS_SITE_URL`: public site URL
+- `WALINE_SERVER_URL`: Waline server root URL, without `feedback.html`
+
+The expected Node.js and pnpm versions are recorded in `.nvmrc` and `package.json`. Run the project environment check with:
+
+```bash
+pnpm run doctor
+```
+
+The doctor checks the runtime versions, project directories, Markdown/image counts, and ports 5173 and 4174. A Node version mismatch is a warning; missing directories or port errors should be fixed.
 
 ## Local development
 
@@ -46,6 +86,16 @@ Default URLs:
 
 If a port is already in use, use the URL printed by the terminal. Press `Ctrl+C` to stop both services.
 
+The launcher creates a temporary lock file to prevent duplicate instances. Both services use fixed ports with strict port mode, so they will not silently move to 5174 or 5175. After a Markdown file under `docs` changes, the launcher debounces the event and restarts the frontend so navigation and article indexes are rescanned.
+
+If a port is occupied, run:
+
+```bash
+pnpm run doctor
+```
+
+Close an older `local:dev` terminal and try again. If `.local-dev.lock` remains after an abnormal stop, delete it only after confirming that no other `local:dev` process is running.
+
 Start only the site:
 
 ```bash
@@ -57,6 +107,10 @@ Start only the admin panel:
 ```bash
 pnpm admin:dev
 ```
+
+Category, pinning, article creation/moving, and image-directory writes are available only from the local development server. If an index does not update after editing Markdown, use the admin refresh action or restart with `pnpm local:dev`.
+
+`pnpm doctor` is pnpm's own global environment diagnostic. Use `pnpm run doctor` or `pnpm run project:doctor` for this repository's checks.
 
 ## Article structure
 

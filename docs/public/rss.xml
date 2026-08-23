@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>陌僧人的知识库</title>
+    <link>https://www.lonemonk.xyz</link>
+    <description>个人技术知识库，记录 &amp; 分享个人碎片化、结构化、体系化的技术知识内容。</description>
+    <language>zh-CN</language>
+    <lastBuildDate>Sun, 23 Aug 2026 11:07:00 GMT</lastBuildDate>
+    <atom:link href="https://www.lonemonk.xyz/rss.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>SOCKS 协议应用</title>
+      <link>https://www.lonemonk.xyz/categories/servers/2026/8/22/socks%E5%8D%8F%E8%AE%AE%E5%BA%94%E7%94%A8</link>
+      <guid isPermaLink="true">https://www.lonemonk.xyz/categories/servers/2026/8/22/socks%E5%8D%8F%E8%AE%AE%E5%BA%94%E7%94%A8</guid>
+      <pubDate>Sat, 22 Aug 2026 04:00:00 GMT</pubDate>
+      <description>介绍 SOCKS4、SOCKS5 的工作方式，并整理 SSH 动态代理、Privoxy、WARP 与 systemd 的实际配置方法。</description>
+    </item>
+    <item>
+      <title>408-放弃篇</title>
+      <link>https://www.lonemonk.xyz/categories/data-structures/2026/8/8/408-%E6%94%BE%E5%BC%83%E7%AF%87</link>
+      <guid isPermaLink="true">https://www.lonemonk.xyz/categories/data-structures/2026/8/8/408-%E6%94%BE%E5%BC%83%E7%AF%87</guid>
+      <pubDate>Sat, 08 Aug 2026 13:00:00 GMT</pubDate>
+      <description>整理 408 数据结构复习中可战略性降低优先级的实现题与知识点。</description>
+    </item>
+    <item>
+      <title>408-数据结构公式篇</title>
+      <link>https://www.lonemonk.xyz/categories/data-structures/2026/8/8/408-%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E5%85%AC%E5%BC%8F%E7%AF%87</link>
+      <guid isPermaLink="true">https://www.lonemonk.xyz/categories/data-structures/2026/8/8/408-%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E5%85%AC%E5%BC%8F%E7%AF%87</guid>
+      <pubDate>Fri, 07 Aug 2026 13:00:00 GMT</pubDate>
+      <description>汇总 408 数据结构复习中的 B 树等常用公式、符号含义与快速计算方法。</description>
+    </item>
+    <item>
+      <title>个人常用 Linux 命令</title>
+      <link>https://www.lonemonk.xyz/categories/computer-architecture/2019/12/31/%E4%B8%AA%E4%BA%BA%E5%B8%B8%E7%94%A8Linux%E5%91%BD%E4%BB%A4</link>
+      <guid isPermaLink="true">https://www.lonemonk.xyz/categories/computer-architecture/2019/12/31/%E4%B8%AA%E4%BA%BA%E5%B8%B8%E7%94%A8Linux%E5%91%BD%E4%BB%A4</guid>
+      <pubDate>Tue, 31 Dec 2019 13:00:00 GMT</pubDate>
+      <description>整理计算机体系结构学习和实验环境中常用的 Linux 系统命令。</description>
+    </item>
+    <item>
+      <title>个人常用 Linux 命令</title>
+      <link>https://www.lonemonk.xyz/categories/data-structures/2026/8/13/%E4%B8%AA%E4%BA%BA%E5%B8%B8%E7%94%A8Linux%E5%91%BD%E4%BB%A4</link>
+      <guid isPermaLink="true">https://www.lonemonk.xyz/categories/data-structures/2026/8/13/%E4%B8%AA%E4%BA%BA%E5%B8%B8%E7%94%A8Linux%E5%91%BD%E4%BB%A4</guid>
+      <pubDate>Tue, 31 Dec 2019 13:00:00 GMT</pubDate>
+      <description>从数据结构学习环境出发整理常用 Linux 系统操作、软件管理和排查命令。</description>
+    </item>
+    <item>
+      <title>个人常用 Linux 命令</title>
+      <link>https://www.lonemonk.xyz/categories/os/2019/12/31/%E4%B8%AA%E4%BA%BA%E5%B8%B8%E7%94%A8Linux%E5%91%BD%E4%BB%A4</link>
+      <guid isPermaLink="true">https://www.lonemonk.xyz/categories/os/2019/12/31/%E4%B8%AA%E4%BA%BA%E5%B8%B8%E7%94%A8Linux%E5%91%BD%E4%BB%A4</guid>
+      <pubDate>Tue, 31 Dec 2019 13:00:00 GMT</pubDate>
+      <description>面向操作系统学习与服务器维护场景，整理常用 Linux 命令及使用示例。</description>
+    </item>
+    <item>
+      <title>个人常用 Linux 命令</title>
+      <link>https://www.lonemonk.xyz/categories/network/2019/12/31/%E4%B8%AA%E4%BA%BA%E5%B8%B8%E7%94%A8Linux%E5%91%BD%E4%BB%A4</link>
+      <guid isPermaLink="true">https://www.lonemonk.xyz/categories/network/2019/12/31/%E4%B8%AA%E4%BA%BA%E5%B8%B8%E7%94%A8Linux%E5%91%BD%E4%BB%A4</guid>
+      <pubDate>Tue, 31 Dec 2019 13:00:00 GMT</pubDate>
+      <description>整理网络与服务器入门场景中常用的 Linux 配置、管理和故障排查命令。</description>
+    </item>
+  </channel>
+</rss>

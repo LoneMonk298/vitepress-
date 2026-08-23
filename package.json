@@ -5,10 +5,18 @@
   "license": "MIT",
   "private": true,
   "type": "module",
+  "packageManager": "pnpm@11.22.0",
+  "engines": {
+    "node": "22.14.0",
+    "pnpm": "11.22.0"
+  },
   "scripts": {
     "dev": "vitepress dev docs",
     "local:dev": "node scripts/local-dev.mjs",
-    "build": "vitepress build docs",
+    "doctor": "node scripts/doctor.mjs",
+    "project:doctor": "node scripts/doctor.mjs",
+    "build": "node scripts/generate-rss.mjs && vitepress build docs",
+    "seo:generate": "node scripts/generate-rss.mjs",
     "preview": "vitepress preview docs",
     "admin:dev": "vite --config admin/vite.config.js",
     "admin:build": "vite build --config admin/vite.config.js",
@@ -17,7 +25,6 @@
   "devDependencies": {
     "@arco-design/web-vue": "2.57.0",
     "@types/blueimp-md5": "2.18.2",
-    "@types/jquery": "3.5.29",
     "markdown-it": "14.1.0",
     "markdown-it-footnote": "3.0.3",
     "markdown-it-mathjax3": "4.3.2",
@@ -35,20 +42,6 @@
     "blueimp-md5": "2.19.0",
     "dayjs": "1.11.10",
     "fast-glob": "3.3.2",
-    "gitalk": "1.8.0",
-    "gray-matter": "4.0.3",
-    "jquery": "3.7.1"
-  },
-  "pnpm": {
-    "overrides": {
-      "@antv/g-base": "0.5.11",
-      "@antv/path-util": "2.0.15",
-      "@antv/attr": "0.3.5"
-    },
-    "peerDependencyRules": {
-      "ignoreMissing": [
-        "@algolia/client-search"
-      ]
-    }
+    "gray-matter": "4.0.3"
   }
 }

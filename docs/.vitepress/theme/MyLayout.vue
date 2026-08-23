@@ -14,6 +14,7 @@
         <Footer v-if="!hasSidebar && (theme.footerConfig?.showFooter ?? true) && (frontmatter?.showFooter ?? true)" />
       </template>
     </Layout>
+    <ImageViewer />
   </ClientOnly>
 </template>
 
@@ -25,6 +26,7 @@
   import Copyright from './components/layout/Copyright.vue';
   import Comment from './components/layout/Comment.vue';
   import Footer from './components/layout/Footer.vue';
+  import ImageViewer from './components/ImageViewer.vue';
 
   const { Layout } = DefaultTheme;
   const { page, theme, frontmatter } = useData();

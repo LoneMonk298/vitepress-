@@ -22,14 +22,54 @@
 
 ## 环境要求
 
-- Node.js 18 或更高版本
-- pnpm 8 或更高版本
+- Node.js `22.14.0`
+- pnpm `11.22.0`
 
-安装依赖：
+项目已验证 Node.js `22.14.0` 和 pnpm `11.22.0`。建议使用对应版本，其他版本可能仍可运行，但诊断会给出警告。
+
+安装依赖（推荐流程）：
 
 ```bash
+nvm use
+corepack enable
+corepack prepare pnpm@11.22.0 --activate
 pnpm install
 ```
+
+Windows 没有使用 nvm 时，可以直接安装 Node.js `22.14.0`，然后执行：
+
+```powershell
+corepack enable
+corepack prepare pnpm@11.22.0 --activate
+pnpm install
+```
+
+复制环境变量模板并按部署环境修改：
+
+```bash
+copy .env.example .env
+```
+
+PowerShell 也可以使用：
+
+```powershell
+Copy-Item .env.example .env
+```
+
+`.env` 只保存在本地，不要提交到 Git；`.env.example` 是可以提交的配置模板。
+
+关键变量：
+
+- `VITEPRESS_SITE_URL`：前台站点地址
+- `WALINE_SERVER_URL`：Waline 服务端根地址，不要填写 `feedback.html`
+
+Node.js 和 pnpm 版本可通过 `.nvmrc` 与 `package.json` 查看。环境检查使用：
+
+```bash
+pnpm run doctor
+```
+
+`doctor` 会检查版本、项目目录、Markdown/图片数量以及 5173、4174 端口。Node 版本不一致属于警告；目录缺失或端口异常需要先处理。
 
 ## 本地开发
 
@@ -46,6 +86,16 @@ pnpm local:dev
 
 端口被占用时，终端会显示实际地址。按 `Ctrl+C` 会同时停止两个服务。
 
+启动脚本会创建临时锁文件，阻止同一个仓库重复启动；前台和管理端均使用固定端口并启用严格端口模式，不会自动跳到 5174、5175 等端口。修改 `docs` 下的 Markdown 后，脚本会防抖重启前台，使导航和文章索引重新扫描。
+
+如果提示端口已占用，先运行：
+
+```bash
+pnpm run doctor
+```
+
+关闭旧的 `local:dev` 终端后再重试。异常中断后若仓库根目录残留 `.local-dev.lock`，确认没有其他 `local:dev` 进程后可以删除它。
+
 只启动前台：
 
 ```bash
@@ -57,6 +107,10 @@ pnpm dev
 ```bash
 pnpm admin:dev
 ```
+
+管理端的分类、置顶、文章生成、文章移动和图片目录写入功能只在本地开发服务中可用。修改 Markdown 后若页面没有立即更新，可点击管理端的刷新索引，或重新执行 `pnpm local:dev`。
+
+`pnpm doctor` 是 pnpm 自带的全局环境诊断命令；本项目诊断请使用 `pnpm run doctor` 或 `pnpm run project:doctor`。
 
 ## 文章结构
 

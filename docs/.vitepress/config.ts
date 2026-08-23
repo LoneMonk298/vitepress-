@@ -15,6 +15,38 @@ export default withMermaid(
     srcExclude: ['templates/**'],
     lastUpdated: true, // 显示最后更新时间
 
+    sitemap: {
+      hostname: metaData.site,
+    },
+
+    transformHead({ pageData }) {
+      const title = pageData.frontmatter.title || pageData.title || metaData.title;
+      const description = pageData.frontmatter.description || pageData.description || metaData.description;
+      const relativePath = pageData.relativePath.replace(/\\/g, '/');
+      const pagePath = relativePath === 'index.md'
+        ? '/'
+        : relativePath.endsWith('/index.md')
+          ? `/${relativePath.slice(0, -'/index.md'.length)}/`
+          : `/${relativePath.replace(/\.md$/, '')}`;
+      const canonical = `${metaData.site}${encodeURI(pagePath)}`;
+      const type = relativePath === 'index.md' || relativePath.endsWith('/index.md') ? 'website' : 'article';
+
+      return [
+        ['meta', { name: 'description', content: description }],
+        ['link', { rel: 'canonical', href: canonical }],
+        ['meta', { property: 'og:type', content: type }],
+        ['meta', { property: 'og:title', content: title }],
+        ['meta', { property: 'og:description', content: description }],
+        ['meta', { property: 'og:url', content: canonical }],
+        ['meta', { property: 'og:site_name', content: metaData.title }],
+        ['meta', { property: 'og:image', content: metaData.image }],
+        ['meta', { name: 'twitter:card', content: 'summary_large_image' }],
+        ['meta', { name: 'twitter:title', content: title }],
+        ['meta', { name: 'twitter:description', content: description }],
+        ['meta', { name: 'twitter:image', content: metaData.image }],
+      ];
+    },
+
     head, // <head>内标签配置
     markdown: markdown, // Markdown配置
     vue: {

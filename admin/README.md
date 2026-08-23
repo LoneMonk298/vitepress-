@@ -4,6 +4,14 @@
 
 ## 运行
 
+首次使用时，在仓库根目录复制 `.env.example` 为 `.env`，配置 `VITEPRESS_SITE_URL` 和 `WALINE_SERVER_URL`。
+
+运行项目环境检查：
+
+```bash
+pnpm run doctor
+```
+
 推荐在仓库根目录一次启动前台和管理端：
 
 ```bash
@@ -11,6 +19,16 @@ pnpm local:dev
 ```
 
 然后打开管理端（默认 <http://localhost:4174>，端口被占用时使用终端输出的地址）和前台（<http://localhost:5173>）。按 `Ctrl+C` 会同时停止两个服务。
+
+启动脚本会检查 5173 和 4174 端口，并使用严格端口模式，不会自动递增到其他端口；同一仓库不能重复启动多个 `local:dev` 实例。修改 `docs` 下的 Markdown 后，前台会在防抖后重启并重新扫描配置与文章索引。
+
+如果端口被占用或启动失败，先执行：
+
+```bash
+pnpm run doctor
+```
+
+异常中断后，如果根目录残留 `.local-dev.lock`，确认没有其他 `local:dev` 进程后再删除该文件。
 
 也可以只启动管理端：
 

@@ -10,13 +10,9 @@ export const head: HeadConfig[] = [
   ['meta', { name: 'MobileOptimized', content: '320' }],
   ['meta', { name: 'theme-color', content: '#3c8772' }],
 
-  ['meta', { property: 'og:type', content: 'website' }],
   ['meta', { property: 'og:locale', content: metaData.locale }],
-  ['meta', { property: 'og:title', content: metaData.title }],
-  ['meta', { property: 'og:description', content: metaData.description }],
   ['meta', { property: 'og:site', content: metaData.site }],
-  ['meta', { property: 'og:site_name', content: metaData.title }],
-  ['meta', { property: 'og:image', content: metaData.image }],
+  ['link', { rel: 'alternate', type: 'application/rss+xml', title: `${metaData.title} RSS`, href: '/rss.xml' }],
 
   // 百度统计代码：https://tongji.baidu.com
   ['script', {}, `var _hmt = _hmt || [];

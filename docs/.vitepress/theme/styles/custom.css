@@ -32,6 +32,7 @@ pre, code, kbd, samp {
 
 .VPDoc .content-container img {
   border-radius: 5px;
+  cursor: zoom-in;
 }
 
 /* slim scroll bar for windows based web browsers - works on firefox */

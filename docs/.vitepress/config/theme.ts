@@ -3,6 +3,7 @@ import { nav } from './nav';
 import { sidebar } from './sidebar';
 import { algoliaSearchOptions } from './search/algolia-search';
 import { localSearchOptions } from './search/local-search';
+import { metaData } from './constants';
 
 export const themeConfig: DefaultTheme.Config = {
   nav, // 导航栏配置
@@ -30,7 +31,7 @@ export const themeConfig: DefaultTheme.Config = {
   },
   // 编辑链接配置
   editLink: {
-    pattern: 'https://www.lonemonk.xyz/feedback.html',
+    pattern: `${metaData.site}/feedback.html`,
     text: '不妥之处，敬请雅正'
   },
   // 搜索配置（二选一）
@@ -57,7 +58,7 @@ export const themeConfig: DefaultTheme.Config = {
                 <path fill="#12D2AC" d="M41.7,158.5l16.1,9.4,100.6-58.7V90.4Z"/>
               </svg>`
       },
-      link: 'https://lonemonk.xyz/'
+    link: metaData.site
     }
   ],
 
@@ -65,7 +66,7 @@ export const themeConfig: DefaultTheme.Config = {
   // @ts-ignore
   articleMetadataConfig: {
     author: 'lonemonk', // 文章全局默认作者名称
-    authorLink: 'https://lonemonk.xyz', // 点击作者名时默认跳转的链接
+    authorLink: metaData.site, // 点击作者名时默认跳转的链接
     showViewCount: false, // 是否显示文章阅读数, 需要在 docs/.vitepress/theme/api/config.js 及 interface.js 配置好相应 API 接口
   },
   // 自定义扩展: 文章版权配置
@@ -77,8 +78,8 @@ export const themeConfig: DefaultTheme.Config = {
   commentConfig: {
     type: 'waline',
     // Waline 服务端地址，不是博客的 feedback.html 页面地址
-    serverURL: 'https://waline-ten-coral.vercel.app',
-    showComment: true // 是否显示评论
+    serverURL: metaData.walineServerURL,
+    showComment: Boolean(metaData.walineServerURL) // 未配置 Waline 地址时不初始化评论
   },
   // 自定义扩展: 页脚配置
   footerConfig: {

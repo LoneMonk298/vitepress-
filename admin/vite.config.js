@@ -415,6 +415,7 @@ function booleanValue(value) {
 
 export default defineConfig({
   root: 'admin',
+  envDir: '..',
   plugins: [articleIndexPlugin()],
   server: {
     port: 4174,

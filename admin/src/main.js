@@ -3,7 +3,7 @@ import articles, { categoryDirectories, courses, images, indexMeta } from 'virtu
 
 const state = { view: 'articles', query: '', category: 'all', tag: 'all', issue: 'all', top: 'all', sort: 'modified-desc', imageDate: 'all', notice: '', sidebarCollapsed: false, dialog: null };
 const app = document.querySelector('#app');
-const frontendUrl = import.meta.env.VITEPRESS_URL || 'http://localhost:5173';
+const frontendUrl = import.meta.env.VITEPRESS_SITE_URL || import.meta.env.VITEPRESS_URL || 'http://localhost:5173';
 let noticeTimer;
 
 render();

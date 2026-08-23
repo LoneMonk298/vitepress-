@@ -2,6 +2,7 @@
 title: 个人常用 Linux 命令
 author: 查尔斯
 date: '2019/12/31 21:00'
+description: 面向操作系统学习与服务器维护场景，整理常用 Linux 命令及使用示例。
 isTop: true
 categories:
   - 常用命令
