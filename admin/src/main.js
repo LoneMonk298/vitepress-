@@ -1,7 +1,7 @@
 import './styles.css';
-import articles, { categoryDirectories, courses, images, indexMeta } from 'virtual:admin-articles';
+import articles, { categoryDirectories, contentRegistry, courses, drafts, images, indexMeta } from 'virtual:admin-articles';
 
-const state = { view: 'articles', query: '', category: 'all', tag: 'all', issue: 'all', top: 'all', sort: 'modified-desc', imageDate: 'all', notice: '', sidebarCollapsed: false, dialog: null };
+const state = { view: 'articles', query: '', category: 'all', tag: 'all', issue: 'all', top: 'all', sort: 'modified-desc', imageDate: 'all', imageType: 'all', imageReference: 'all', notice: '', sidebarCollapsed: false, dialog: null };
 const app = document.querySelector('#app');
 const frontendUrl = import.meta.env.VITEPRESS_SITE_URL || import.meta.env.VITEPRESS_URL || 'http://localhost:5173';
 let noticeTimer;
@@ -17,7 +17,7 @@ function render() {
 }
 
 function sidebar(categories, tags) {
-  return `<aside class="sidebar"><div class="brand"><div class="brand-mark">L</div><div><strong>知识库管理台</strong><span>CONTENT INDEX</span></div></div><div class="workspace-label">内容管理</div><nav class="nav-list">${navItem('articles', '文章索引', icon('file'), articles.length)}${navItem('images', '图片管理', icon('image'), imageCount())}${navItem('courses', '课程尝试', icon('book'), courses.length)}${navItem('tags', '标签管理', icon('tag'), tags.length)}${navItem('archives', '归档管理', icon('archive'), archiveYears().length)}</nav><div class="sidebar-foot"><span class="status-dot"></span><span>已连接当前仓库</span><small>本地可写</small></div></aside>`;
+  return `<aside class="sidebar"><div class="brand"><div class="brand-mark">L</div><div><strong>知识库管理台</strong><span>CONTENT INDEX</span></div></div><div class="workspace-label">内容管理</div><nav class="nav-list">${navItem('articles', '文章索引', icon('file'), articles.length)}${navItem('categories', '分类规范', icon('folder'), categories.length)}${navItem('images', '图片管理', icon('image'), imageCount())}${navItem('drafts', '草稿管理', icon('edit'), drafts.length)}${navItem('courses', '课程尝试', icon('book'), courses.length)}${navItem('tags', '标签管理', icon('tag'), tags.length)}${navItem('archives', '归档管理', icon('archive'), archiveYears().length)}</nav><div class="sidebar-foot"><span class="status-dot"></span><span>已连接当前仓库</span><small>本地可写</small></div></aside>`;
 }
 
 function navItem(view, label, itemIcon, count) {
@@ -25,13 +25,15 @@ function navItem(view, label, itemIcon, count) {
 }
 
 function topbar() {
-  const titles = { articles: ['文章管理', '从 docs Markdown 自动生成的项目索引'], images: ['图片管理', '上传图片到日期目录并复制 Markdown 相对路径'], courses: ['课程尝试', '按课程章节管理 docs/courses 内容'], tags: ['标签管理', '与前台文章标签保持一致'], archives: ['归档管理', '按文章 Frontmatter 日期聚合'] };
+  const titles = { articles: ['文章管理', '从 docs Markdown 自动生成的项目索引'], categories: ['分类规范', '英文 ID 与中文名称的统一注册表'], images: ['图片管理', '按日期、类型和引用状态管理图片'], drafts: ['草稿管理', '独立工作区中的临时笔记与写作进度'], courses: ['课程尝试', '按课程章节管理 docs/courses 内容'], tags: ['标签管理', '与前台文章标签保持一致'], archives: ['归档管理', '按文章 Frontmatter 日期聚合'] };
   const [title, subtitle] = titles[state.view];
   return `<header class="topbar"><div class="topbar-left"><button class="icon-button menu-toggle" data-toggle-sidebar title="${state.sidebarCollapsed ? '展开侧栏' : '收起侧栏'}" aria-label="${state.sidebarCollapsed ? '展开侧栏' : '收起侧栏'}">${icon('menu')}</button><div><p class="eyebrow">LONEMONK / ADMIN</p><h1>${title} <span>${subtitle}</span></h1></div></div><div class="topbar-actions"><span class="scan-meta">最后扫描 ${formatDateTime(indexMeta.indexedAt)}</span><span class="readonly-pill">${icon('file')} 本地文件管理</span><a class="front-link" href="${escapeAttr(frontendUrl)}" target="_blank" rel="noreferrer">${icon('home')}前台首页</a></div></header>`;
 }
 
 function content(filtered, categories, tags) {
   if (state.view === 'images') return imageView();
+  if (state.view === 'drafts') return draftView();
+  if (state.view === 'categories') return categoryView(categories);
   if (state.view === 'courses') return courseView();
   if (state.view === 'tags') return tagView(tags);
   if (state.view === 'archives') return archiveView();
@@ -54,18 +56,20 @@ function articleTable(items) {
 function articleRow(article) {
   const category = article.directoryCategoryName || '未分类';
   const path = article.sourcePath;
-  return `<tr><td><div class="title-cell"><span class="article-icon">${icon(article.isTop ? 'pin' : 'file')}</span><div><strong>${escapeHtml(article.title)}</strong>${article.isTop ? '<small>置顶文章</small>' : ''}</div></div></td><td><button class="path-copy" data-copy-path="${escapeAttr(path)}" title="复制项目路径"><code>${escapeHtml(path)}</code>${icon('copy')}</button></td><td>${categoryLink(category)}</td><td><div class="tag-list">${article.tags.length ? article.tags.map(tagLink).join('') : '<span class="muted">-</span>'}</div></td><td><span class="date-cell">${formatDate(article.date)}</span></td><td><span class="badge ${article.status}">${article.status === 'draft' ? '草稿' : '已发布'}</span></td><td>${issueCell(article)}</td><td><div class="row-actions"><a class="icon-button" href="${escapeAttr(`${frontendUrl}/${encodeURI(article.sitePath)}`)}" target="_blank" rel="noreferrer" title="打开前台文章">${icon('external')}</a><button class="icon-button" data-copy-path="${escapeAttr(path)}" title="复制路径">${icon('copy')}</button><button class="icon-button ${article.isTop ? 'is-active' : ''}" data-toggle-top data-source-path="${escapeAttr(path)}" data-is-top="${article.isTop}" title="${article.isTop ? '取消置顶' : '设为置顶'}">${icon('pin')}</button><button class="icon-button" data-open-move-dialog data-source-path="${escapeAttr(path)}" title="更换分类">${icon('folder')}</button></div></td></tr>`;
+  const categoryNeedsNormalization = article.issues.some((issue) => ['category', 'category-multiple', 'category-course', 'category-unknown', 'category-id', 'category-mismatch'].includes(issue.code));
+  const tagsNeedNormalization = article.issues.some((issue) => ['tag-duplicate', 'tag-format'].includes(issue.code));
+  return `<tr><td><div class="title-cell"><span class="article-icon">${icon(article.isTop ? 'pin' : 'file')}</span><div><strong>${escapeHtml(article.title)}</strong>${article.isTop ? '<small>置顶文章</small>' : ''}</div></div></td><td><button class="path-copy" data-copy-path="${escapeAttr(path)}" title="复制项目路径"><code>${escapeHtml(path)}</code>${icon('copy')}</button></td><td>${categoryLink(category)}</td><td><div class="tag-list">${article.tags.length ? article.tags.map(tagLink).join('') : '<span class="muted">-</span>'}</div></td><td><span class="date-cell">${formatDate(article.date)}</span></td><td><span class="badge ${article.status}">${article.status === 'draft' ? '草稿' : '已发布'}</span></td><td>${issueCell(article)}</td><td><div class="row-actions"><a class="icon-button" href="${escapeAttr(`${frontendUrl}/${encodeURI(article.sitePath)}`)}" target="_blank" rel="noreferrer" title="打开前台文章">${icon('external')}</a><button class="icon-button" data-copy-path="${escapeAttr(path)}" title="复制路径">${icon('copy')}</button>${categoryNeedsNormalization ? `<button class="icon-button" data-normalize-category data-source-path="${escapeAttr(path)}" title="将分类同步为目录英文 ID">${icon('check')}</button>` : ''}${tagsNeedNormalization ? `<button class="icon-button" data-normalize-tags data-source-path="${escapeAttr(path)}" title="规范并去重标签">${icon('tag')}</button>` : ''}<button class="icon-button ${article.isTop ? 'is-active' : ''}" data-toggle-top data-source-path="${escapeAttr(path)}" data-is-top="${article.isTop}" title="${article.isTop ? '取消置顶' : '设为置顶'}">${icon('pin')}</button><button class="icon-button" data-open-move-dialog data-source-path="${escapeAttr(path)}" title="更换分类">${icon('folder')}</button><button class="icon-button danger" data-delete-article data-source-path="${escapeAttr(path)}" title="删除文章">${trashIcon()}</button></div></td></tr>`;
 }
 
 function issueCell(article) { return article.issues.length ? `<div class="issue-list">${article.issues.map((issue) => `<span class="issue-badge" title="${escapeAttr(issue.label)}">${escapeHtml(issue.label)}</span>`).join('')}</div>` : '<span class="check-ok">检查通过</span>'; }
 
 function categoryView(categories) {
-  return `<section class="content-area"><div class="view-intro"><p class="eyebrow">DIRECTORY CATEGORIES</p><div class="view-heading"><div><h2>文章目录分类</h2><p>只展示 <code>docs/categories</code> 下的目录；课程与归档不会混入。新增后可复制目录路径。</p></div><button class="button button-primary" data-open-category-dialog>${icon('folder')}新增分类</button></div></div><div class="category-grid">${categories.map((category) => `<div class="category-card"><button class="category-card-main" data-filter-category="${escapeAttr(category.name)}"><div class="category-mark">${icon('folder')}</div><div><strong>${escapeHtml(category.name)}</strong><span>${category.count} 篇文章 · <code>/docs/categories/${escapeHtml(category.slug)}</code></span></div>${icon('chevron')}</button><button class="icon-button" data-copy-path="${escapeAttr(`/docs/categories/${category.slug}`)}" title="复制分类路径">${icon('copy')}</button></div>`).join('')}</div></section>`;
+  return `<section class="content-area"><div class="view-intro"><p class="eyebrow">CONTENT REGISTRY</p><div class="view-heading"><div><h2>文章分类注册表</h2><p><code>content.registry.json</code> 是唯一分类来源。删除分类会递归删除该分类目录中的全部文章，必须先查看文件清单并二次确认。</p></div><button class="button button-primary" data-open-category-dialog>${icon('folder')}新增分类</button></div></div><div class="category-grid">${categories.map((category) => `<div class="category-card"><button class="category-card-main" data-filter-category="${escapeAttr(category.name)}"><div class="category-mark">${icon('folder')}</div><div><strong>${escapeHtml(category.name)}</strong><span>ID: <code>${escapeHtml(category.slug)}</code> · ${category.count} 篇文章</span></div>${icon('chevron')}</button><button class="icon-button" data-copy-path="${escapeAttr(`/docs/categories/${category.slug}`)}" title="复制分类路径">${icon('copy')}</button><button class="icon-button danger" data-delete-category data-category-slug="${escapeAttr(category.slug)}" title="删除分类及目录">${trashIcon()}</button></div>`).join('')}</div></section>`;
 }
 
 function imageView() {
-  const filteredImages = state.imageDate === 'all' ? images : images.filter((image) => imageDate(image) === state.imageDate);
-  return `<section class="content-area"><div class="view-intro"><p class="eyebrow">IMAGE ASSETS</p><div class="view-heading"><div><h2>图片管理</h2><p>选择图片和日期，上传后复制可直接粘贴到文章目录中的 Markdown 相对路径。</p></div><button class="button button-primary" data-open-upload-dialog>${icon('upload')}上传图片</button></div></div><div class="toolbar"><select data-image-date aria-label="按图片日期筛选"><option value="all">全部日期（${images.length}）</option>${imageDateOptions().map((item) => `<option value="${escapeAttr(item.value)}" ${state.imageDate === item.value ? 'selected' : ''}>${escapeHtml(item.label)}（${item.count}）</option>`).join('')}</select><button class="button button-ghost" data-open-image-dialog>${icon('folder')}新建图片目录</button><button class="button button-primary" data-refresh>${icon('refresh')}刷新图片索引</button></div><section class="table-card"><div class="table-heading"><div><h2>图片目录</h2><p><code>docs/public/img/年/月/日</code> 下的图片由前台以 <code>/img/...</code> 访问。</p></div><span class="source-badge">${icon('database')} ${filteredImages.length} / ${images.length} 个文件</span></div>${filteredImages.length ? `<div class="table-scroll"><table><thead><tr><th>文件名</th><th>项目路径</th><th>Markdown 相对路径</th><th>操作</th></tr></thead><tbody>${filteredImages.map((image) => `<tr><td><strong>${escapeHtml(image.name)}</strong></td><td><code>${escapeHtml(image.sourcePath)}</code></td><td><code>${escapeHtml(image.markdownPath)}</code></td><td><button class="icon-button" data-copy-path="${escapeAttr(image.markdownPath)}" title="复制 Markdown 路径">${icon('copy')}</button></td></tr>`).join('')}</tbody></table></div>` : `<div class="image-help"><div class="category-mark">${icon('image')}</div><div><strong>没有匹配的图片</strong><p>选择其他日期或上传一张新图片。</p></div></div>`}</section></section>`;
+  const filteredImages = images.filter((image) => (state.imageDate === 'all' || imageDate(image) === state.imageDate) && (state.imageType === 'all' || image.type === state.imageType) && (state.imageReference === 'all' || (state.imageReference === 'used' ? image.referenced : !image.referenced)));
+  return `<section class="content-area"><div class="view-intro"><p class="eyebrow">IMAGE ASSETS</p><div class="view-heading"><div><h2>图片管理</h2><p>按日期、文件类型和文章引用状态筛选。删除前会显示引用文章，已引用图片默认禁止删除。</p></div><button class="button button-primary" data-open-upload-dialog>${icon('upload')}上传图片</button></div></div><div class="toolbar"><select data-image-date aria-label="按图片日期筛选"><option value="all">全部日期（${images.length}）</option>${imageDateOptions().map((item) => `<option value="${escapeAttr(item.value)}" ${state.imageDate === item.value ? 'selected' : ''}>${escapeHtml(item.label)}（${item.count}）</option>`).join('')}</select><select data-image-type aria-label="按图片类型筛选"><option value="all">全部类型</option>${[...new Set(images.map((image) => image.type))].sort().map((type) => `<option value="${escapeAttr(type)}" ${state.imageType === type ? 'selected' : ''}>${escapeHtml(type)}</option>`).join('')}</select><select data-image-reference aria-label="按图片引用状态筛选"><option value="all">全部引用状态</option><option value="used" ${state.imageReference === 'used' ? 'selected' : ''}>已被引用</option><option value="unused" ${state.imageReference === 'unused' ? 'selected' : ''}>未被引用</option></select><button class="button button-ghost" data-open-image-dialog>${icon('folder')}新建图片目录</button><button class="button button-primary" data-refresh>${icon('refresh')}刷新图片索引</button></div><section class="table-card"><div class="table-heading"><div><h2>图片目录</h2><p><code>docs/public/img/年/月/日</code> 下的图片由前台以 <code>/img/...</code> 访问。</p></div><span class="source-badge">${icon('database')} ${filteredImages.length} / ${images.length} 个文件</span></div>${filteredImages.length ? `<div class="table-scroll"><table><thead><tr><th>文件名</th><th>类型</th><th>项目路径</th><th>Markdown</th><th>引用</th><th>操作</th></tr></thead><tbody>${filteredImages.map((image) => `<tr><td><strong>${escapeHtml(image.name)}</strong></td><td><span class="badge">${escapeHtml(image.type)}</span></td><td><code>${escapeHtml(image.sourcePath)}</code></td><td><button class="path-copy" data-copy-path="${escapeAttr(image.markdownPath)}" title="复制 Markdown 图片语法"><code>${escapeHtml(image.markdownPath)}</code>${icon('copy')}</button></td><td>${image.referenced ? `<button class="text-link" data-show-image-refs="${escapeAttr(image.sourcePath)}">${image.references.length} 篇文档</button>` : '<span class="muted">未引用</span>'}</td><td><button class="icon-button" data-copy-path="${escapeAttr(image.markdownPath)}" title="复制 Markdown 路径">${icon('copy')}</button><button class="icon-button danger" data-delete-image data-source-path="${escapeAttr(image.sourcePath)}" title="删除图片">${trashIcon()}</button></td></tr>`).join('')}</tbody></table></div>` : `<div class="image-help"><div class="category-mark">${icon('image')}</div><div><strong>没有匹配的图片</strong><p>选择其他筛选条件或上传一张新图片。</p></div></div>`}</section></section>`;
 }
 
 function courseView() {
@@ -75,13 +79,19 @@ function courseView() {
 }
 
 function uploadDialog() {
-  return `<div class="modal-backdrop" data-close-dialog><section class="modal-panel" data-dialog-panel role="dialog" aria-modal="true"><div class="modal-header"><div><p class="eyebrow">UPLOAD IMAGE</p><h2>上传图片</h2></div><button class="icon-button" data-close-dialog title="关闭">${closeIcon()}</button></div><form data-upload-form><label class="form-field"><span>图片文件</span><input data-upload-file type="file" accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml" required /></label><label class="form-field"><span>归档日期</span><input data-upload-date type="date" required value="${new Date().toISOString().slice(0, 10)}" /></label><small>图片会写入 <code>docs/public/img/年/月/日</code>，上传完成后自动复制相对 Markdown 路径。</small><div class="modal-actions"><button type="button" class="button button-ghost" data-close-dialog>取消</button><button type="submit" class="button button-primary">${icon('upload')}上传并复制路径</button></div></form></section></div>`;
+  return `<div class="modal-backdrop" data-close-dialog><section class="modal-panel" data-dialog-panel role="dialog" aria-modal="true"><div class="modal-header"><div><p class="eyebrow">UPLOAD IMAGE</p><h2>上传图片</h2></div><button class="icon-button" data-close-dialog title="关闭">${closeIcon()}</button></div><form data-upload-form><label class="form-field"><span>图片文件</span><input data-upload-file type="file" accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml" required /></label><label class="form-field"><span>归档日期</span><input data-upload-date type="date" required value="${new Date().toISOString().slice(0, 10)}" /></label><label class="form-field"><span>文件名（可选）</span><input data-upload-name maxlength="120" placeholder="默认使用原文件名并规范化" /></label><label class="check-field"><input data-upload-optimize type="checkbox" /><span>浏览器压缩并优先转换为 WebP</span></label><small>图片会写入 <code>docs/public/img/年/月/日</code>，上传完成后复制 <code>![图片说明](/img/...)</code> Markdown 语法。</small><div class="modal-actions"><button type="button" class="button button-ghost" data-close-dialog>取消</button><button type="submit" class="button button-primary">${icon('upload')}上传并复制路径</button></div></form></section></div>`;
+}
+
+function draftView() {
+  const items = drafts.filter((draft) => !state.query.trim() || `${draft.title} ${draft.sourcePath} ${draft.status}`.toLowerCase().includes(state.query.trim().toLowerCase()));
+  return `<section class="content-area"><div class="view-intro"><p class="eyebrow">DRAFT WORKSPACE</p><div class="view-heading"><div><h2>草稿管理</h2><p>草稿位于 <code>docs/drafts</code>，不会进入前台、RSS、Sitemap 或正式文章索引，适合 Hermes 读取临时进度。</p></div><button class="button button-primary" data-open-draft-dialog>${icon('edit')}新建草稿</button></div></div><div class="toolbar"><div class="search-box">${icon('search')}<input data-search placeholder="搜索草稿标题、路径或状态" value="${escapeAttr(state.query)}" /></div><button class="button button-primary" data-refresh>${icon('refresh')}刷新草稿</button></div><section class="table-card"><div class="table-heading"><div><h2>草稿列表</h2><p>共 ${drafts.length} 个草稿，IDE 与 Hermes 可以直接读取这些 Markdown 文件。</p></div><span class="source-badge">${icon('edit')} docs/drafts/**/*.md</span></div>${items.length ? `<div class="table-scroll"><table><thead><tr><th>标题</th><th>路径</th><th>状态</th><th>修改时间</th><th>操作</th></tr></thead><tbody>${items.map((draft) => `<tr><td><strong>${escapeHtml(draft.title)}</strong>${draft.description ? `<small class="table-subtext">${escapeHtml(draft.description)}</small>` : ''}</td><td><button class="path-copy" data-copy-path="${escapeAttr(draft.sourcePath)}" title="复制草稿路径"><code>${escapeHtml(draft.sourcePath)}</code>${icon('copy')}</button></td><td><select class="inline-select" data-draft-status data-source-path="${escapeAttr(draft.sourcePath)}"><option value="idea" ${draft.status === 'idea' ? 'selected' : ''}>想法</option><option value="writing" ${draft.status === 'writing' ? 'selected' : ''}>编写中</option><option value="paused" ${draft.status === 'paused' ? 'selected' : ''}>暂停</option><option value="done" ${draft.status === 'done' ? 'selected' : ''}>待转文章</option></select></td><td class="date-cell">${formatDateTime(draft.modifiedAt)}</td><td><button class="icon-button" data-copy-path="${escapeAttr(draft.sourcePath)}" title="复制路径">${icon('copy')}</button><button class="icon-button danger" data-delete-draft data-source-path="${escapeAttr(draft.sourcePath)}" title="删除草稿">${trashIcon()}</button></td></tr>`).join('')}</tbody></table></div>` : emptyState()}</section></section>`;
 }
 
 function trashIcon() { return '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 14h10l1-14M9 7V4h6v3"/></svg>'; }
 
 function tagView(tags) {
-  return `<section class="content-area"><div class="view-intro"><p class="eyebrow">FRONTMATTER TAGS</p><h2>标签与前台同步</h2><p>点击标签查看使用它的文章。数据直接来自每篇 Markdown 的 <code>tags</code> 字段。</p></div><div class="tag-cloud">${tags.map((tag) => `<button class="tag-card" data-filter-tag="${escapeAttr(tag.name)}"><span>${escapeHtml(tag.name)}</span><b>${tag.count}</b></button>`).join('')}</div></section>`;
+  const aliases = Object.entries(contentRegistry.tagAliases || {});
+  return `<section class="content-area"><div class="view-intro"><p class="eyebrow">FRONTMATTER TAGS</p><h2>标签与前台同步</h2><p>标签会自动去除首尾空格、合并连续空格，并按 <code>content.registry.json</code> 中的别名统一大小写。点击标签查看对应文章。</p></div>${aliases.length ? `<section class="table-card"><div class="table-heading"><div><h2>命名规范</h2><p>${aliases.map(([source, target]) => `<code>${escapeHtml(source)}</code> → <strong>${escapeHtml(target)}</strong>`).join('　')}</p></div><span class="source-badge">${icon('database')} tagAliases</span></div></section>` : ''}<div class="tag-cloud">${tags.map((tag) => `<button class="tag-card" data-filter-tag="${escapeAttr(tag.name)}"><span>${escapeHtml(tag.name)}</span><b>${tag.count}</b></button>`).join('')}</div></section>`;
 }
 
 function archiveView() {
@@ -93,17 +103,34 @@ function emptyState() { return `<div class="empty-state">${icon('search')}<stron
 function dialogView(dialog) {
   const selectedPath = dialog.sourcePath || articles[0]?.sourcePath || '';
   if (dialog.type === 'category') return `<div class="modal-backdrop" data-close-dialog><section class="modal-panel" data-dialog-panel role="dialog" aria-modal="true"><div class="modal-header"><div><p class="eyebrow">DIRECTORY CATEGORY</p><h2>新增文章分类</h2></div><button class="icon-button" data-close-dialog title="关闭">${closeIcon()}</button></div><form data-create-category-form><label class="form-field"><span>分类名称</span><input data-dialog-category-name maxlength="80" required placeholder="例如：前端工程" autocomplete="off" /></label><label class="form-field"><span>目录名称</span><input data-dialog-category-slug maxlength="80" required placeholder="例如：frontend" autocomplete="off" /><small>将创建 <code>docs/categories/&lt;目录名称&gt;/index.md</code>，前台导航会自动读取。</small></label><div class="modal-actions"><button type="button" class="button button-ghost" data-close-dialog>取消</button><button type="submit" class="button button-primary">${icon('check')}创建分类</button></div></form></section></div>`;
-  if (dialog.type === 'article') return `<div class="modal-backdrop" data-close-dialog><section class="modal-panel" data-dialog-panel role="dialog" aria-modal="true"><div class="modal-header"><div><p class="eyebrow">ARTICLE PATH</p><h2>新建文章目录</h2></div><button class="icon-button" data-close-dialog title="关闭">${closeIcon()}</button></div><form data-create-article-form><label class="form-field"><span>文章分类</span><select data-dialog-category-slug>${categoryDirectories.map((item) => `<option value="${escapeAttr(item.slug)}">${escapeHtml(item.name)} · ${escapeHtml(item.slug)}</option>`).join('')}</select></label><label class="form-field"><span>文章标题</span><input data-dialog-title maxlength="120" required placeholder="例如：HTTP 缓存" /></label><label class="form-field"><span>日期</span><input data-dialog-date type="date" required value="${new Date().toISOString().slice(0, 10)}" /></label><label class="form-field"><span>文件名（可选）</span><input data-dialog-filename maxlength="120" placeholder="默认使用文章标题" /><small>创建后复制返回的 Markdown 路径，在 IDE 中继续编辑。</small></label><div class="modal-actions"><button type="button" class="button button-ghost" data-close-dialog>取消</button><button type="submit" class="button button-primary">${icon('check')}生成文章路径</button></div></form></section></div>`;
+  if (dialog.type === 'article') return `<div class="modal-backdrop" data-close-dialog><section class="modal-panel" data-dialog-panel role="dialog" aria-modal="true"><div class="modal-header"><div><p class="eyebrow">ARTICLE GENERATOR</p><h2>新建文章</h2></div><button class="icon-button" data-close-dialog title="关闭">${closeIcon()}</button></div><form data-create-article-form><label class="form-field"><span>文章分类</span><select data-dialog-category-slug>${categoryDirectories.map((item) => `<option value="${escapeAttr(item.slug)}">${escapeHtml(item.name)} · ${escapeHtml(item.slug)}</option>`).join('')}</select></label><label class="form-field"><span>文章标题</span><input data-dialog-title maxlength="120" required placeholder="例如：HTTP 缓存" /></label><label class="form-field"><span>文章描述（可选）</span><input data-dialog-description maxlength="200" placeholder="用于 SEO 与分享摘要；留空会根据标题生成占位描述" /></label><label class="form-field"><span>标签（可选）</span><input data-dialog-tags maxlength="300" placeholder="例如：HTTP, Cache, VitePress" /><small>使用逗号分隔，创建时会按标签规范统一并去重。</small></label><label class="form-field"><span>日期</span><input data-dialog-date type="date" required value="${new Date().toISOString().slice(0, 10)}" /></label><label class="form-field"><span>文件名（可选）</span><input data-dialog-filename maxlength="120" placeholder="默认根据文章标题自动生成" /><small>将复制 <code>docs/templates/article-template.md</code> 到分类的年/月/日目录，并复制生成后的 <code>/docs/...md</code> 路径。</small></label><div class="modal-actions"><button type="button" class="button button-ghost" data-close-dialog>取消</button><button type="submit" class="button button-primary">${icon('check')}生成文章</button></div></form></section></div>`;
   if (dialog.type === 'image') return `<div class="modal-backdrop" data-close-dialog><section class="modal-panel" data-dialog-panel role="dialog" aria-modal="true"><div class="modal-header"><div><p class="eyebrow">IMAGE DIRECTORY</p><h2>新建图片目录</h2></div><button class="icon-button" data-close-dialog title="关闭">${closeIcon()}</button></div><form data-create-image-form><label class="form-field"><span>日期</span><input data-dialog-date type="date" required value="${new Date().toISOString().slice(0, 10)}" /><small>创建 <code>docs/public/img/年/月/日</code>，并复制图片目录和前台引用路径。</small></label><div class="modal-actions"><button type="button" class="button button-ghost" data-close-dialog>取消</button><button type="submit" class="button button-primary">${icon('check')}生成图片目录</button></div></form></section></div>`;
-  const target = categoryDirectories.find((item) => item.slug !== articles.find((article) => article.sourcePath === selectedPath)?.directoryCategorySlug) || categoryDirectories[0];
-  return `<div class="modal-backdrop" data-close-dialog><section class="modal-panel" data-dialog-panel role="dialog" aria-modal="true"><div class="modal-header"><div><p class="eyebrow">MOVE ARTICLE</p><h2>更换文章分类</h2></div><button class="icon-button" data-close-dialog title="关闭">${closeIcon()}</button></div><form data-move-article-form><input type="hidden" data-dialog-source-path value="${escapeAttr(selectedPath)}" /><label class="form-field"><span>目标分类</span><select data-dialog-target-category>${categoryDirectories.map((item) => `<option value="${escapeAttr(item.slug)}" ${item.slug === target?.slug ? 'selected' : ''}>${escapeHtml(item.name)} · ${escapeHtml(item.slug)}</option>`).join('')}</select></label><small>文章会移动到目标分类下相同的年/月/日目录，并更新 Frontmatter。</small><div class="modal-actions"><button type="button" class="button button-ghost" data-close-dialog>取消</button><button type="submit" class="button button-primary">${icon('check')}移动文章</button></div></form></section></div>`;
+  if (dialog.type === 'draft') return `<div class="modal-backdrop" data-close-dialog><section class="modal-panel" data-dialog-panel role="dialog" aria-modal="true"><div class="modal-header"><div><p class="eyebrow">DRAFT WORKSPACE</p><h2>新建草稿</h2></div><button class="icon-button" data-close-dialog title="关闭">${closeIcon()}</button></div><form data-create-draft-form><label class="form-field"><span>标题</span><input data-draft-title maxlength="120" required placeholder="例如：Hermes 写作计划" /></label><label class="form-field"><span>描述</span><input data-draft-description maxlength="200" placeholder="这份草稿要解决什么问题？" /></label><label class="form-field"><span>标签</span><input data-draft-tags maxlength="300" placeholder="用逗号分隔，可选" /></label><label class="form-field"><span>日期</span><input data-draft-date type="date" required value="${new Date().toISOString().slice(0, 10)}" /></label><label class="form-field"><span>状态</span><select data-draft-create-status><option value="idea">想法</option><option value="writing">编写中</option><option value="paused">暂停</option><option value="done">待转文章</option></select></label><label class="form-field"><span>文件名（可选）</span><input data-draft-filename maxlength="120" placeholder="默认根据标题生成" /></label><div class="modal-actions"><button type="button" class="button button-ghost" data-close-dialog>取消</button><button type="submit" class="button button-primary">${icon('check')}创建草稿</button></div></form></section></div>`;
+  if (dialog.type === 'refs') return `<div class="modal-backdrop" data-close-dialog><section class="modal-panel" data-dialog-panel role="dialog" aria-modal="true"><div class="modal-header"><div><p class="eyebrow">IMAGE REFERENCES</p><h2>引用这张图片的文档</h2></div><button class="icon-button" data-close-dialog title="关闭">${closeIcon()}</button></div><div class="reference-panel"><code>${escapeHtml(dialog.sourcePath)}</code>${dialog.references.length ? `<ul class="reference-list">${dialog.references.map((ref) => `<li><strong>${escapeHtml(ref.title)}</strong><span>${escapeHtml(ref.kind)} · ${escapeHtml(ref.sourcePath)}</span></li>`).join('')}</ul>` : '<p class="muted">暂无文档引用。</p>'}</div><div class="modal-actions"><button type="button" class="button button-primary" data-close-dialog>关闭</button></div></section></div>`;
+  if (dialog.type === 'delete') {
+    const preview = dialog.preview;
+    const refs = preview.references?.length ? (preview.kind === 'image' ? `<div class="delete-warning"><strong>该图片仍被 ${preview.references.length} 篇文档引用</strong><ul class="reference-list">${preview.references.map((ref) => `<li><strong>${escapeHtml(ref.title)}</strong><span>${escapeHtml(ref.sourcePath)}</span></li>`).join('')}</ul></div>` : `<div class="delete-info"><strong>正文引用了 ${preview.references.length} 张图片</strong><p>只删除 Markdown 文件，不会删除这些图片：${preview.references.map((ref) => `<code>${escapeHtml(ref)}</code>`).join('、')}</p></div>`) : '';
+    const force = preview.kind === 'image' && preview.referenced ? `<label class="check-field danger-check"><input data-force-delete type="checkbox" /><span>我确认已处理上述引用，强制删除</span></label>` : '';
+    const disabled = preview.kind === 'image' && preview.referenced ? 'disabled' : '';
+    return `<div class="modal-backdrop" data-close-dialog><section class="modal-panel delete-panel" data-dialog-panel role="dialog" aria-modal="true"><div class="modal-header"><div><p class="eyebrow">DELETE PREVIEW</p><h2>确认删除${preview.kind === 'category' ? '分类' : preview.kind === 'image' ? '图片' : preview.kind === 'draft' ? '草稿' : '文章'}</h2></div><button class="icon-button" data-close-dialog title="关闭">${closeIcon()}</button></div><div class="delete-preview"><div class="delete-target"><strong>${escapeHtml(preview.title || preview.name || preview.category?.name || '')}</strong><code>${escapeHtml(preview.sourcePath || preview.directory || '')}</code></div>${preview.kind === 'category' ? `<p>将递归删除分类目录中的 <strong>${preview.fileCount}</strong> 个文件：${preview.files.slice(0, 12).map((file) => `<code>${escapeHtml(file)}</code>`).join('、')}${preview.files.length > 12 ? '……' : ''}</p>` : ''}${preview.size != null ? `<p>文件大小：${formatBytes(preview.size)}</p>` : ''}${refs}<p class="delete-warning">此操作会直接修改本地仓库文件，删除后不会自动恢复。</p>${force}</div><div class="modal-actions"><button type="button" class="button button-ghost" data-close-dialog>取消</button><button type="button" class="button button-danger" data-confirm-delete data-kind="${escapeAttr(preview.kind)}" data-source-path="${escapeAttr(preview.sourcePath || preview.category?.id || '')}" ${disabled}>${trashIcon()}确认删除</button></div></section></div>`;
+  }
+  if (dialog.type === 'move-preview') {
+    const preview = dialog.preview;
+    const imageRows = preview.imageChanges.length ? preview.imageChanges.map((item) => `<li><code>${escapeHtml(item.from)}</code><span>→</span><code>${escapeHtml(item.to)}</code></li>`).join('') : '<li class="muted">没有需要调整的相对图片路径</li>';
+    const missing = preview.missingImages.length ? `<div class="move-warning"><strong>未找到的图片引用</strong><p>${preview.missingImages.map((item) => `<code>${escapeHtml(item)}</code>`).join('、')}</p></div>` : '';
+    return `<div class="modal-backdrop" data-close-dialog><section class="modal-panel move-preview-panel" data-dialog-panel role="dialog" aria-modal="true"><div class="modal-header"><div><p class="eyebrow">MOVE PREVIEW</p><h2>确认文章移动</h2></div><button class="icon-button" data-close-dialog title="关闭">${closeIcon()}</button></div><div class="move-preview"><div class="move-paths"><div><span>原路径</span><code>${escapeHtml(preview.sourcePath)}</code></div><div>${icon('chevron')}<span>目标路径</span><code>${escapeHtml(preview.targetPath)}</code></div></div><div class="move-change-grid"><div><span>原分类</span><strong>${escapeHtml(preview.sourceCategory || '未注册')}</strong></div><div><span>新分类</span><strong>${escapeHtml(preview.targetCategory)} <code>${escapeHtml(preview.targetCategoryId)}</code></strong></div><div><span>Frontmatter</span><strong>${preview.categoryChanged ? 'categories 将更新' : '无需更新'}</strong></div><div><span>正文</span><strong>${preview.contentChanged ? '图片路径将更新' : '无需更新'}</strong></div></div><div class="move-image-changes"><h3>图片相对路径</h3><ul>${imageRows}</ul></div>${missing}</div><div class="modal-actions"><button type="button" class="button button-ghost" data-close-dialog>取消</button><button type="button" class="button button-primary" data-confirm-move data-source-path="${escapeAttr(dialog.sourcePath)}" data-target-category="${escapeAttr(dialog.targetCategorySlug)}">${icon('check')}确认移动并更新</button></div></section></div>`;
+  }
+  const currentSlug = articles.find((article) => article.sourcePath === selectedPath)?.directoryCategorySlug;
+  const moveTargets = categoryDirectories.filter((item) => item.slug !== currentSlug);
+  const target = moveTargets[0];
+  return `<div class="modal-backdrop" data-close-dialog><section class="modal-panel" data-dialog-panel role="dialog" aria-modal="true"><div class="modal-header"><div><p class="eyebrow">MOVE ARTICLE</p><h2>更换文章分类</h2></div><button class="icon-button" data-close-dialog title="关闭">${closeIcon()}</button></div><form data-move-article-form><input type="hidden" data-dialog-source-path value="${escapeAttr(selectedPath)}" /><label class="form-field"><span>目标分类</span><select data-dialog-target-category>${moveTargets.map((item) => `<option value="${escapeAttr(item.slug)}" ${item.slug === target?.slug ? 'selected' : ''}>${escapeHtml(item.name)} · ${escapeHtml(item.slug)}</option>`).join('')}</select></label><small>下一步只生成变更预览，不会立即移动文件。确认后才会移动到相同的年/月/日目录、更新 Frontmatter，并修正受影响的相对图片路径。</small><div class="modal-actions"><button type="button" class="button button-ghost" data-close-dialog>取消</button><button type="submit" class="button button-primary" ${moveTargets.length ? '' : 'disabled'}>${icon('check')}预览变更</button></div></form></section></div>`;
 }
 
 function closeIcon() { return '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>'; }
 
 function bindEvents() {
   app.querySelector('[data-toggle-sidebar]')?.addEventListener('click', () => { state.sidebarCollapsed = !state.sidebarCollapsed; render(); });
-  app.querySelectorAll('[data-nav]').forEach((button) => button.addEventListener('click', () => { state.view = button.dataset.nav; state.query = ''; state.category = 'all'; state.tag = 'all'; state.issue = 'all'; state.top = 'all'; state.imageDate = 'all'; render(); }));
+  app.querySelectorAll('[data-nav]').forEach((button) => button.addEventListener('click', () => { state.view = button.dataset.nav; state.query = ''; state.category = 'all'; state.tag = 'all'; state.issue = 'all'; state.top = 'all'; state.imageDate = 'all'; state.imageType = 'all'; state.imageReference = 'all'; render(); }));
   app.querySelector('[data-search]')?.addEventListener('input', (event) => { state.query = event.target.value; render(); const input = app.querySelector('[data-search]'); input?.focus(); input?.setSelectionRange(input.value.length, input.value.length); });
   app.querySelector('[data-category]')?.addEventListener('change', (event) => { state.category = event.target.value; render(); });
   app.querySelector('[data-tag]')?.addEventListener('change', (event) => { state.tag = event.target.value; render(); });
@@ -111,24 +138,39 @@ function bindEvents() {
   app.querySelector('[data-top]')?.addEventListener('change', (event) => { state.top = event.target.value; render(); });
   app.querySelector('[data-sort]')?.addEventListener('change', (event) => { state.sort = event.target.value; render(); });
   app.querySelector('[data-image-date]')?.addEventListener('change', (event) => { state.imageDate = event.target.value; render(); });
-  app.querySelector('[data-clear-filters]')?.addEventListener('click', () => { state.query = ''; state.category = 'all'; state.tag = 'all'; state.issue = 'all'; state.top = 'all'; state.imageDate = 'all'; render(); });
+  app.querySelector('[data-image-type]')?.addEventListener('change', (event) => { state.imageType = event.target.value; render(); });
+  app.querySelector('[data-image-reference]')?.addEventListener('change', (event) => { state.imageReference = event.target.value; render(); });
+  app.querySelector('[data-clear-filters]')?.addEventListener('click', () => { state.query = ''; state.category = 'all'; state.tag = 'all'; state.issue = 'all'; state.top = 'all'; state.imageDate = 'all'; state.imageType = 'all'; state.imageReference = 'all'; render(); });
   app.querySelector('[data-refresh]')?.addEventListener('click', () => window.location.reload());
   app.querySelectorAll('[data-filter-category]').forEach((button) => button.addEventListener('click', () => { state.view = 'articles'; state.category = button.dataset.filterCategory; state.issue = 'all'; state.top = 'all'; render(); }));
   app.querySelectorAll('[data-filter-tag]').forEach((button) => button.addEventListener('click', () => { state.view = 'articles'; state.tag = button.dataset.filterTag; state.issue = 'all'; render(); }));
   app.querySelectorAll('[data-copy-path]').forEach((button) => button.addEventListener('click', () => copyPath(button.dataset.copyPath)));
   app.querySelectorAll('[data-toggle-top]').forEach((button) => button.addEventListener('click', () => toggleTop(button.dataset.sourcePath, button.dataset.isTop === 'true')));
+  app.querySelectorAll('[data-normalize-category]').forEach((button) => button.addEventListener('click', () => normalizeCategory(button.dataset.sourcePath)));
+  app.querySelectorAll('[data-normalize-tags]').forEach((button) => button.addEventListener('click', () => normalizeTags(button.dataset.sourcePath)));
   app.querySelectorAll('[data-open-category-dialog]').forEach((button) => button.addEventListener('click', () => { state.dialog = { type: 'category', sourcePath: button.dataset.sourcePath || articles[0]?.sourcePath || '' }; render(); }));
   app.querySelectorAll('[data-open-article-dialog]').forEach((button) => button.addEventListener('click', () => { state.dialog = { type: 'article' }; render(); }));
   app.querySelectorAll('[data-open-image-dialog]').forEach((button) => button.addEventListener('click', () => { state.dialog = { type: 'image' }; render(); }));
   app.querySelectorAll('[data-open-upload-dialog]').forEach((button) => button.addEventListener('click', () => { state.dialog = { type: 'upload' }; render(); }));
+  app.querySelectorAll('[data-open-draft-dialog]').forEach((button) => button.addEventListener('click', () => { state.dialog = { type: 'draft' }; render(); }));
   app.querySelectorAll('[data-open-move-dialog]').forEach((button) => button.addEventListener('click', () => { state.dialog = { type: 'move', sourcePath: button.dataset.sourcePath }; render(); }));
+  app.querySelectorAll('[data-show-image-refs]').forEach((button) => button.addEventListener('click', () => { const image = images.find((item) => item.sourcePath === button.dataset.showImageRefs); state.dialog = { type: 'refs', sourcePath: button.dataset.showImageRefs, references: image?.references || [] }; render(); }));
+  app.querySelectorAll('[data-delete-article]').forEach((button) => button.addEventListener('click', () => previewDelete('article', button.dataset.sourcePath)));
+  app.querySelectorAll('[data-delete-draft]').forEach((button) => button.addEventListener('click', () => previewDelete('draft', button.dataset.sourcePath)));
+  app.querySelectorAll('[data-delete-image]').forEach((button) => button.addEventListener('click', () => previewDelete('image', button.dataset.sourcePath)));
+  app.querySelectorAll('[data-delete-category]').forEach((button) => button.addEventListener('click', () => previewDelete('category', button.dataset.categorySlug)));
   app.querySelectorAll('[data-close-dialog]').forEach((button) => button.addEventListener('click', () => { state.dialog = null; render(); }));
   app.querySelector('[data-dialog-panel]')?.addEventListener('click', (event) => event.stopPropagation());
   app.querySelector('[data-create-category-form]')?.addEventListener('submit', (event) => { event.preventDefault(); createCategory(app.querySelector('[data-dialog-category-name]').value, app.querySelector('[data-dialog-category-slug]').value); });
-  app.querySelector('[data-create-article-form]')?.addEventListener('submit', (event) => { event.preventDefault(); createArticle(app.querySelector('[data-dialog-category-slug]').value, app.querySelector('[data-dialog-title]').value, app.querySelector('[data-dialog-date]').value, app.querySelector('[data-dialog-filename]').value); });
+  app.querySelector('[data-create-article-form]')?.addEventListener('submit', (event) => { event.preventDefault(); createArticle(app.querySelector('[data-dialog-category-slug]').value, app.querySelector('[data-dialog-title]').value, app.querySelector('[data-dialog-description]').value, app.querySelector('[data-dialog-tags]').value, app.querySelector('[data-dialog-date]').value, app.querySelector('[data-dialog-filename]').value); });
   app.querySelector('[data-create-image-form]')?.addEventListener('submit', (event) => { event.preventDefault(); createImageDirectory(app.querySelector('[data-dialog-date]').value); });
-  app.querySelector('[data-upload-form]')?.addEventListener('submit', (event) => { event.preventDefault(); uploadImage(app.querySelector('[data-upload-file]').files[0], app.querySelector('[data-upload-date]').value); });
-  app.querySelector('[data-move-article-form]')?.addEventListener('submit', (event) => { event.preventDefault(); moveArticle(app.querySelector('[data-dialog-source-path]').value, app.querySelector('[data-dialog-target-category]').value); });
+  app.querySelector('[data-create-draft-form]')?.addEventListener('submit', (event) => { event.preventDefault(); createDraft(app.querySelector('[data-draft-title]').value, app.querySelector('[data-draft-description]').value, app.querySelector('[data-draft-tags]').value, app.querySelector('[data-draft-date]').value, app.querySelector('[data-draft-create-status]').value, app.querySelector('[data-draft-filename]').value); });
+  app.querySelector('[data-upload-form]')?.addEventListener('submit', (event) => { event.preventDefault(); uploadImage(app.querySelector('[data-upload-file]').files[0], app.querySelector('[data-upload-date]').value, app.querySelector('[data-upload-name]').value, app.querySelector('[data-upload-optimize]').checked); });
+  app.querySelectorAll('[data-draft-status]').forEach((select) => select.addEventListener('change', () => updateDraftStatus(select.dataset.sourcePath, select.value)));
+  app.querySelector('[data-confirm-delete]')?.addEventListener('click', (button) => confirmDelete(button.currentTarget.dataset.kind, button.currentTarget.dataset.sourcePath, app.querySelector('[data-force-delete]')?.checked === true));
+  app.querySelector('[data-force-delete]')?.addEventListener('change', (event) => { const button = app.querySelector('[data-confirm-delete]'); if (button) button.disabled = !event.target.checked; });
+  app.querySelector('[data-move-article-form]')?.addEventListener('submit', (event) => { event.preventDefault(); previewMove(app.querySelector('[data-dialog-source-path]').value, app.querySelector('[data-dialog-target-category]').value); });
+  app.querySelector('[data-confirm-move]')?.addEventListener('click', (button) => moveArticle(button.currentTarget.dataset.sourcePath, button.currentTarget.dataset.targetCategory));
 }
 
 async function addCategory(sourcePath, category) {
@@ -139,13 +181,43 @@ async function toggleTop(sourcePath, isTop) {
   await writeArticle('/__admin/api/articles/toggle-top', { sourcePath, isTop: !isTop }, isTop ? '已取消置顶' : '已设为置顶');
 }
 
+async function normalizeCategory(sourcePath) {
+  if (!window.confirm('将使用文章所在目录的英文分类 ID 覆盖当前 categories 字段，是否继续？')) return;
+  await writeArticle('/__admin/api/articles/normalize-category', { sourcePath }, '分类已同步为稳定英文 ID');
+}
+
+async function normalizeTags(sourcePath) {
+  if (!window.confirm('将根据标签规范表调整大小写、空格并移除重复标签，是否继续？')) return;
+  await writeArticle('/__admin/api/articles/normalize-tags', { sourcePath }, '标签已完成规范化');
+}
+
 async function createCategory(name, slug) { await writeAndCopy('/__admin/api/categories/create', { name, slug }, (result) => result.category.sourcePath, `分类已创建：${name}`); }
-async function createArticle(categorySlug, title, date, filename) { await writeAndCopy('/__admin/api/articles/create', { categorySlug, title, date, filename }, (result) => result.article.sourcePath, '文章 Markdown 路径已生成并复制'); }
+async function createArticle(categorySlug, title, description, tags, date, filename) { await writeAndCopy('/__admin/api/articles/create', { categorySlug, title, description, tags, date, filename }, (result) => result.article.sourcePath, '文章已按模板生成，Markdown 路径已复制'); }
 async function createImageDirectory(date) { try { const response = await fetch('/__admin/api/assets/image-directory', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ date }) }); const result = await response.json(); if (!response.ok || !result.ok) throw new Error(result.message || '创建失败'); state.dialog = null; copyPath(result.directory.sourcePath); showNotice(`图片目录已创建并复制：${result.directory.sourcePath}`); window.setTimeout(() => window.location.reload(), 700); } catch (error) { showNotice(error instanceof Error ? error.message : '创建失败'); } }
-async function uploadImage(file, date) {
+async function createDraft(title, description, tags, date, status, filename) { await writeAndCopy('/__admin/api/drafts/create', { title, description, tags, date, status, filename }, (result) => result.draft.sourcePath, '草稿已创建，路径已复制'); }
+async function updateDraftStatus(sourcePath, status) { await writeArticle('/__admin/api/drafts/status', { sourcePath, status }, '草稿状态已更新'); }
+async function previewDelete(kind, sourcePath) {
+  const endpoint = kind === 'image' ? 'assets' : kind === 'category' ? 'categories' : kind === 'draft' ? 'drafts' : 'articles';
+  try {
+    const response = await fetch(`/__admin/api/${endpoint}/delete-preview`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(kind === 'category' ? { categorySlug: sourcePath } : { sourcePath }) });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || !result.ok) throw new Error(result.message || '无法生成删除预览');
+    state.dialog = { type: 'delete', preview: { ...result.preview, kind } };
+    render();
+  } catch (error) { showNotice(error instanceof Error ? error.message : '无法生成删除预览'); }
+}
+async function confirmDelete(kind, sourcePath, force = false) {
+  const endpoint = kind === 'image' ? 'assets' : kind === 'category' ? 'categories' : kind === 'draft' ? 'drafts' : 'articles';
+  const payload = kind === 'category' ? { categorySlug: sourcePath, confirm: true } : { sourcePath, confirm: true, force };
+  await writeAndCopy(`/__admin/api/${endpoint}/delete`, payload, () => '', `${kind === 'image' ? '图片' : kind === 'category' ? '分类' : kind === 'draft' ? '草稿' : '文章'}已删除`);
+}
+async function uploadImage(file, date, requestedName, optimize) {
   if (!file) return;
   try {
-    const form = new FormData(); form.append('date', date); form.append('file', file, file.name);
+    let uploadFile = file;
+    if (optimize && !/image\/svg\+xml/i.test(file.type)) uploadFile = await optimizeImage(file);
+    const effectiveName = optimize && requestedName.trim() ? requestedName.trim().replace(/\.[^.]+$/, '.webp') : requestedName.trim();
+    const form = new FormData(); form.append('date', date); if (effectiveName) form.append('name', effectiveName); form.append('file', uploadFile, uploadFile.name);
     const response = await fetch('/__admin/api/assets/upload', { method: 'POST', body: form });
     const result = await response.json().catch(() => ({}));
     if (!response.ok || !result.ok) throw new Error(result.message || '上传失败');
@@ -155,7 +227,23 @@ async function uploadImage(file, date) {
     window.setTimeout(() => window.location.reload(), 700);
   } catch (error) { showNotice(error instanceof Error ? error.message : '上传失败，请确认当前使用的是 admin:dev'); }
 }
-async function moveArticle(sourcePath, targetCategorySlug) { await writeArticle('/__admin/api/articles/move', { sourcePath, targetCategorySlug }, '文章分类已更换，路径已移动'); }
+async function optimizeImage(file) {
+  const bitmap = await createImageBitmap(file);
+  const canvas = document.createElement('canvas'); canvas.width = bitmap.width; canvas.height = bitmap.height;
+  canvas.getContext('2d').drawImage(bitmap, 0, 0); bitmap.close();
+  const blob = await new Promise((resolve, reject) => canvas.toBlob((value) => value ? resolve(value) : reject(new Error('图片压缩失败')), 'image/webp', 0.82));
+  return new File([blob], `${file.name.replace(/\.[^.]+$/, '')}.webp`, { type: 'image/webp' });
+}
+async function previewMove(sourcePath, targetCategorySlug) {
+  try {
+    const response = await fetch('/__admin/api/articles/move-preview', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sourcePath, targetCategorySlug }) });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || !result.ok) throw new Error(result.message || '无法生成移动预览');
+    state.dialog = { type: 'move-preview', sourcePath, targetCategorySlug, preview: result.preview };
+    render();
+  } catch (error) { showNotice(error instanceof Error ? error.message : '无法生成移动预览'); }
+}
+async function moveArticle(sourcePath, targetCategorySlug) { await writeAndCopy('/__admin/api/articles/move', { sourcePath, targetCategorySlug }, (result) => result.article.targetPath, '文章分类已更换，路径已复制'); }
 
 async function writeAndCopy(url, payload, getPath, successMessage) {
   try {
@@ -168,12 +256,6 @@ async function writeAndCopy(url, payload, getPath, successMessage) {
     showNotice(`${successMessage}：${copiedPath}`);
     window.setTimeout(() => window.location.reload(), 700);
   } catch (error) { showNotice(error instanceof Error ? error.message : '写入失败，请确认当前使用的是 admin:dev'); }
-}
-
-async function deleteCategory(category, count) {
-  const message = `确定删除分类“${category}”吗？\n\n将从 ${count} 篇文章的 Frontmatter 中移除这个分类，文章文件和目录不会删除。`;
-  if (!window.confirm(message)) return;
-  await writeArticle('/__admin/api/categories/delete', { category }, `分类已删除，共修改 ${count} 篇文章`);
 }
 
 async function writeArticle(url, payload, successMessage) {
@@ -218,6 +300,13 @@ function collectCategories() {
 
 function imageCount() {
   return images.length;
+}
+
+function formatBytes(value) {
+  const bytes = Number(value) || 0;
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
 function imageDate(image) {

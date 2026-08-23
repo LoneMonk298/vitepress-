@@ -14,7 +14,8 @@ The repository also includes an independent local admin panel. It indexes articl
 - Pinned articles through `isTop: true`
 - Frontmatter diagnostics, search, sorting, and filtering
 - One-click copying of the article path for IDE editing
-- Creating article categories and writing them to Frontmatter
+- Shared category registry with stable English IDs and Chinese display names
+- Creating categories and fixing category/tag normalization issues per article
 - Date-based image uploads with copyable Markdown paths
 - Separate course content under `docs/courses`
 - Mermaid diagrams, Markdown footnotes, and math formulas
@@ -88,7 +89,7 @@ Default URLs:
 
 If a port is already in use, use the URL printed by the terminal. Press `Ctrl+C` to stop both services.
 
-The launcher creates a temporary lock file to prevent duplicate instances. Both services use fixed ports with strict port mode, so they will not silently move to 5174 or 5175. After a Markdown file under `docs` changes, the launcher debounces the event and restarts the frontend so navigation and article indexes are rescanned.
+The launcher creates a temporary lock file to prevent duplicate instances. Both services use fixed ports with strict port mode, so they will not silently move to 5174 or 5175. After a Markdown file under `docs` or the root `content.registry.json` changes, the launcher debounces the event and restarts the frontend so navigation and article indexes are rescanned.
 
 If a port is occupied, run:
 
@@ -116,7 +117,7 @@ Category, pinning, article creation/moving, and image-directory writes are avail
 
 ## Article structure
 
-Article categories live under `docs/categories/<category>`. A date-based directory layout is recommended:
+Article categories live under `docs/categories/<category-id>`. A date-based directory layout is recommended:
 
 ```text
 docs/categories/network/2026/8/23/example.md
@@ -129,13 +130,16 @@ Articles normally begin with Frontmatter:
 ```yaml
 ---
 title: Example article
-date: 2026-08-23
-category: network
+date: '2026/8/23 12:00'
+categories:
+  - network
 tags:
   - VitePress
 isTop: false
 ---
 ```
+
+The repository-root `content.registry.json` is the single source of truth for category and tag conventions. A category `id` is a stable English identifier and directory name, while `name` is the Chinese label shown by the site. Courses are registered separately and cannot be used as article categories. `tagAliases` normalizes tag capitalization and naming.
 
 Copy [the article template](./docs/templates/article-template.md) and continue writing in your IDE.
 
@@ -152,10 +156,13 @@ The admin panel provides local file-writing capabilities only during local devel
 Available operations include:
 
 - Copy an article path and open it in an IDE
-- Detect missing titles, dates, categories, and invalid formats
+- Detect missing titles/dates, multiple or unknown categories, directory mismatches, and invalid tag formats
 - Sort by title, path, modification time, archive date, or issue count
 - Pin or unpin an article
-- Create an article category and update Frontmatter
+- Create an article category and update `content.registry.json`
+- Normalize an old article category to its directory ID and normalize/deduplicate tags after confirmation
+- Generate an article from the shared template, create its year/month/day directory, and copy the `/docs/...md` path
+- Preview article moves, category changes, and image-reference updates before applying the file move
 - Upload an image to a selected date directory and copy its path
 
 A statically deployed admin build is read-only and cannot write files on the server. Use an IDE, Git, or a file-maintenance tool such as Hermes for article content and directory changes.
@@ -183,3 +190,10 @@ The site can be deployed to Vercel, Netlify, GitHub Pages, or a personal server.
 
 - Article content is licensed under [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/).
 - Source code is licensed under [MIT](./LICENSE).
+### Drafts, image references, and safe deletion
+
+- `docs/drafts` is a private draft workspace for the IDE, admin panel, and Hermes. It is excluded from the site, RSS, and Sitemap.
+- Image management can filter by date, type, and reference state, and shows which articles or courses reference an image.
+- Optional browser-side optimization converts uploaded raster images to WebP without an extra image service.
+- Article, draft, image, and category deletion always requires an impact preview and a second confirmation. Referenced images are blocked by default.
+- Deleting a category recursively removes `docs/categories/<category ID>`. The admin panel never exposes arbitrary PowerShell command execution.

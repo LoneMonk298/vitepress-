@@ -1,9 +1,7 @@
 ---
 showArticleMetadata: false
 editLink: false
-lastUpdated: false
+lastUpdated: true
 showComment: false
 ---
-
-# 操作系统
-
+# 杂项文章

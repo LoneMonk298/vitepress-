@@ -1,0 +1,48 @@
+{
+  "categories": [
+    {
+      "id": "os",
+      "name": "操作系统",
+      "order": 10
+    },
+    {
+      "id": "servers",
+      "name": "服务器管理",
+      "order": 20
+    },
+    {
+      "id": "network",
+      "name": "计算机网络",
+      "order": 30
+    },
+    {
+      "id": "computer-architecture",
+      "name": "计算机组成原理",
+      "order": 40
+    },
+    {
+      "id": "data-structures",
+      "name": "数据结构",
+      "order": 50
+    },
+    {
+      "id": "awesome",
+      "name": "杂项文章",
+      "order": 60
+    }
+  ],
+  "courses": [
+    {
+      "id": "course1",
+      "name": "课程1"
+    }
+  ],
+  "tagAliases": {
+    "linux": "Linux",
+    "privoxy": "Privoxy",
+    "socks": "SOCKS",
+    "ssh": "SSH",
+    "systemd": "systemd",
+    "warp": "WARP"
+  }
+}

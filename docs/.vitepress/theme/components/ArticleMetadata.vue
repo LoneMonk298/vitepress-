@@ -90,6 +90,8 @@
 
   // 初始化文章元数据信息
   const { theme, page } = useData();
+  const categoryValues = Array.isArray(props.article?.categories) ? props.article.categories : props.article?.categories ? [props.article.categories] : [];
+  const tagValues = Array.isArray(props.article?.tags) ? props.article.tags : props.article?.tags ? [props.article.tags] : [];
   const data = reactive({
     isOriginal: props.article?.isOriginal ?? true,
     author: props.article?.author ?? theme.value.articleMetadataConfig.author,
@@ -97,8 +99,8 @@
     showViewCount: theme.value.articleMetadataConfig?.showViewCount ?? false,
     viewCount: 0,
     date: new Date(props.article.date),
-    categories: props.article?.categories ?? [],
-    tags: props.article?.tags ?? [],
+    categories: categoryValues.map((value) => theme.value.categoryRegistry?.find((category) => category.id === value || category.name === value)?.name || value),
+    tags: [...new Set(tagValues.map((value) => theme.value.tagAliases?.[String(value).trim().toLocaleLowerCase('en-US')] || String(value).trim()).filter(Boolean))],
     showCategory: props.showCategory
   });
   const { isOriginal, author, authorLink, showViewCount, viewCount, date, toDate, categories, tags, showCategory } = toRefs(data);

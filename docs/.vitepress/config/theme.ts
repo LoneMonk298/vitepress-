@@ -4,10 +4,17 @@ import { sidebar } from './sidebar';
 import { algoliaSearchOptions } from './search/algolia-search';
 import { localSearchOptions } from './search/local-search';
 import { metaData } from './constants';
+import { loadContentRegistry } from '../../../content-registry.mjs';
+
+const contentRegistry = loadContentRegistry();
 
 export const themeConfig: DefaultTheme.Config = {
   nav, // 导航栏配置
   sidebar, // 侧边栏配置
+  // @ts-ignore custom theme data
+  categoryRegistry: contentRegistry.categories,
+  // @ts-ignore custom theme data
+  tagAliases: contentRegistry.tagAliases,
 
   logo: '/logo.png',
   outline: {

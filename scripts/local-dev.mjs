@@ -1,34 +1,25 @@
-import { execFile, spawn } from 'node:child_process';
+import { spawn } from 'node:child_process';
 import { createServer } from 'node:net';
 import { closeSync, existsSync, openSync, readFileSync, unlinkSync, watch, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
-const isWindows = process.platform === 'win32';
-const command = isWindows ? (process.env.ComSpec || 'cmd.exe') : 'pnpm';
 const root = process.cwd();
 const frontendPort = Number(process.env.VITEPRESS_PORT || 5173);
 const adminPort = Number(process.env.ADMIN_PORT || 4174);
+const vitepressBin = path.join(root, 'node_modules', 'vitepress', 'bin', 'vitepress.js');
+const viteBin = path.join(root, 'node_modules', 'vite', 'bin', 'vite.js');
 const lockPath = path.join(root, '.local-dev.lock');
 const children = new Set();
 const expectedStops = new WeakSet();
 let frontend;
 let admin;
 let docsWatcher;
+let registryWatcher;
 let restartTimer;
 let restartPromise = Promise.resolve();
 let shutdownPromise;
 let shuttingDown = false;
 const watcherReadyAt = Date.now() + 1500;
-
-function quoteWindowsArg(value) {
-  const arg = String(value);
-  return /^[\w.@%+=:,/-]+$/.test(arg) ? arg : `"${arg.replace(/(["\\])/g, '\\$1')}"`;
-}
-
-function pnpmArgs(args) {
-  if (!isWindows) return args;
-  return ['/d', '/s', '/c', ['pnpm', ...args].map(quoteWindowsArg).join(' ')];
-}
 
 function acquireLock() {
   try {
@@ -71,17 +62,34 @@ function checkPort(port) {
 
 async function assertPortsAvailable() {
   for (const [label, port] of [['前台', frontendPort], ['管理端', adminPort]]) {
-    const result = await checkPort(port);
-    if (!result.available) throw new Error(`${label}端口 ${port} 已被占用。请运行 pnpm run doctor 检查，或停止占用该端口的进程。`);
+    await assertPortAvailable(label, port);
   }
 }
 
-function serviceArgs(script, port) {
-  return ['run', script, '--host', '127.0.0.1', '--port', String(port), '--strictPort'];
+async function assertPortAvailable(label, port) {
+  const result = await checkPort(port);
+  if (!result.available) throw new Error(`${label}端口 ${port} 已被占用。请运行 pnpm run doctor 检查，或停止占用该端口的进程。`);
 }
 
-function start(label, args) {
-  const child = spawn(command, pnpmArgs(args), { cwd: root, stdio: ['inherit', 'pipe', 'pipe'], windowsHide: true });
+async function waitForPortAvailable(label, port, timeoutMs = 8000) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const result = await checkPort(port);
+    if (result.available) return;
+    await new Promise((resolve) => setTimeout(resolve, 150));
+  }
+  throw new Error(`${label}端口 ${port} 在停止旧进程后仍未释放。请运行 pnpm run doctor 检查占用进程。`);
+}
+
+function serviceSpec(script, port) {
+  if (script === 'dev') {
+    return { command: process.execPath, args: [vitepressBin, 'dev', 'docs', '--host', '127.0.0.1', '--port', String(port), '--strictPort'] };
+  }
+  return { command: process.execPath, args: [viteBin, '--config', 'admin/vite.config.js', '--host', '127.0.0.1', '--port', String(port), '--strictPort'] };
+}
+
+function start(label, spec) {
+  const child = spawn(spec.command, spec.args, { cwd: root, stdio: ['inherit', 'pipe', 'pipe'], windowsHide: true });
   children.add(child);
   child.stdout.on('data', (chunk) => process.stdout.write(`[${label}] ${chunk}`));
   child.stderr.on('data', (chunk) => process.stderr.write(`[${label}] ${chunk}`));
@@ -112,13 +120,11 @@ function stop(child) {
       resolve();
     }
     child.once('close', finish);
-    if (!isWindows) {
-      child.kill('SIGTERM');
-      return;
+    try {
+      if (!child.kill('SIGTERM')) finish();
+    } catch {
+      finish();
     }
-    execFile('taskkill.exe', ['/PID', String(child.pid), '/T', '/F'], { windowsHide: true }, () => {
-      if (child.exitCode !== null) finish();
-    });
   });
 }
 
@@ -127,13 +133,13 @@ function scheduleFrontendRestart() {
   restartTimer = setTimeout(() => {
     restartPromise = restartPromise.then(async () => {
       if (shuttingDown) return;
-      console.log('[local] Markdown changed, refreshing frontend index...');
+      console.log('[local] Content configuration changed, refreshing frontend index...');
       const previous = frontend;
       frontend = null;
       await stop(previous);
       if (shuttingDown) return;
-      await assertPortsAvailable();
-      frontend = start('frontend', serviceArgs('dev', frontendPort));
+      await waitForPortAvailable('前台', frontendPort);
+      frontend = start('frontend', serviceSpec('dev', frontendPort));
     }).catch((error) => {
       console.error(`[local] 前台刷新失败：${error.message}`);
       void shutdown(1);
@@ -147,8 +153,9 @@ async function shutdown(exitCode = 0) {
   shutdownPromise = (async () => {
     clearTimeout(restartTimer);
     docsWatcher?.close();
-    await Promise.all([...children].map(stop));
+    registryWatcher?.close();
     releaseLock();
+    await Promise.all([...children].map(stop));
     if (exitCode) process.exitCode = exitCode;
   })();
   return shutdownPromise;
@@ -157,15 +164,20 @@ async function shutdown(exitCode = 0) {
 async function main() {
   acquireLock();
   try {
+    if (!existsSync(vitepressBin) || !existsSync(viteBin)) throw new Error('本地 VitePress/Vite 依赖不存在，请先执行 pnpm install。');
     await assertPortsAvailable();
     console.log('Starting local VitePress and admin services...');
     console.log(`Frontend: http://127.0.0.1:${frontendPort}`);
     console.log(`Admin:    http://127.0.0.1:${adminPort}`);
-    frontend = start('frontend', serviceArgs('dev', frontendPort));
-    admin = start('admin', serviceArgs('admin:dev', adminPort));
+    frontend = start('frontend', serviceSpec('dev', frontendPort));
+    admin = start('admin', serviceSpec('admin:dev', adminPort));
     docsWatcher = watch(path.join(root, 'docs'), { recursive: true }, (_event, filename) => {
       if (shuttingDown || Date.now() < watcherReadyAt) return;
       if (filename && String(filename).toLowerCase().endsWith('.md')) scheduleFrontendRestart();
+    });
+    registryWatcher = watch(root, (_event, filename) => {
+      if (shuttingDown || Date.now() < watcherReadyAt) return;
+      if (filename && String(filename).replaceAll('\\', '/') === 'content.registry.json') scheduleFrontendRestart();
     });
   } catch (error) {
     console.error(`[local] ${error.message}`);

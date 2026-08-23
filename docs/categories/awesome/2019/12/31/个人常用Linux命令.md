@@ -1,11 +1,11 @@
 ---
 title: 个人常用 Linux 命令
 author: 查尔斯
-date: 2019/12/31 21:00
+date: '2019/12/31 21:00'
 description: 整理计算机体系结构学习和实验环境中常用的 Linux 系统命令。
 isTop: true
 categories:
-  - 常用命令
+  - awesome
 tags:
   - Linux
 ---

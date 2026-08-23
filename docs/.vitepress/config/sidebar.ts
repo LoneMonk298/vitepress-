@@ -2,11 +2,12 @@ import type { DefaultTheme } from 'vitepress';
 import fg from 'fast-glob';
 import matter from 'gray-matter';
 import { getChineseZodiac, getChineseZodiacAlias } from '../theme/utils.ts';
+import { loadContentRegistry } from '../../../content-registry.mjs';
 const sync = fg.sync;
 
 const categorySidebar = Object.fromEntries(
-  sync('docs/categories/*', { onlyDirectories: true, objectMode: true })
-    .map(({ name }) => [`/categories/${name}/`, getItemsByDate(`categories/${name}`)])
+  loadContentRegistry().categories
+    .map(({ id }) => [`/categories/${id}/`, getItemsByDate(`categories/${id}`)])
 );
 
 export const sidebar: DefaultTheme.Config['sidebar'] = {

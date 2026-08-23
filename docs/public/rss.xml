@@ -5,8 +5,15 @@
     <link>https://blog.lonemonk.xyz</link>
     <description>个人技术知识库，记录 &amp; 分享个人碎片化、结构化、体系化的技术知识内容。</description>
     <language>zh-CN</language>
-    <lastBuildDate>Sun, 23 Aug 2026 12:04:56 GMT</lastBuildDate>
+    <lastBuildDate>Sun, 23 Aug 2026 14:22:49 GMT</lastBuildDate>
     <atom:link href="https://blog.lonemonk.xyz/rss.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>408-计算机组成原理公式篇</title>
+      <link>https://blog.lonemonk.xyz/categories/data-structures/2026/8/23/408-%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BB%84%E6%88%90%E5%8E%9F%E7%90%86%E5%85%AC%E5%BC%8F%E7%AF%87</link>
+      <guid isPermaLink="true">https://blog.lonemonk.xyz/categories/data-structures/2026/8/23/408-%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BB%84%E6%88%90%E5%8E%9F%E7%90%86%E5%85%AC%E5%BC%8F%E7%AF%87</guid>
+      <pubDate>Sun, 23 Aug 2026 04:00:00 GMT</pubDate>
+      <description>408-计算机组成原理公式篇</description>
+    </item>
     <item>
       <title>SOCKS 协议应用</title>
       <link>https://blog.lonemonk.xyz/categories/servers/2026/8/22/socks%E5%8D%8F%E8%AE%AE%E5%BA%94%E7%94%A8</link>
@@ -30,17 +37,10 @@
     </item>
     <item>
       <title>个人常用 Linux 命令</title>
-      <link>https://blog.lonemonk.xyz/categories/computer-architecture/2019/12/31/%E4%B8%AA%E4%BA%BA%E5%B8%B8%E7%94%A8Linux%E5%91%BD%E4%BB%A4</link>
-      <guid isPermaLink="true">https://blog.lonemonk.xyz/categories/computer-architecture/2019/12/31/%E4%B8%AA%E4%BA%BA%E5%B8%B8%E7%94%A8Linux%E5%91%BD%E4%BB%A4</guid>
+      <link>https://blog.lonemonk.xyz/categories/awesome/2019/12/31/%E4%B8%AA%E4%BA%BA%E5%B8%B8%E7%94%A8Linux%E5%91%BD%E4%BB%A4</link>
+      <guid isPermaLink="true">https://blog.lonemonk.xyz/categories/awesome/2019/12/31/%E4%B8%AA%E4%BA%BA%E5%B8%B8%E7%94%A8Linux%E5%91%BD%E4%BB%A4</guid>
       <pubDate>Tue, 31 Dec 2019 13:00:00 GMT</pubDate>
       <description>整理计算机体系结构学习和实验环境中常用的 Linux 系统命令。</description>
-    </item>
-    <item>
-      <title>个人常用 Linux 命令</title>
-      <link>https://blog.lonemonk.xyz/categories/os/2019/12/31/%E4%B8%AA%E4%BA%BA%E5%B8%B8%E7%94%A8Linux%E5%91%BD%E4%BB%A4</link>
-      <guid isPermaLink="true">https://blog.lonemonk.xyz/categories/os/2019/12/31/%E4%B8%AA%E4%BA%BA%E5%B8%B8%E7%94%A8Linux%E5%91%BD%E4%BB%A4</guid>
-      <pubDate>Tue, 31 Dec 2019 13:00:00 GMT</pubDate>
-      <description>面向操作系统学习与服务器维护场景，整理常用 Linux 命令及使用示例。</description>
     </item>
     <item>
       <title>个人常用 Linux 命令</title>
@@ -48,13 +48,6 @@
       <guid isPermaLink="true">https://blog.lonemonk.xyz/categories/data-structures/2026/8/13/%E4%B8%AA%E4%BA%BA%E5%B8%B8%E7%94%A8Linux%E5%91%BD%E4%BB%A4</guid>
       <pubDate>Tue, 31 Dec 2019 13:00:00 GMT</pubDate>
       <description>从数据结构学习环境出发整理常用 Linux 系统操作、软件管理和排查命令。</description>
-    </item>
-    <item>
-      <title>个人常用 Linux 命令</title>
-      <link>https://blog.lonemonk.xyz/categories/network/2019/12/31/%E4%B8%AA%E4%BA%BA%E5%B8%B8%E7%94%A8Linux%E5%91%BD%E4%BB%A4</link>
-      <guid isPermaLink="true">https://blog.lonemonk.xyz/categories/network/2019/12/31/%E4%B8%AA%E4%BA%BA%E5%B8%B8%E7%94%A8Linux%E5%91%BD%E4%BB%A4</guid>
-      <pubDate>Tue, 31 Dec 2019 13:00:00 GMT</pubDate>
-      <description>整理网络与服务器入门场景中常用的 Linux 配置、管理和故障排查命令。</description>
     </item>
   </channel>
 </rss>

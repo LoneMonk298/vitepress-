@@ -5,7 +5,7 @@ date: '2026/8/22 12:00'
 description: 介绍 SOCKS4、SOCKS5 的工作方式，并整理 SSH 动态代理、Privoxy、WARP 与 systemd 的实际配置方法。
 isTop: true
 categories:
-  - 服务器管理
+  - servers
 tags:
   - SOCKS
   - 代理

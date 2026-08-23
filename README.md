@@ -14,7 +14,8 @@
 - 支持 `isTop: true` 管理置顶文章
 - 文章 Frontmatter 问题检测、搜索、排序和筛选
 - 一键复制文章项目路径，方便在 IDE 中打开
-- 管理端创建文章分类并写入 Frontmatter
+- 共享分类注册表：Frontmatter 使用稳定英文 ID，前台显示中文名称
+- 管理端创建文章分类，并逐篇修复分类与标签规范问题
 - 图片按日期目录上传，并复制 Markdown 可用路径
 - 独立的课程内容目录：`docs/courses`
 - Mermaid 流程图、Markdown 脚注和数学公式
@@ -88,7 +89,7 @@ pnpm local:dev
 
 端口被占用时，终端会显示实际地址。按 `Ctrl+C` 会同时停止两个服务。
 
-启动脚本会创建临时锁文件，阻止同一个仓库重复启动；前台和管理端均使用固定端口并启用严格端口模式，不会自动跳到 5174、5175 等端口。修改 `docs` 下的 Markdown 后，脚本会防抖重启前台，使导航和文章索引重新扫描。
+启动脚本会创建临时锁文件，阻止同一个仓库重复启动；前台和管理端均使用固定端口并启用严格端口模式，不会自动跳到 5174、5175 等端口。修改 `docs` 下的 Markdown 或根目录的 `content.registry.json` 后，脚本会防抖重启前台，使导航和文章索引重新扫描。
 
 如果提示端口已占用，先运行：
 
@@ -116,7 +117,7 @@ pnpm admin:dev
 
 ## 文章结构
 
-文章分类位于 `docs/categories/<category>`，建议按年月日继续分目录，例如：
+文章分类位于 `docs/categories/<category-id>`，建议按年月日继续分目录，例如：
 
 ```text
 docs/categories/network/2026/8/23/example.md
@@ -129,13 +130,16 @@ docs/categories/network/2026/8/23/example.md
 ```yaml
 ---
 title: 示例文章
-date: 2026-08-23
-category: network
+date: '2026/8/23 12:00'
+categories:
+  - network
 tags:
   - VitePress
 isTop: false
 ---
 ```
+
+根目录的 `content.registry.json` 是分类与标签规范的唯一来源。分类的 `id` 使用稳定英文标识并对应目录名，`name` 只用于前台中文显示；课程注册表与文章分类彼此独立。`tagAliases` 用来统一标签大小写和命名格式。
 
 具体文章建议复制 [文章模板](./docs/templates/article-template.md) 后，在 IDE 中继续编写。
 
@@ -152,10 +156,13 @@ isTop: false
 支持的操作包括：
 
 - 复制文章路径并交给 IDE 打开
-- 检查缺少标题、日期、分类或格式异常的文章
+- 检查缺少标题、日期、多个分类、未注册分类、目录不一致或标签格式异常的文章
 - 按标题、路径、修改时间、归档日期和问题数量排序
 - 设置或取消文章置顶
-- 新增文章分类并写入 Frontmatter
+- 新增文章分类并同步写入 `content.registry.json`
+- 逐篇将旧分类同步为所在目录的英文 ID，并规范、去重标签
+- 从统一模板生成文章，自动创建年/月/日目录并复制 `/docs/...md` 路径
+- 移动文章前预览路径、分类和图片引用变化，确认后再执行文件移动
 - 将图片上传到指定日期目录并复制路径
 
 静态部署的管理端只用于展示，不能直接写入服务器文件。文章正文和目录调整仍建议通过 IDE、Git 或 Hermes 等文件维护工具完成。
@@ -183,3 +190,10 @@ pnpm admin:preview
 
 - 文章内容遵循 [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) 协议。
 - 项目源码遵循 [MIT](./LICENSE) 协议。
+### 草稿、图片引用与安全删除
+
+- `docs/drafts` 是独立草稿工作区，供 IDE、管理端和 Hermes 读取，不参与前台、RSS 或 Sitemap 构建。
+- 图片管理支持日期、文件类型、已引用/未引用筛选，并可查看引用图片的文章或课程。
+- 上传图片可在浏览器内压缩并转换 WebP，不需要额外图片处理服务。
+- 文章、草稿、图片和分类删除均需先查看影响预览并二次确认；被引用图片默认禁止删除。
+- 分类删除会递归删除 `docs/categories/<分类 ID>`，管理端不会执行或开放任意 PowerShell 命令。

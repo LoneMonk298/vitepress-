@@ -12,7 +12,7 @@ export default withMermaid(
     description: metaData.description,
 
     cleanUrls: true,
-    srcExclude: ['templates/**'],
+    srcExclude: ['templates/**', 'drafts/**'],
     lastUpdated: true, // 显示最后更新时间
 
     sitemap: {

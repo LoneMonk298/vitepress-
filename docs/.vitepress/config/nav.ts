@@ -1,18 +1,13 @@
 import type { DefaultTheme } from 'vitepress';
-import fg from 'fast-glob';
-import matter from 'gray-matter';
+import { existsSync } from 'node:fs';
+import path from 'node:path';
+import { loadContentRegistry } from '../../../content-registry.mjs';
 
 function getCategoryNavItems(): DefaultTheme.NavItem[] {
-  return fg.sync('docs/categories/*/index.md', { cwd: process.cwd(), onlyFiles: true })
-    .map((file) => {
-      const slug = file.replaceAll('\\', '/').split('/')[2];
-      const parsed = matter.read(file);
-      const heading = parsed.content.match(/^#\s+(.+)$/m)?.[1];
-      const knownNames: Record<string, string> = { 'data-structures': '数据结构', os: '操作系统', network: '计算机网络', 'computer-architecture': '计算机组成原理' };
-      const name = String(parsed.data.title || heading || knownNames[slug] || slug).trim();
-      return { text: name, link: `/categories/${slug}/index`, activeMatch: `/categories/${slug}/` };
-    })
-    .sort((a, b) => String(a.text).localeCompare(String(b.text), 'zh-CN'));
+  return loadContentRegistry().categories
+    .filter((category) => existsSync(path.resolve(process.cwd(), 'docs/categories', category.id, 'index.md')))
+    .sort((a, b) => Number(a.order || 0) - Number(b.order || 0))
+    .map((category) => ({ text: category.name, link: `/categories/${category.id}/index`, activeMatch: `/categories/${category.id}/` }));
 }
 
 export const nav: DefaultTheme.Config['nav'] = [
