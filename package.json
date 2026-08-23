@@ -30,6 +30,7 @@
   },
   "dependencies": {
     "@antv/g2plot": "2.4.31",
+    "@waline/client": "^3.15.2",
     "axios": "1.6.2",
     "blueimp-md5": "2.19.0",
     "dayjs": "1.11.10",

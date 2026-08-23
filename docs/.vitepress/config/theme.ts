@@ -30,7 +30,7 @@ export const themeConfig: DefaultTheme.Config = {
   },
   // 编辑链接配置
   editLink: {
-    pattern: 'https://github.com/LoneMonk298/edit/main/docs/:path',
+    pattern: 'https://www.lonemonk.xyz/feedback.html',
     text: '不妥之处，敬请雅正'
   },
   // 搜索配置（二选一）
@@ -75,7 +75,9 @@ export const themeConfig: DefaultTheme.Config = {
   },
   // 自定义扩展: 评论配置
   commentConfig: {
-    type: 'gitalk',
+    type: 'waline',
+    // Waline 服务端地址，不是博客的 feedback.html 页面地址
+    serverURL: 'https://waline-ten-coral.vercel.app',
     showComment: true // 是否显示评论
   },
   // 自定义扩展: 页脚配置

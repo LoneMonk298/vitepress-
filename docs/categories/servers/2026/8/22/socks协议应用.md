@@ -335,16 +335,24 @@ curl --socks5-hostname 127.0.0.1:40000 https://www.cloudflare.com/cdn-cgi/trace
 
 ### L2：SSH 本地转发
 
-在本地服务器上，通过 SSH 将 AWS 的 WARP SOCKS 端口转发到本地网络：
+在本地服务器上如`/etc/systemd/system/aws-socks.service` 中，通过 SSH 将 AWS 的 WARP SOCKS 端口转发到本地网络：
 
 ```bash
-ssh -N   -L 192.168.48.1:10810:127.0.0.1:40000   -D 192.168.48.1:10808   -i /path/to/key.pem   ubuntu@aws-server
+ssh -N   -L 192.168.48.1:10810:127.0.0.1:40000   -D 192.168.48.1:10808   -i /path/to/key.pem（可选：私钥路径）   ubuntu@aws-server（服务器用户名@服务器 IP）
 ```
 
 这条命令同时做了两件事：
 
 - `-L 192.168.48.1:10810:127.0.0.1:40000` — 将 AWS 上的 WARP SOCKS 端口（40000）转发到本地 10810 端口
 - `-D 192.168.48.1:10808` — 同时启动一个 SOCKS5 动态转发，绑定到 10808 端口，供 Telegram 直接使用
+
+其次值得注意的是：
+- -i /path/to/key.pem（可选：私钥路径）需要配置为可读权限，否则会报错。
+  `chmod 600 /opt/ai-agent/hermes-data/webkey.pem`
+- 服务器用户名@服务器 IP 是 AWS 服务器的用户名和 IP，根据实际情况修改。更换服务器时，需要修改这里的用户名和 IP。然后执行如下命令重启服务。
+`systemctl daemon-reload`
+`systemctl restart aws-socks.service`
+`systemctl status aws-socks.service`
 
 ### L3：Privoxy HTTP 代理
 
@@ -364,6 +372,9 @@ forward-socks5t / 192.168.48.1:10810 .
 
 - `listen-address 192.168.48.1:10809` — Privoxy 监听在 10809，接受 HTTP 代理请求
 - `forward-socks5t / 192.168.48.1:10810 .` — 将所有 HTTP 请求通过后端 SOCKS5（10810）转发
+
+重启：
+```systemctl restart privoxy```
 
 ### L4：应用层使用
 
