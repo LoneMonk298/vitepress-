@@ -31,7 +31,7 @@ export const themeConfig: DefaultTheme.Config = {
   },
   // 编辑链接配置
   editLink: {
-    pattern: `${metaData.site}/feedback.html`,
+    pattern: `${metaData.profileSite}/feedback.html`,
     text: '不妥之处，敬请雅正'
   },
   // 搜索配置（二选一）
@@ -58,7 +58,7 @@ export const themeConfig: DefaultTheme.Config = {
                 <path fill="#12D2AC" d="M41.7,158.5l16.1,9.4,100.6-58.7V90.4Z"/>
               </svg>`
       },
-    link: metaData.site
+    link: metaData.profileSite
     }
   ],
 
@@ -66,7 +66,7 @@ export const themeConfig: DefaultTheme.Config = {
   // @ts-ignore
   articleMetadataConfig: {
     author: 'lonemonk', // 文章全局默认作者名称
-    authorLink: metaData.site, // 点击作者名时默认跳转的链接
+    authorLink: metaData.profileSite, // 点击作者名时跳转个人简介网站
     showViewCount: false, // 是否显示文章阅读数, 需要在 docs/.vitepress/theme/api/config.js 及 interface.js 配置好相应 API 接口
   },
   // 自定义扩展: 文章版权配置

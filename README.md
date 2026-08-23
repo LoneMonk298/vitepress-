@@ -63,6 +63,8 @@ Copy-Item .env.example .env
 - `VITEPRESS_SITE_URL`：前台站点地址
 - `WALINE_SERVER_URL`：Waline 服务端根地址，不要填写 `feedback.html`
 
+GitHub Actions 不会读取本地 `.env`，部署工作流会在构建阶段注入上述公开地址。博客和 GitHub Pages 使用 `blog.lonemonk.xyz`，`www.lonemonk.xyz` 保留为个人简介网站。
+
 Node.js 和 pnpm 版本可通过 `.nvmrc` 与 `package.json` 查看。环境检查使用：
 
 ```bash

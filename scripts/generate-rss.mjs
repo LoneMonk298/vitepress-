@@ -9,7 +9,7 @@ const projectRoot = process.cwd();
 const docsRoot = path.join(projectRoot, 'docs');
 const outputPath = path.join(docsRoot, 'public', 'rss.xml');
 const env = loadEnv(process.env.NODE_ENV || 'production', projectRoot, '');
-const siteUrl = (env.VITEPRESS_SITE_URL || 'https://www.lonemonk.xyz').replace(/\/$/, '');
+const siteUrl = (env.VITEPRESS_SITE_URL || 'https://blog.lonemonk.xyz').replace(/\/$/, '');
 const siteTitle = '陌僧人的知识库';
 const siteDescription = '个人技术知识库，记录 & 分享个人碎片化、结构化、体系化的技术知识内容。';
 

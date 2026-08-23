@@ -63,6 +63,8 @@ Important variables:
 - `VITEPRESS_SITE_URL`: public site URL
 - `WALINE_SERVER_URL`: Waline server root URL, without `feedback.html`
 
+GitHub Actions does not read the local `.env`; the deployment workflow injects these public URLs during the build. The blog and GitHub Pages use `blog.lonemonk.xyz`, while `www.lonemonk.xyz` remains the personal profile site.
+
 The expected Node.js and pnpm versions are recorded in `.nvmrc` and `package.json`. Run the project environment check with:
 
 ```bash

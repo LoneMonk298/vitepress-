@@ -9,6 +9,7 @@ permissions:
   contents: write
 
 env:
+  VITEPRESS_SITE_URL: https://blog.lonemonk.xyz
   WALINE_SERVER_URL: https://waline-ten-coral.vercel.app
 
 jobs:
@@ -42,3 +43,4 @@ jobs:
         with:
           branch: pages
           folder: docs/.vitepress/dist
+          cname: blog.lonemonk.xyz
