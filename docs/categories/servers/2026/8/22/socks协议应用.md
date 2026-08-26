@@ -311,8 +311,9 @@ AWS 上运行 Cloudflare WARP，提供 SOCKS5 代理作为出口：
 ```bash
 # 安装 WARP
 curl -fsSL https://pkg.cloudflareclient.com/pubkey.gpg |   sudo gpg --yes --dearmor -o /usr/share/keyrings/cloudflare-warp-archive-keyring.gpg
+source /etc/os-release
 
-echo "deb [signed-by=/usr/share/keyrings/cloudflare-warp-archive-keyring.gpg]   https://pkg.cloudflareclient.com/ noble main" |   sudo tee /etc/apt/sources.list.d/cloudflare-client.list
+echo "deb [signed-by=/usr/share/keyrings/cloudflare-warp-archive-keyring.gpg]   https://pkg.cloudflareclient.com/ ${VERSION_CODENAME} main" |   sudo tee /etc/apt/sources.list.d/cloudflare-client.list
 
 sudo apt update && sudo apt install -y cloudflare-warp
 sudo systemctl enable --now warp-svc
@@ -390,6 +391,24 @@ environment:
 ```
 
 `no_proxy` 中的国内域名（飞书等）不走代理，直接访问，避免绕路影响速度。
+
+### Docker访问宿主机代理
+
+如果容器内需要访问宿主机上的代理端口（例如 `host.docker.internal:10808`），Docker 默认并不会把 `host.docker.internal` 解析到宿主机，必须在 docker-compose 中显式声明：
+
+```yaml
+extra_hosts:
+  - "host.docker.internal:host-gateway"
+```
+
+否则会出现如下链路失败（容器内 `127.0.0.1` 指向容器自身，而不是宿主机）：
+
+```text
+Hermes Docker
+    |
+    X
+127.0.0.1:40000
+```
 
 ### 持久化：systemd 管理 SSH 隧道
 
