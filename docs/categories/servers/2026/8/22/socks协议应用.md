@@ -440,6 +440,10 @@ WantedBy=multi-user.target
 ### 验证链路
 
 ```bash
+
+# 验证端口监听状态
+ss -lntup | grep -E '10808|10809|10810'
+
 # 验证 Telegram 代理
 docker exec hermes-agent   curl --socks5-hostname 192.168.48.1:10808   -I https://api.telegram.org
 
@@ -458,52 +462,29 @@ docker exec hermes-agent sh -lc 'set -a; . /opt/data/.env; set +a;   curl --sock
 4. 更换出口 IP 不能绕过 API 账户的 TPM、RPM、余额或权限限制
 5. 这套架构依赖 SSH 和 WARP 两个服务，重建时缺一不可
 
----
 
-## 常见问题排查
+### 更换服务器主机指纹处理
 
-### 连接被拒绝
-
-```text
-ssh: connect to host xxx port 22: Connection refused
-```
-
-→ 检查服务端 SSH 服务是否运行：
+生产环境更换服务器时，**强烈建议执行主机指纹清理**，避免 SSH 安全警告或连接失败：
 
 ```bash
-systemctl status sshd
+# 1. 停止依赖服务（可选，避免连接中断）
+systemctl stop aws-socks.service
+
+# 2. 清除旧主机指纹
+ssh-keygen -R 旧IP -f /root/.ssh/known_hosts
+
+# 3. 获取新主机指纹并添加
+ssh-keyscan -H 新IP >> /root/.ssh/known_hosts
+chmod 600 /root/.ssh/known_hosts
+
+# 4. 重启服务
+systemctl start aws-socks.service
 ```
 
-### 代理无响应
+**注意事项：**
 
-```text
-curl: (7) Failed to connect to 127.0.0.1 port 1080: Connection refused
-```
-
-→ 检查 SSH 隧道是否存活：
-
-```bash
-ps aux | grep "ssh -D"
-```
-
-### DNS 泄露
-
-如果用了 SOCKS5 但 DNS 解析还是走的本地，检查：
-
-- Firefox：是否勾选了"使用 SOCKS v5 时代理 DNS 查询"
-- Chrome：使用 `--proxy-server="socks5://..."` 启动参数时默认代理 DNS
-- proxychains：确认配置中启用了 `proxy_dns`
-
----
-
-## 总结
-
-| 场景 | 推荐方案 |
-|------|----------|
-| 快速临时代理 | `ssh -D 1080 -C -N -q -f user@server` |
-| 命令行工具走代理 | `proxychains4 <command>` |
-| 浏览器代理 | SwitchyOmega 插件 + SOCKS5 |
-| 持久化服务 | Dante SOCKS5 Server |
-| 加密隧道 | SSH 动态转发自动加密 |
-
-SOCKS5 + SSH 是服务器管理中最灵活、最轻量的代理方案之一。不需要额外安装服务端软件，一条命令即可搭建，推荐作为日常开发运维的标配工具。
+- 如果服务正在运行，步骤1和4可以省略
+- 新旧IP切换时，建议先清理再添加，避免指纹冲突
+- 如果使用SSH密钥认证，此操作确保连接安全性
+- 如果新服务器使用相同IP，此步骤可跳过
