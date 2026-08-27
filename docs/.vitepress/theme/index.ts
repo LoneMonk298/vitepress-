@@ -1,5 +1,6 @@
 import DefaultTheme from 'vitepress/theme'
 import MyLayout from './MyLayout.vue';
+import VizEmbed from './components/VizEmbed.vue';
 import './styles/vars.css';
 import './styles/custom.css';
 import axios from 'axios';
@@ -66,6 +67,6 @@ export default {
     }
 
     // register your custom global components
-    // ctx.app.component('MyGlobalComponent' /* ... */)
+    ctx.app.component('VizEmbed', VizEmbed)
   }
 }
