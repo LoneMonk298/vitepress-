@@ -5,7 +5,7 @@
     <link>https://blog.lonemonk.xyz</link>
     <description>个人技术知识库，记录 &amp; 分享个人碎片化、结构化、体系化的技术知识内容。</description>
     <language>zh-CN</language>
-    <lastBuildDate>Thu, 27 Aug 2026 10:39:12 GMT</lastBuildDate>
+    <lastBuildDate>Thu, 27 Aug 2026 16:39:46 GMT</lastBuildDate>
     <atom:link href="https://blog.lonemonk.xyz/rss.xml" rel="self" type="application/rss+xml" />
     <item>
       <title>408-计算机组成原理公式篇</title>
@@ -27,6 +27,13 @@
       <guid isPermaLink="true">https://blog.lonemonk.xyz/categories/data-structures/2026/8/8/408-%E6%94%BE%E5%BC%83%E7%AF%87</guid>
       <pubDate>Sat, 08 Aug 2026 21:00:00 GMT</pubDate>
       <description>整理 408 数据结构复习中可战略性降低优先级的实现题与知识点。</description>
+    </item>
+    <item>
+      <title>408-数据结构邪修篇</title>
+      <link>https://blog.lonemonk.xyz/categories/data-structures/2026/8/13/408-%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E9%82%AA%E4%BF%AE%E7%AF%87</link>
+      <guid isPermaLink="true">https://blog.lonemonk.xyz/categories/data-structures/2026/8/13/408-%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E9%82%AA%E4%BF%AE%E7%AF%87</guid>
+      <pubDate>Fri, 07 Aug 2026 21:00:00 GMT</pubDate>
+      <description>汇总 408 数据结构复习中的快速应试技巧。</description>
     </item>
     <item>
       <title>408-数据结构公式篇</title>

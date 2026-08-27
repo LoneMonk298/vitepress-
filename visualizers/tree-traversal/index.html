@@ -1,0 +1,1223 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>二叉树遍历重建可视化</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg: transparent;
+  --card: #ffffff;
+  --primary: #2f9e44;
+  --primary-d: #2b9348;
+  --primary-soft: #d3f9d8;
+  --text: #343a40;
+  --text-l: #868e96;
+  --border: #e9ecef;
+  --shadow: 0 2px 10px rgba(0,0,0,0.07);
+  --radius: 10px;
+}
+
+html.dark {
+  --card: #1e1e20;
+  --text: #e9ecef;
+  --text-l: #adb5bd;
+  --border: #3a3d44;
+  --shadow: 0 2px 10px rgba(0,0,0,0.3);
+  --primary-soft: rgba(47,158,68,0.2);
+}
+
+body {
+  background: var(--bg);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  color: var(--text);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+.app { width: 100%; padding: 8px; }
+
+/* Input Panel */
+.input-panel {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 12px 16px;
+  box-shadow: var(--shadow);
+  margin-bottom: 10px;
+}
+
+.input-panel.hidden { display: none; }
+
+.input-row {
+  display: flex;
+  gap: 10px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+.mode-toggle {
+  display: flex;
+  gap: 0;
+  border-radius: 7px;
+  overflow: hidden;
+  border: 2px solid var(--primary);
+  flex-shrink: 0;
+}
+
+.mode-toggle button {
+  border: none;
+  padding: 7px 14px;
+  font-size: 13px;
+  cursor: pointer;
+  background: transparent;
+  color: var(--primary);
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+.mode-toggle button.active {
+  background: var(--primary);
+  color: #fff;
+}
+
+.input-field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+  min-width: 160px;
+}
+
+.input-field label {
+  font-size: 11px;
+  color: var(--text-l);
+  font-weight: 600;
+}
+
+.input-field input {
+  border: 1.5px solid var(--border);
+  border-radius: 7px;
+  padding: 7px 10px;
+  font-size: 13px;
+  font-family: 'SF Mono', 'Consolas', 'Courier New', monospace;
+  transition: border-color 0.2s;
+  width: 100%;
+  background: inherit;
+  color: inherit;
+}
+
+.input-field input:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.btn {
+  border: none;
+  padding: 8px 16px;
+  border-radius: 7px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.btn-primary {
+  background: var(--primary);
+  color: #fff;
+}
+
+.btn-primary:hover { background: var(--primary-d); }
+
+.error-msg {
+  color: #e03131;
+  font-size: 12px;
+  margin-top: 6px;
+  display: none;
+}
+
+.error-msg.show { display: block; }
+
+/* Step Info */
+.step-info {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  box-shadow: var(--shadow);
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.step-badge {
+  background: var(--primary);
+  color: #fff;
+  padding: 3px 9px;
+  border-radius: 5px;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.step-text {
+  font-size: 13px;
+  color: var(--text);
+  flex: 1;
+  line-height: 1.4;
+}
+
+/* Visualization */
+.viz-container {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.viz-panel {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+}
+
+.viz-panel.coord { flex: 1.6; }
+.viz-panel.tree { flex: 1; }
+
+.viz-panel h3 {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-l);
+  margin-bottom: 6px;
+}
+
+.canvas-wrap { position: relative; width: 100%; }
+
+canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* Controls */
+.controls {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 9px 16px;
+  box-shadow: var(--shadow);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.ctrl-btn {
+  border: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 7px;
+  cursor: pointer;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+  background: var(--border);
+  color: var(--text);
+}
+
+.ctrl-btn:hover:not(:disabled) { opacity: 0.85; }
+.ctrl-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.ctrl-btn.play {
+  background: var(--primary);
+  color: #fff;
+  width: 44px;
+  height: 36px;
+  font-size: 14px;
+}
+
+.ctrl-btn.play:hover { background: var(--primary-d); }
+
+.speed-control {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 6px;
+}
+
+.speed-control label {
+  font-size: 12px;
+  color: var(--text-l);
+  white-space: nowrap;
+}
+
+.speed-control input[type=range] {
+  width: 80px;
+  cursor: pointer;
+}
+
+.speed-val {
+  font-size: 11px;
+  color: var(--text-l);
+  min-width: 28px;
+}
+
+/* Legend */
+.legend {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 9px 16px;
+  box-shadow: var(--shadow);
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--text-l);
+}
+
+.legend-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* Mobile / narrow iframe */
+@media (max-width: 640px) {
+  .viz-container { flex-direction: column; }
+  .viz-panel.coord, .viz-panel.tree { flex: none; }
+  .input-row { flex-direction: column; align-items: stretch; }
+  .mode-toggle { align-self: flex-start; }
+  .input-field { min-width: 100%; }
+  .speed-control { margin-left: 0; }
+  .step-info { flex-direction: column; align-items: flex-start; gap: 6px; }
+}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <div class="input-panel" id="inputPanel">
+    <div class="input-row">
+      <div class="mode-toggle">
+        <button id="modePre" class="active">前序+中序</button>
+        <button id="modePost">后序+中序</button>
+      </div>
+      <div class="input-field" id="traversalField">
+        <label id="traversalLabel">前序遍历</label>
+        <input type="text" id="traversalInput" value="B C E F D G A H I" placeholder="空格或逗号分隔">
+      </div>
+      <div class="input-field">
+        <label>中序遍历</label>
+        <input type="text" id="inorderInput" value="E C D F G B H A I" placeholder="空格或逗号分隔">
+      </div>
+      <button class="btn btn-primary" id="buildBtn">构建</button>
+    </div>
+    <div class="error-msg" id="errorMsg"></div>
+  </div>
+
+  <div class="step-info">
+    <span class="step-badge" id="stepBadge">步骤 0/0</span>
+    <span class="step-text" id="stepText">加载中…</span>
+  </div>
+
+  <div class="viz-container">
+    <div class="viz-panel coord">
+      <h3>坐标系（横轴=中序，纵轴=遍历序列）</h3>
+      <div class="canvas-wrap">
+        <canvas id="coordCanvas"></canvas>
+      </div>
+    </div>
+    <div class="viz-panel tree">
+      <h3>重建的二叉树</h3>
+      <div class="canvas-wrap">
+        <canvas id="treeCanvas"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button class="ctrl-btn" id="resetBtn" title="重置">&#8634;</button>
+    <button class="ctrl-btn" id="prevBtn" title="上一步">&#9664;</button>
+    <button class="ctrl-btn play" id="playBtn" title="播放/暂停">&#9654;</button>
+    <button class="ctrl-btn" id="nextBtn" title="下一步">&#9654;</button>
+    <div class="speed-control">
+      <label>速度</label>
+      <input type="range" id="speedSlider" min="0.5" max="2.5" step="0.5" value="1">
+      <span class="speed-val" id="speedVal">1.0x</span>
+    </div>
+  </div>
+
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:#f08c00"></div>当前根</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#2f9e44"></div>左子树</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#1971c2"></div>右子树</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#495057"></div>已处理</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#ced4da"></div>未处理</div>
+  </div>
+</div>
+
+<script>
+// ===== URL Params =====
+function getUrlParams() {
+  const p = new URLSearchParams(window.location.search);
+  return {
+    mode: p.get('mode') || 'pre',
+    preorder: p.get('preorder') || '',
+    postorder: p.get('postorder') || '',
+    inorder: p.get('inorder') || '',
+    hideinput: p.get('hideinput') === '1',
+    autoplay: p.get('autoplay') !== '0',
+  };
+}
+
+// ===== Configuration =====
+const CFG = {
+  coord: { w: 600, h: 420 },
+  tree:  { w: 340, h: 420 },
+  pad:   { top: 28, right: 20, bottom: 44, left: 48 },
+  tpad:  { top: 20, right: 20, bottom: 20, left: 20 },
+  r: 15,
+  transitionMs: 550,
+  playDelayMs: 800,
+};
+
+function isDark() {
+  return document.documentElement.classList.contains('dark') ||
+    (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+}
+
+function getColors() {
+  if (!isDark()) {
+    return {
+      bg: '#ffffff',
+      grid: '#f1f3f5',
+      axis: '#ced4da',
+      axisLabel: '#495057',
+      pending: '#dee2e6',
+      pendingStroke: '#adb5bd',
+      pendingText: '#868e96',
+      processed: '#495057',
+      processedStroke: '#343a40',
+      root: '#f08c00',
+      rootStroke: '#e67700',
+      left: '#2f9e44',
+      leftStroke: '#257a35',
+      right: '#1971c2',
+      rightStroke: '#145dbf',
+      vline: 'rgba(240,140,0,0.35)',
+      edge: '#495057',
+      treeEdge: '#adb5bd',
+      treeNode: '#2f9e44',
+      treeNodeStroke: '#257a35',
+    };
+  }
+  return {
+    bg: '#1e1e20',
+    grid: '#2d3036',
+    axis: '#495057',
+    axisLabel: '#ced4da',
+    pending: '#495057',
+    pendingStroke: '#6c757d',
+    pendingText: '#adb5bd',
+    processed: '#e9ecef',
+    processedStroke: '#f1f3f5',
+    root: '#f59f00',
+    rootStroke: '#e67700',
+    left: '#40c057',
+    leftStroke: '#2f9e44',
+    right: '#339af0',
+    rightStroke: '#1c7ed6',
+    vline: 'rgba(245,159,0,0.35)',
+    edge: '#ced4da',
+    treeEdge: '#6c757d',
+    treeNode: '#40c057',
+    treeNodeStroke: '#2f9e44',
+  };
+}
+
+// ===== State =====
+const S = {
+  mode: 'pre',
+  inorder: [],
+  traversal: [],
+  nodes: [],
+  steps: [],
+  current: -1,
+  isPlaying: false,
+  speed: 1.0,
+  autoplay: true,
+  phase: 'idle',
+  animProg: 1,
+  lastTime: 0,
+  playTimer: null,
+  treeRoot: null,
+};
+
+// ===== DOM =====
+const $ = id => document.getElementById(id);
+const coordCanvas = $('coordCanvas');
+const treeCanvas = $('treeCanvas');
+let coordCtx, treeCtx;
+
+// ===== Canvas Setup =====
+function setupCanvas(canvas, cfg) {
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = cfg.w * dpr;
+  canvas.height = cfg.h * dpr;
+  canvas.style.width = '100%';
+  canvas.style.aspectRatio = cfg.w + ' / ' + cfg.h;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  return ctx;
+}
+
+function initCanvases() {
+  coordCtx = setupCanvas(coordCanvas, CFG.coord);
+  treeCtx = setupCanvas(treeCanvas, CFG.tree);
+}
+
+// ===== Input Parsing & Validation =====
+function parseSeq(str) {
+  return str.trim().split(/[\s,]+/).filter(s => s.length > 0);
+}
+
+function validate(inorder, traversal) {
+  if (!inorder.length || !traversal.length)
+    return { ok: false, msg: '序列不能为空' };
+  if (inorder.length !== traversal.length)
+    return { ok: false, msg: `长度不一致：中序${inorder.length}个，遍历${traversal.length}个` };
+  if (new Set(inorder).size !== inorder.length)
+    return { ok: false, msg: '中序遍历存在重复元素' };
+  if (new Set(traversal).size !== traversal.length)
+    return { ok: false, msg: '遍历序列存在重复元素' };
+  for (const e of inorder)
+    if (!traversal.includes(e))
+      return { ok: false, msg: `元素 "${e}" 在两个序列中不匹配` };
+  return { ok: true };
+}
+
+// ===== Coordinate Computation =====
+function computeNodes(inorder, traversal, mode) {
+  const n = inorder.length;
+  const idxMap = {};
+  inorder.forEach((v, i) => idxMap[v] = i);
+
+  return traversal.map((value, i) => ({
+    id: value,
+    value: value,
+    inorderIdx: idxMap[value],
+    traversalIdx: i,
+    displayY: mode === 'pre' ? i : (n - 1) - i,
+    depth: 0,
+    left: null,
+    right: null,
+  }));
+}
+
+// ===== Tree Building & Step Generation =====
+function buildSteps(nodes, mode) {
+  const steps = [];
+  const label = mode === 'pre' ? '前序' : '后序';
+
+  steps.push({
+    type: 'init',
+    desc: `构建坐标系：横轴为中序遍历，纵轴为${label}遍历（${mode === 'pre' ? '从上到下' : '从下到上'}）`,
+  });
+
+  steps.push({
+    type: 'plot',
+    desc: `标出所有结点位置（中序位置 × ${label}位置），找到各值的坐标交点`,
+  });
+
+  function build(subNodes, depth, parent, isLeftChild) {
+    if (!subNodes.length) return null;
+
+    const root = subNodes.reduce((m, n) => n.displayY < m.displayY ? n : m);
+    root.depth = depth;
+
+    const left = subNodes.filter(n => n.inorderIdx < root.inorderIdx);
+    const right = subNodes.filter(n => n.inorderIdx > root.inorderIdx);
+
+    const ls = left.length ? left.map(n => n.value).join(', ') : '空';
+    const rs = right.length ? right.map(n => n.value).join(', ') : '空';
+
+    let desc;
+    if (!parent) {
+      desc = `找到最高点 ${root.value} 作为根结点，画垂直虚线。左侧 {${ls}} 为左子树，右侧 {${rs}} 为右子树`;
+    } else {
+      const side = isLeftChild ? '左' : '右';
+      desc = `处理 ${parent.value} 的${side}子树：最高点 ${root.value} 为子树根。左侧 {${ls}} 为左子树，右侧 {${rs}} 为右子树`;
+    }
+
+    steps.push({
+      type: 'process',
+      root, parent, left, right,
+      subNodes: subNodes.slice(),
+      isLeftChild,
+      desc,
+    });
+
+    root.left = build(left, depth + 1, root, true);
+    root.right = build(right, depth + 1, root, false);
+    return root;
+  }
+
+  const treeRoot = build(nodes, 0, null, false);
+
+  let resultSeq = [];
+  if (mode === 'pre') {
+    const postorder = [];
+    function post(n) { if (!n) return; post(n.left); post(n.right); postorder.push(n.value); }
+    post(treeRoot);
+    resultSeq = postorder;
+  } else {
+    const preorder = [];
+    function pre(n) { if (!n) return; preorder.push(n.value); pre(n.left); pre(n.right); }
+    pre(treeRoot);
+    resultSeq = preorder;
+  }
+
+  steps.push({
+    type: 'done',
+    desc: `完成！${mode === 'pre' ? '后序' : '前序'}遍历：${resultSeq.join(' ')}`,
+    resultSeq,
+  });
+
+  return { steps, treeRoot };
+}
+
+// ===== Transforms =====
+function getCoordTf() {
+  const n = Math.max(S.nodes.length, 1);
+  const p = CFG.pad;
+  const w = CFG.coord.w, h = CFG.coord.h;
+  const availW = w - p.left - p.right;
+  const availH = h - p.top - p.bottom;
+  const cellW = availW / n;
+  const cellH = availH / n;
+  return {
+    toX: ii => p.left + ii * cellW + cellW / 2,
+    toY: dy => p.top + dy * cellH + cellH / 2,
+    cellW, cellH, p, w, h, n,
+  };
+}
+
+function getTreeTf() {
+  const n = Math.max(S.nodes.length, 1);
+  const p = CFG.tpad;
+  const w = CFG.tree.w, h = CFG.tree.h;
+  const availW = w - p.left - p.right;
+  const availH = h - p.top - p.bottom;
+  const maxDepth = Math.max(...S.nodes.map(nd => nd.depth || 0), 1);
+  const spacing = availW / Math.max(1, n - 1);
+  const levelH = availH / maxDepth;
+  return {
+    toX: ii => p.left + ii * spacing,
+    toY: d => p.top + d * levelH,
+    spacing, levelH, p, w, h, n, maxDepth,
+  };
+}
+
+// ===== Easing =====
+function easeInOut(t) { return t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t+2, 3)/2; }
+
+// ===== Step State =====
+function computeStepState(stepIdx) {
+  const state = {
+    processed: new Set(),
+    currentStep: null,
+    verticalLines: [],
+    edges: [],
+    treeNodes: [],
+    treeEdges: [],
+  };
+
+  for (let i = 0; i <= stepIdx && i < S.steps.length; i++) {
+    const step = S.steps[i];
+    if (step.type === 'process') {
+      const isCurrent = (i === stepIdx);
+      const subNodes = step.subNodes;
+      const maxDY = Math.max(...subNodes.map(n => n.displayY));
+
+      state.verticalLines.push({
+        x: step.root.inorderIdx,
+        yStart: step.root.displayY,
+        yEnd: maxDY,
+        isNew: isCurrent,
+      });
+
+      if (step.parent) {
+        state.edges.push({
+          from: step.parent,
+          to: step.root,
+          isNew: isCurrent,
+        });
+        state.treeEdges.push({
+          from: step.parent,
+          to: step.root,
+          isNew: isCurrent,
+        });
+      }
+
+      state.treeNodes.push({
+        node: step.root,
+        isNew: isCurrent,
+      });
+
+      if (isCurrent) {
+        state.currentStep = step;
+      } else {
+        state.processed.add(step.root.id);
+      }
+    }
+  }
+
+  return state;
+}
+
+// ===== Rendering: Coordinate System =====
+function renderCoord() {
+  const ctx = coordCtx;
+  const t = getCoordTf();
+  const c = getColors();
+
+  ctx.clearRect(0, 0, t.w, t.h);
+  ctx.fillStyle = c.bg;
+  ctx.fillRect(0, 0, t.w, t.h);
+
+  drawCoordGrid(ctx, t, c);
+  drawCoordAxes(ctx, t, c);
+  drawCoordLabels(ctx, t, c);
+
+  const sd = computeStepState(S.current);
+  drawVerticalLines(ctx, t, sd, c);
+  drawCoordEdges(ctx, t, sd, c);
+  drawCoordPoints(ctx, t, sd, c);
+}
+
+function drawCoordGrid(ctx, t, c) {
+  ctx.strokeStyle = c.grid;
+  ctx.lineWidth = 1;
+  for (let i = 0; i < t.n; i++) {
+    const x = t.toX(i);
+    ctx.beginPath(); ctx.moveTo(x, t.p.top); ctx.lineTo(x, t.h - t.p.bottom); ctx.stroke();
+    const y = t.toY(i);
+    ctx.beginPath(); ctx.moveTo(t.p.left, y); ctx.lineTo(t.w - t.p.right, y); ctx.stroke();
+  }
+}
+
+function drawCoordAxes(ctx, t, c) {
+  ctx.strokeStyle = c.axis;
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(t.p.left, t.h - t.p.bottom);
+  ctx.lineTo(t.w - t.p.right, t.h - t.p.bottom);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(t.p.left, t.p.top);
+  ctx.lineTo(t.p.left, t.h - t.p.bottom);
+  ctx.stroke();
+}
+
+function drawCoordLabels(ctx, t, c) {
+  ctx.font = 'bold 12px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'top';
+
+  for (let i = 0; i < S.inorder.length; i++) {
+    ctx.fillStyle = c.axisLabel;
+    ctx.fillText(S.inorder[i], t.toX(i), t.h - t.p.bottom + 6);
+  }
+
+  ctx.textAlign = 'right';
+  ctx.textBaseline = 'middle';
+  const n = S.nodes.length;
+  for (let i = 0; i < n; i++) {
+    const label = S.mode === 'pre' ? S.traversal[i] : S.traversal[n - 1 - i];
+    ctx.fillStyle = c.axisLabel;
+    ctx.fillText(label, t.p.left - 8, t.toY(i));
+  }
+
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'bottom';
+  ctx.font = 'bold 11px sans-serif';
+  ctx.fillStyle = c.axisLabel;
+  ctx.fillText('中序 →', (t.p.left + t.w - t.p.right) / 2, t.h - 2);
+
+  ctx.save();
+  ctx.translate(12, (t.p.top + t.h - t.p.bottom) / 2);
+  ctx.rotate(-Math.PI / 2);
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(S.mode === 'pre' ? '↑ 前序' : '↓ 后序', 0, 0);
+  ctx.restore();
+}
+
+function drawVerticalLines(ctx, t, sd, c) {
+  for (const vl of sd.verticalLines) {
+    const x = t.toX(vl.x);
+    const y1 = t.toY(vl.yStart);
+    const y2 = t.toY(vl.yEnd);
+    const prog = vl.isNew ? easeInOut(S.animProg) : 1;
+    const actualY2 = y1 + (y2 - y1) * prog;
+
+    ctx.save();
+    ctx.strokeStyle = c.vline;
+    ctx.lineWidth = 2;
+    ctx.setLineDash([5, 4]);
+    ctx.beginPath();
+    ctx.moveTo(x, y1);
+    ctx.lineTo(x, actualY2);
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+
+function drawCoordEdges(ctx, t, sd, c) {
+  for (const e of sd.edges) {
+    const x1 = t.toX(e.from.inorderIdx);
+    const y1 = t.toY(e.from.displayY);
+    const x2 = t.toX(e.to.inorderIdx);
+    const y2 = t.toY(e.to.displayY);
+    const prog = e.isNew ? easeInOut(S.animProg) : 1;
+    const ex = x1 + (x2 - x1) * prog;
+    const ey = y1 + (y2 - y1) * prog;
+
+    ctx.save();
+    ctx.strokeStyle = c.edge;
+    ctx.lineWidth = 2.5;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(ex, ey);
+    ctx.stroke();
+
+    if (prog >= 0.8) {
+      const angle = Math.atan2(y2 - y1, x2 - x1);
+      const aLen = 7;
+      ctx.beginPath();
+      ctx.moveTo(ex, ey);
+      ctx.lineTo(ex - aLen * Math.cos(angle - Math.PI / 6), ey - aLen * Math.sin(angle - Math.PI / 6));
+      ctx.moveTo(ex, ey);
+      ctx.lineTo(ex - aLen * Math.cos(angle + Math.PI / 6), ey - aLen * Math.sin(angle + Math.PI / 6));
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+}
+
+function drawCoordPoints(ctx, t, sd, c) {
+  const curType = (S.current >= 0 && S.steps[S.current]) ? S.steps[S.current].type : null;
+  if (curType === 'init') return;
+
+  const leftIds = new Set();
+  const rightIds = new Set();
+  let rootId = null;
+
+  if (sd.currentStep) {
+    rootId = sd.currentStep.root.id;
+    sd.currentStep.left.forEach(n => leftIds.add(n.id));
+    sd.currentStep.right.forEach(n => rightIds.add(n.id));
+  }
+
+  const isDone = curType === 'done';
+
+  for (const node of S.nodes) {
+    const x = t.toX(node.inorderIdx);
+    const y = t.toY(node.displayY);
+    let st;
+
+    if (node.id === rootId) st = 'root';
+    else if (leftIds.has(node.id)) st = 'left';
+    else if (rightIds.has(node.id)) st = 'right';
+    else if (sd.processed.has(node.id) || isDone) st = 'processed';
+    else st = 'pending';
+
+    drawPoint(ctx, x, y, node.value, st, c);
+  }
+}
+
+function drawPoint(ctx, x, y, label, state2, c) {
+  const r = CFG.r;
+  let fill, stroke, textCol;
+
+  switch (state2) {
+    case 'pending':
+      fill = c.pending; stroke = c.pendingStroke; textCol = c.pendingText; break;
+    case 'processed':
+      fill = c.processed; stroke = c.processedStroke; textCol = c.bg; break;
+    case 'root':
+      fill = c.root; stroke = c.rootStroke; textCol = '#fff'; break;
+    case 'left':
+      fill = c.left; stroke = c.leftStroke; textCol = '#fff'; break;
+    case 'right':
+      fill = c.right; stroke = c.rightStroke; textCol = '#fff'; break;
+  }
+
+  if (state2 === 'root') {
+    const pulse = 0.5 + 0.5 * Math.sin(Date.now() / 250);
+    ctx.save();
+    ctx.globalAlpha = 0.3 + 0.2 * pulse;
+    ctx.fillStyle = fill;
+    ctx.beginPath();
+    ctx.arc(x, y, r + 5 + 3 * pulse, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  ctx.save();
+  ctx.fillStyle = fill;
+  ctx.strokeStyle = stroke;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.fillStyle = textCol;
+  ctx.font = 'bold 13px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(label, x, y);
+  ctx.restore();
+}
+
+// ===== Rendering: Tree =====
+function renderTree() {
+  const ctx = treeCtx;
+  const t = getTreeTf();
+  const c = getColors();
+
+  ctx.clearRect(0, 0, t.w, t.h);
+  ctx.fillStyle = c.bg;
+  ctx.fillRect(0, 0, t.w, t.h);
+
+  const sd = computeStepState(S.current);
+
+  for (const e of sd.treeEdges) {
+    const x1 = t.toX(e.from.inorderIdx);
+    const y1 = t.toY(e.from.depth);
+    const x2 = t.toX(e.to.inorderIdx);
+    const y2 = t.toY(e.to.depth);
+    const prog = e.isNew ? easeInOut(S.animProg) : 1;
+    const ex = x1 + (x2 - x1) * prog;
+    const ey = y1 + (y2 - y1) * prog;
+
+    ctx.save();
+    ctx.strokeStyle = c.treeEdge;
+    ctx.lineWidth = 2.5;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(ex, ey);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  for (const tn of sd.treeNodes) {
+    const x = t.toX(tn.node.inorderIdx);
+    const y = t.toY(tn.node.depth);
+    const prog = tn.isNew ? easeInOut(S.animProg) : 1;
+    const r = CFG.r * (0.3 + 0.7 * prog);
+
+    ctx.save();
+    ctx.globalAlpha = prog;
+    ctx.fillStyle = c.treeNode;
+    ctx.strokeStyle = c.treeNodeStroke;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    if (prog > 0.5) {
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 13px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(tn.node.value, x, y);
+    }
+    ctx.restore();
+  }
+}
+
+// ===== Main Render =====
+function render() {
+  if (S.steps.length === 0) return;
+  renderCoord();
+  renderTree();
+}
+
+// ===== Animation Loop =====
+function animLoop(time) {
+  if (!S.lastTime) S.lastTime = time;
+  const dt = time - S.lastTime;
+  S.lastTime = time;
+
+  if (S.phase === 'animating') {
+    S.animProg += dt / (CFG.transitionMs / S.speed);
+    if (S.animProg >= 1) {
+      S.animProg = 1;
+      S.phase = 'idle';
+      onAnimDone();
+    }
+  }
+
+  render();
+  requestAnimationFrame(animLoop);
+}
+
+function onAnimDone() {
+  updateControls();
+  if (S.isPlaying && S.current < S.steps.length - 1) {
+    S.playTimer = setTimeout(() => stepForward(), CFG.playDelayMs / S.speed);
+  } else if (S.current >= S.steps.length - 1) {
+    S.isPlaying = false;
+    updateControls();
+  }
+}
+
+// ===== Step Management =====
+function stepForward() {
+  if (S.current < S.steps.length - 1) {
+    S.current++;
+    S.animProg = 0;
+    S.phase = 'animating';
+    updateStepInfo();
+    updateControls();
+  }
+}
+
+function stepBackward() {
+  if (S.current > 0) {
+    S.current--;
+    S.animProg = 1;
+    S.phase = 'idle';
+    updateStepInfo();
+    updateControls();
+  }
+}
+
+function reset() {
+  S.current = 0;
+  S.animProg = 1;
+  S.phase = 'idle';
+  S.isPlaying = false;
+  clearTimeout(S.playTimer);
+  updateStepInfo();
+  updateControls();
+}
+
+function togglePlay() {
+  if (S.steps.length === 0) return;
+  if (S.current >= S.steps.length - 1 && S.phase === 'idle') {
+    reset();
+    S.isPlaying = true;
+    setTimeout(() => stepForward(), 100);
+  } else {
+    S.isPlaying = !S.isPlaying;
+    if (S.isPlaying) {
+      if (S.phase === 'idle') stepForward();
+    } else {
+      clearTimeout(S.playTimer);
+    }
+  }
+  updateControls();
+}
+
+// ===== UI Updates =====
+function updateStepInfo() {
+  const badge = $('stepBadge');
+  const text = $('stepText');
+  if (S.steps.length === 0) {
+    badge.textContent = '步骤 0/0';
+    text.textContent = '请输入遍历序列';
+    return;
+  }
+  const step = S.steps[S.current];
+  badge.textContent = `步骤 ${S.current + 1}/${S.steps.length}`;
+  text.textContent = step.desc || '';
+}
+
+function updateControls() {
+  const prev = $('prevBtn');
+  const next = $('nextBtn');
+  const play = $('playBtn');
+
+  prev.disabled = S.current <= 0;
+  next.disabled = S.current >= S.steps.length - 1;
+  play.innerHTML = S.isPlaying ? '&#10074;&#10074;' : '&#9654;';
+}
+
+// ===== Build =====
+function build() {
+  const inorder = parseSeq($('inorderInput').value);
+  const traversal = parseSeq($('traversalInput').value);
+  const err = $('errorMsg');
+  err.classList.remove('show');
+
+  const result = validate(inorder, traversal);
+  if (!result.ok) {
+    err.textContent = result.msg;
+    err.classList.add('show');
+    return;
+  }
+
+  S.inorder = inorder;
+  S.traversal = traversal;
+  S.nodes = computeNodes(inorder, traversal, S.mode);
+
+  const built = buildSteps(S.nodes, S.mode);
+  S.steps = built.steps;
+  S.treeRoot = built.treeRoot;
+
+  S.nodes.forEach(n => { n.depth = n.depth || 0; });
+
+  reset();
+
+  if (S.autoplay) {
+    S.isPlaying = true;
+    setTimeout(() => stepForward(), 500);
+    updateControls();
+  }
+}
+
+// ===== Mode Toggle =====
+function setMode(mode) {
+  if (S.mode === mode) return;
+  S.mode = mode;
+  $('modePre').classList.toggle('active', mode === 'pre');
+  $('modePost').classList.toggle('active', mode === 'post');
+  $('traversalLabel').textContent = mode === 'pre' ? '前序遍历' : '后序遍历';
+
+  if (S.treeRoot && S.inorder.length > 0) {
+    const result = [];
+    if (mode === 'pre') {
+      function pre(n) { if (!n) return; result.push(n.value); pre(n.left); pre(n.right); }
+      pre(S.treeRoot);
+    } else {
+      function post(n) { if (!n) return; post(n.left); post(n.right); result.push(n.value); }
+      post(S.treeRoot);
+    }
+    $('traversalInput').value = result.join(' ');
+    $('inorderInput').value = S.inorder.join(' ');
+  }
+
+  build();
+}
+
+// ===== Event Listeners =====
+function initEvents() {
+  $('modePre').addEventListener('click', () => setMode('pre'));
+  $('modePost').addEventListener('click', () => setMode('post'));
+  $('buildBtn').addEventListener('click', build);
+  $('prevBtn').addEventListener('click', stepBackward);
+  $('nextBtn').addEventListener('click', stepForward);
+  $('playBtn').addEventListener('click', togglePlay);
+  $('resetBtn').addEventListener('click', reset);
+
+  $('speedSlider').addEventListener('input', e => {
+    S.speed = parseFloat(e.target.value);
+    $('speedVal').textContent = S.speed.toFixed(1) + 'x';
+  });
+
+  // Keyboard shortcuts
+  document.addEventListener('keydown', e => {
+    if (e.target.tagName === 'INPUT') return;
+    switch (e.key) {
+      case 'ArrowLeft': stepBackward(); break;
+      case 'ArrowRight': stepForward(); break;
+      case ' ': e.preventDefault(); togglePlay(); break;
+      case 'r': case 'R': reset(); break;
+    }
+  });
+
+  // Auto-rebuild on input change (with debounce)
+  let debounceTimer;
+  const inputs = [ $('traversalInput'), $('inorderInput') ];
+  inputs.forEach(inp => {
+    inp.addEventListener('input', () => {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(build, 500);
+    });
+  });
+}
+
+// ===== Theme Sync with Parent (VitePress) =====
+function initThemeSync() {
+  // Listen for theme messages from parent VitePress
+  window.addEventListener('message', e => {
+    if (e.data?.type === 'viz-theme') {
+      document.documentElement.classList.toggle('dark', e.data.dark);
+    }
+  });
+
+  // Also sync with system preference as fallback
+  if (window.matchMedia) {
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
+      if (!document.documentElement.classList.contains('viz-theme-forced')) {
+        document.documentElement.classList.toggle('dark', e.matches);
+      }
+    });
+  }
+}
+
+// ===== Init from URL =====
+function initFromUrl() {
+  const p = getUrlParams();
+
+  if (p.hideinput) {
+    $('inputPanel').classList.add('hidden');
+  }
+
+  S.mode = p.mode === 'post' ? 'post' : 'pre';
+  $('modePre').classList.toggle('active', S.mode === 'pre');
+  $('modePost').classList.toggle('active', S.mode === 'post');
+  $('traversalLabel').textContent = S.mode === 'pre' ? '前序遍历' : '后序遍历';
+
+  S.autoplay = p.autoplay;
+
+  const inorder = p.inorder ? parseSeq(p.inorder) : null;
+  let traversal = null;
+
+  if (S.mode === 'pre' && p.preorder) {
+    traversal = parseSeq(p.preorder);
+  } else if (S.mode === 'post' && p.postorder) {
+    traversal = parseSeq(p.postorder);
+  }
+
+  if (inorder && traversal) {
+    $('inorderInput').value = inorder.join(' ');
+    $('traversalInput').value = traversal.join(' ');
+  }
+}
+
+// ===== Init =====
+function init() {
+  initThemeSync();
+  initFromUrl();
+  initCanvases();
+  initEvents();
+  build();
+  requestAnimationFrame(animLoop);
+}
+
+init();
+</script>
+</body>
+</html>
