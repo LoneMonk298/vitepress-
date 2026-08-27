@@ -43,4 +43,4 @@ jobs:
         with:
           branch: pages
           folder: docs/.vitepress/dist
-          cname: blog.lonemonk.xyz
+          # cname 参数在v4中已不支持，在GitHub Pages设置中配置自定义域名
