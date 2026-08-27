@@ -1,21 +1,70 @@
 <template>
-  <div class="viz-embed" :class="{ 'viz-embed--dark': isDark }">
-    <iframe
-      ref="iframeRef"
-      :src="iframeSrc"
-      :title="title"
-      loading="lazy"
-      frameborder="0"
-      allow="fullscreen"
-      class="viz-embed__iframe"
-      @load="onIframeLoad"
-    ></iframe>
-    <p v-if="caption" class="viz-embed__caption">▲ {{ caption }}</p>
+  <div
+    class="viz-embed"
+    :class="{
+      'viz-embed--dark': isDark,
+      'viz-embed--collapsed': collapsed && !isFullscreen,
+      'viz-embed--fullscreen': isFullscreen,
+    }"
+  >
+    <!-- Header bar -->
+    <div class="viz-embed__header">
+      <button class="viz-embed__toggle" @click="toggleCollapse">
+        <span class="viz-embed__toggle-icon" :class="{ 'is-open': !collapsed }">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+        </span>
+        <span class="viz-embed__title">{{ title }}</span>
+        <span v-if="collapsed && !isFullscreen" class="viz-embed__hint">点击展开</span>
+      </button>
+      <div class="viz-embed__actions">
+        <button
+          class="viz-embed__action-btn"
+          title="全屏"
+          @click="toggleFullscreen"
+        >
+          <svg v-if="!isFullscreen" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M8 3H5a2 2 0 0 0-2 2v3"></path>
+            <path d="M21 8V5a2 2 0 0 0-2-2h-3"></path>
+            <path d="M3 16v3a2 2 0 0 0 2 2h3"></path>
+            <path d="M16 21h3a2 2 0 0 0 2-2v-3"></path>
+          </svg>
+          <svg v-else viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M8 3v3a2 2 0 0 1-2 2H3"></path>
+            <path d="M21 8h-3a2 2 0 0 1-2-2V3"></path>
+            <path d="M3 16h3a2 2 0 0 1 2 2v3"></path>
+            <path d="M16 21v-3a2 2 0 0 1 2-2h3"></path>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Iframe body -->
+    <div class="viz-embed__body" :style="bodyStyle">
+      <iframe
+        v-if="!iframeError"
+        ref="iframeRef"
+        :src="iframeSrc"
+        :title="title"
+        :loading="isFullscreen ? 'eager' : 'lazy'"
+        frameborder="0"
+        allow="fullscreen"
+        class="viz-embed__iframe"
+        @load="onIframeLoad"
+        @error="onIframeError"
+      ></iframe>
+      <div v-else class="viz-embed__error">
+        <p>⚠️ 可视化加载失败</p>
+        <p class="viz-embed__error-path">{{ iframeSrc }}</p>
+      </div>
+      <p v-if="caption && !isFullscreen" class="viz-embed__caption">▲ {{ caption }}</p>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, onMounted, onBeforeUnmount, ref, watch, nextTick } from 'vue'
 import { useData } from 'vitepress'
 
 const props = defineProps({
@@ -23,27 +72,96 @@ const props = defineProps({
   name: { type: String, required: true },
   /** URL 查询参数，如 "mode=pre&hideinput=1" */
   params: { type: String, default: '' },
-  /** iframe 高度（像素） */
+  /** iframe 高度（像素），展开状态下 */
   height: { type: [String, Number], default: 560 },
   /** 图注文字 */
   caption: { type: String, default: '' },
-  /** iframe title 无障碍属性 */
+  /** 标题（显示在顶栏） */
   title: { type: String, default: '交互式可视化' },
+  /** 默认是否折叠 */
+  collapsed: { type: Boolean, default: false },
 })
 
-const { isDark, site } = useData()
-const iframeRef = ref<HTMLIFrameElement | null>(null)
+const emit = defineEmits(['expand', 'collapse', 'fullscreen-change'])
 
-/** 构建 iframe src，自动处理 base 路径 */
+const { isDark } = useData()
+const iframeRef = ref<HTMLIFrameElement | null>(null)
+const collapsed = ref(props.collapsed)
+const isFullscreen = ref(false)
+const iframeError = ref(false)
+
+/** Vite 提供的 base 路径，兼容子目录部署 */
+const baseUrl = (import.meta.env.BASE_URL || '/').replace(/\/$/, '')
+
+/** 构建 iframe src — 直接指向 index.html，避免目录索引问题 */
 const iframeSrc = computed(() => {
-  const base = (site.value.base || '/').replace(/\/$/, '')
-  const basePath = `${base}/visualizers/${props.name}/`
+  const basePath = `${baseUrl}/visualizers/${props.name}/index.html`
   return props.params ? `${basePath}?${props.params}` : basePath
 })
+
+/** 兜底路径：如果 index.html 404，尝试不带 index.html 的目录路径 */
+const fallbackSrc = computed(() => {
+  const basePath = `${baseUrl}/visualizers/${props.name}/`
+  return props.params ? `${basePath}?${props.params}` : basePath
+})
+
+const bodyStyle = computed(() => {
+  if (collapsed.value && !isFullscreen.value) {
+    return { maxHeight: '0px', opacity: '0' }
+  }
+  return { maxHeight: isFullscreen.value ? '100%' : '2000px', opacity: '1' }
+})
+
+function toggleCollapse() {
+  if (isFullscreen.value) return
+  collapsed.value = !collapsed.value
+  emit(collapsed.value ? 'collapse' : 'expand')
+  if (!collapsed.value) {
+    nextTick(() => {
+      postTheme(isDark.value)
+    })
+  }
+}
+
+function toggleFullscreen() {
+  if (!isFullscreen.value) {
+    enterFullscreen()
+  } else {
+    exitFullscreen()
+  }
+}
+
+/** 进入自定义全屏（不是浏览器原生 fullscreen API，而是覆盖视口） */
+function enterFullscreen() {
+  isFullscreen.value = true
+  collapsed.value = false
+  document.body.style.overflow = 'hidden'
+  emit('fullscreen-change', true)
+  nextTick(() => postTheme(isDark.value))
+}
+
+function exitFullscreen() {
+  isFullscreen.value = false
+  document.body.style.overflow = ''
+  emit('fullscreen-change', false)
+  nextTick(() => postTheme(isDark.value))
+}
+
+/** ESC 键退出全屏 */
+function onKeydown(e: KeyboardEvent) {
+  if (e.key === 'Escape' && isFullscreen.value) {
+    exitFullscreen()
+  }
+}
 
 /** iframe 加载后，同步当前暗色模式状态 */
 function onIframeLoad() {
   postTheme(isDark.value)
+}
+
+/** iframe 加载失败（很少触发，因为 404 也是有效页面） */
+function onIframeError() {
+  iframeError.value = true
 }
 
 /** 向 iframe 发送主题消息 */
@@ -53,7 +171,7 @@ function postTheme(dark: boolean) {
   try {
     win.postMessage({ type: 'viz-theme', dark }, '*')
   } catch (e) {
-    // cross-origin 等情况忽略
+    // ignore
   }
 }
 
@@ -63,11 +181,25 @@ watch(isDark, (dark) => {
 })
 
 onMounted(() => {
-  // 初始同步
-  if (iframeRef.value?.contentWindow) {
-    // iframe 可能还没加载完，load 事件里也会再发一次
-    postTheme(isDark.value)
+  document.addEventListener('keydown', onKeydown)
+  // 检查可视化文件是否存在，提前发现 404
+  if (!collapsed.value) {
+    fetch(iframeSrc.value, { method: 'HEAD' })
+      .then(res => {
+        if (!res.ok) {
+          iframeError.value = true
+          console.warn('[VizEmbed] 可视化文件不存在:', iframeSrc.value)
+        }
+      })
+      .catch(() => {
+        // 跨域等情况忽略，iframe 仍会尝试加载
+      })
   }
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('keydown', onKeydown)
+  document.body.style.overflow = ''
 })
 </script>
 
@@ -76,32 +208,215 @@ onMounted(() => {
   margin: 24px 0;
   border-radius: 12px;
   overflow: hidden;
-  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.08);
-  background: #ffffff;
-  transition: background 0.3s, box-shadow 0.3s;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  background: var(--vp-c-bg-soft, #ffffff);
+  border: 1px solid var(--vp-c-divider-light, #e9ecef);
+  transition: box-shadow 0.2s;
 }
 
-.viz-embed--dark {
-  background: #1e1e20;
-  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.3);
+.viz-embed:hover {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+}
+
+/* Header */
+.viz-embed__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 6px 0 14px;
+  height: 40px;
+  background: var(--vp-c-bg-soft, #f8f9fa);
+  border-bottom: 1px solid var(--vp-c-divider-light, #e9ecef);
+  user-select: none;
+}
+
+.viz-embed__toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 6px;
+  color: var(--vp-c-text-1, #343a40);
+  font-size: 13px;
+  font-weight: 600;
+  transition: background 0.2s;
+}
+
+.viz-embed__toggle:hover {
+  background: var(--vp-c-bg-mute, #e9ecef);
+}
+
+.viz-embed__toggle-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.3s ease;
+  color: var(--vp-c-text-3, #868e96);
+}
+
+.viz-embed__toggle-icon.is-open {
+  transform: rotate(180deg);
+}
+
+.viz-embed__title {
+  font-size: 13px;
+}
+
+.viz-embed__hint {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--vp-c-text-3, #adb5bd);
+  margin-left: 4px;
+}
+
+/* Actions */
+.viz-embed__actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.viz-embed__action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--vp-c-text-2, #495057);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.viz-embed__action-btn:hover {
+  background: var(--vp-c-brand-soft, #d3f9d8);
+  color: var(--vp-c-brand-1, #2f9e44);
+}
+
+/* Body */
+.viz-embed__body {
+  overflow: hidden;
+  transition: max-height 0.35s ease, opacity 0.3s ease;
 }
 
 .viz-embed__iframe {
   display: block;
   width: 100%;
   border: none;
+  height: v-bind('props.height + "px"');
 }
 
 .viz-embed__caption {
   text-align: center;
   font-size: 13px;
-  color: #909399;
+  color: var(--vp-c-text-2, #868e96);
   margin: 0;
   padding: 10px 16px 14px;
   line-height: 1.5;
 }
 
-.viz-embed--dark .viz-embed__caption {
-  color: #6b7280;
+/* Error state */
+.viz-embed__error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  color: var(--vp-c-text-2, #868e96);
+  font-size: 14px;
+  gap: 8px;
+}
+
+.viz-embed__error-path {
+  font-size: 12px;
+  font-family: monospace;
+  color: var(--vp-c-text-3, #adb5bd);
+  background: var(--vp-c-bg-mute, #f1f3f5);
+  padding: 4px 8px;
+  border-radius: 4px;
+  word-break: break-all;
+  max-width: 90%;
+}
+
+/* Collapsed state */
+.viz-embed--collapsed {
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+
+/* Fullscreen state */
+.viz-embed--fullscreen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  margin: 0;
+  border-radius: 0;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  background: var(--vp-c-bg, #ffffff);
+}
+
+.viz-embed--fullscreen .viz-embed__header {
+  height: 48px;
+  padding: 0 10px 0 18px;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--vp-c-divider, #dee2e6);
+  background: var(--vp-c-bg-soft, #f8f9fa);
+}
+
+.viz-embed--fullscreen .viz-embed__title {
+  font-size: 14px;
+}
+
+.viz-embed--fullscreen .viz-embed__toggle {
+  cursor: default;
+}
+
+.viz-embed--fullscreen .viz-embed__toggle:hover {
+  background: transparent;
+}
+
+.viz-embed--fullscreen .viz-embed__toggle-icon {
+  display: none;
+}
+
+.viz-embed--fullscreen .viz-embed__action-btn {
+  width: 36px;
+  height: 36px;
+}
+
+.viz-embed--fullscreen .viz-embed__body {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.viz-embed--fullscreen .viz-embed__iframe {
+  flex: 1;
+  height: auto;
+  min-height: 0;
+}
+
+/* Dark mode overrides */
+.viz-embed--dark {
+  background: var(--vp-c-bg-soft, #1e1e20);
+  border-color: var(--vp-c-divider, #3a3d44);
+}
+
+.viz-embed--dark .viz-embed__header {
+  background: var(--vp-c-bg-mute, #252529);
+  border-color: var(--vp-c-divider, #3a3d44);
+}
+
+.viz-embed--dark .viz-embed__action-btn:hover {
+  background: var(--vp-c-brand-soft, rgba(47,158,68,0.2));
 }
 </style>

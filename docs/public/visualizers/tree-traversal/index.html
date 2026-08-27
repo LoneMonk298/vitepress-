@@ -246,6 +246,23 @@ canvas {
 
 .ctrl-btn.play:hover { background: var(--primary-d); }
 
+.ctrl-btn--accent {
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+
+.ctrl-btn--accent:hover {
+  background: #b2f2bb;
+  color: var(--primary-d);
+}
+
+.ctrl-divider {
+  width: 1px;
+  height: 22px;
+  background: var(--border);
+  margin: 0 2px;
+}
+
 .speed-control {
   display: flex;
   align-items: center;
@@ -351,6 +368,16 @@ canvas {
   </div>
 
   <div class="controls">
+    <button class="ctrl-btn ctrl-btn--accent" id="randomBtn" title="随机示例">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="16 3 21 3 21 8"></polyline>
+        <line x1="4" y1="20" x2="21" y2="3"></line>
+        <polyline points="21 16 21 21 16 21"></polyline>
+        <line x1="15" y1="15" x2="21" y2="21"></line>
+        <line x1="4" y1="4" x2="9" y2="9"></line>
+      </svg>
+    </button>
+    <div class="ctrl-divider"></div>
     <button class="ctrl-btn" id="resetBtn" title="重置">&#8634;</button>
     <button class="ctrl-btn" id="prevBtn" title="上一步">&#9664;</button>
     <button class="ctrl-btn play" id="playBtn" title="播放/暂停">&#9654;</button>
@@ -1121,11 +1148,62 @@ function setMode(mode) {
   build();
 }
 
+// ===== Preset Examples =====
+const PRESETS = [
+  // 经典教材示例
+  { pre: 'A B D E C F G', in: 'D B E A F C G', label: '满二叉树' },
+  { pre: 'B C E F D G A H I', in: 'E C D F G B H A I', label: '图中示例' },
+  { pre: 'A B D H E I C F J G K', in: 'H D I B E A J F K C G', label: '完全二叉树' },
+  { pre: 'F B A D C E G I H', in: 'A B C D E F G H I', label: '二叉搜索树' },
+  { pre: 'A B C D E F', in: 'F E D C B A', label: '左斜树' },
+  { pre: 'A B C D E F', in: 'A B C D E F', label: '右斜树' },
+  // 字母+数字混合
+  { pre: '1 2 4 7 3 5 6 8', in: '4 7 2 1 5 3 8 6', label: '数字树1' },
+  { pre: 'A B C E D F', in: 'E C D B F A', label: '后序练习' },
+];
+
+let _lastPresetIdx = -1;
+
+function loadRandomPreset() {
+  // 避免连续抽到同一个
+  let idx;
+  do {
+    idx = Math.floor(Math.random() * PRESETS.length);
+  } while (idx === _lastPresetIdx && PRESETS.length > 1);
+  _lastPresetIdx = idx;
+
+  const p = PRESETS[idx];
+
+  // 随机模式
+  const mode = Math.random() < 0.5 ? 'pre' : 'post';
+  S.mode = mode;
+  $('modePre').classList.toggle('active', mode === 'pre');
+  $('modePost').classList.toggle('active', mode === 'post');
+  $('traversalLabel').textContent = mode === 'pre' ? '前序遍历' : '后序遍历';
+
+  // 计算对应遍历序列
+  if (mode === 'pre') {
+    $('traversalInput').value = p.pre;
+  } else {
+    // 从树结构计算后序
+    const nodes = computeNodes(parseSeq(p.in), parseSeq(p.pre), 'pre');
+    const { treeRoot } = buildSteps(nodes, 'pre');
+    const postorder = [];
+    function post(n) { if (!n) return; post(n.left); post(n.right); postorder.push(n.value); }
+    post(treeRoot);
+    $('traversalInput').value = postorder.join(' ');
+  }
+  $('inorderInput').value = p.in;
+
+  build();
+}
+
 // ===== Event Listeners =====
 function initEvents() {
   $('modePre').addEventListener('click', () => setMode('pre'));
   $('modePost').addEventListener('click', () => setMode('post'));
   $('buildBtn').addEventListener('click', build);
+  $('randomBtn').addEventListener('click', loadRandomPreset);
   $('prevBtn').addEventListener('click', stepBackward);
   $('nextBtn').addEventListener('click', stepForward);
   $('playBtn').addEventListener('click', togglePlay);
@@ -1144,6 +1222,7 @@ function initEvents() {
       case 'ArrowRight': stepForward(); break;
       case ' ': e.preventDefault(); togglePlay(); break;
       case 'r': case 'R': reset(); break;
+      case 'n': case 'N': loadRandomPreset(); break;
     }
   });
 
