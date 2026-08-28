@@ -1,0 +1,1740 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>B树插入与删除可视化</title>
+<style>
+  :root {
+    --bg: #f8f9fa;
+    --surface: #ffffff;
+    --border: #e9ecef;
+    --text: #212529;
+    --text-2: #6c757d;
+    --primary: #228be6;
+    --primary-d: #1971c2;
+    --primary-soft: #d0ebff;
+    --success: #40c057;
+    --warning: #fab005;
+    --danger: #fa5252;
+    --info: #7950f2;
+    --accent: #845ef7;
+    --accent-d: #7048e8;
+    --accent-soft: #e5dbff;
+    --shadow: 0 2px 8px rgba(0,0,0,0.06);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1a1a1d;
+      --surface: #252529;
+      --border: #3a3a3f;
+      --text: #e9ecef;
+      --text-2: #868e96;
+      --primary: #4dabf7;
+      --primary-d: #74c0fc;
+      --primary-soft: #1864ab;
+      --accent: #9775fa;
+      --accent-d: #b197fc;
+      --accent-soft: #3b2a6b;
+      --shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 14px;
+    overflow: hidden;
+    height: 100%;
+  }
+  .app {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    width: 100%;
+  }
+
+  /* ===== Top Toolbar ===== */
+  .topbar {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 10px 16px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+  .topbar-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text);
+    margin-right: 4px;
+  }
+
+  /* Mode switch (order / op type) */
+  .mode-switch {
+    display: flex;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    overflow: hidden;
+    background: var(--bg);
+  }
+  .mode-switch button {
+    padding: 6px 14px;
+    border: none;
+    background: transparent;
+    color: var(--text-2);
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+  .mode-switch button:hover { color: var(--text); }
+  .mode-switch button.active {
+    background: var(--primary);
+    color: #fff;
+  }
+  .mode-switch--accent button.active {
+    background: var(--accent);
+    color: #fff;
+  }
+  .mode-switch button[data-op="special"].active {
+    background: var(--danger);
+    color: #fff;
+  }
+
+  /* Preset select */
+  .preset-select-wrap {
+    position: relative;
+  }
+  .preset-select {
+    padding: 6px 28px 6px 12px;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    background: var(--surface);
+    color: var(--text);
+    font-size: 13px;
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    min-width: 180px;
+  }
+  .preset-select:focus {
+    outline: none;
+    border-color: var(--primary);
+  }
+  .preset-select-wrap::after {
+    content: '▾';
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-2);
+    font-size: 12px;
+    pointer-events: none;
+  }
+
+  /* Play controls */
+  .play-controls {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .ctrl-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 30px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--surface);
+    color: var(--text);
+    cursor: pointer;
+    font-size: 13px;
+    transition: all 0.15s;
+  }
+  .ctrl-btn:hover { background: var(--primary-soft); }
+  .ctrl-btn:active { transform: scale(0.95); }
+  .ctrl-btn.play {
+    background: var(--primary);
+    color: #fff;
+    width: 36px;
+    font-size: 12px;
+  }
+  .ctrl-btn.play:hover { background: var(--primary-d); }
+
+  .speed-control {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: auto;
+    font-size: 12px;
+    color: var(--text-2);
+  }
+  .speed-control input[type="range"] {
+    width: 70px;
+    cursor: pointer;
+  }
+  .speed-val {
+    min-width: 30px;
+    font-family: monospace;
+    text-align: right;
+  }
+
+  /* ===== Main ===== */
+  .main {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+  }
+  .canvas-wrap {
+    flex: 1;
+    position: relative;
+    background: var(--bg);
+    overflow: hidden;
+  }
+  canvas { display: block; width: 100%; height: 100%; }
+
+  /* 画布内步骤字幕（视线不用在步骤条与动画之间来回移动） */
+  .step-overlay {
+    position: absolute;
+    left: 14px;
+    right: 14px;
+    bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.10);
+    pointer-events: none;
+    font-size: 13px;
+    line-height: 1.45;
+  }
+  .step-overlay__num {
+    flex-shrink: 0;
+    background: var(--primary);
+    color: #fff;
+    padding: 1px 9px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .step-overlay__title {
+    flex-shrink: 0;
+    font-weight: 600;
+    color: var(--primary-d);
+  }
+  .step-overlay__desc {
+    flex: 1;
+    min-width: 0;
+    color: var(--text);
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+  .step-overlay__desc code {
+    background: rgba(255,255,255,0.6);
+    padding: 0 5px;
+    border-radius: 3px;
+    font-family: monospace;
+    font-size: 12px;
+    color: var(--primary-d);
+    font-weight: 600;
+  }
+
+  /* Side panel */
+  .side-panel {
+    width: 260px;
+    background: var(--surface);
+    border-left: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+  }
+  .panel-section {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .panel-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .panel-title::before {
+    content: '';
+    width: 3px;
+    height: 13px;
+    background: var(--primary);
+    border-radius: 2px;
+  }
+
+  .b-tree-info {
+    font-size: 12px;
+    color: var(--text);
+    line-height: 1.7;
+  }
+  .b-tree-info table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 10px;
+  }
+  .b-tree-info th, .b-tree-info td {
+    padding: 4px 6px;
+    text-align: center;
+    border: 1px solid var(--border);
+    font-size: 12px;
+  }
+  .b-tree-info th {
+    background: var(--bg);
+    font-weight: 600;
+    color: var(--text-2);
+  }
+  .b-tree-info .highlight {
+    color: var(--primary-d);
+    font-weight: 600;
+  }
+  .note-box {
+    background: var(--accent-soft);
+    border-left: 3px solid var(--accent);
+    padding: 8px 10px;
+    border-radius: 0 5px 5px 0;
+    font-size: 12px;
+    color: var(--text);
+    line-height: 1.6;
+    margin-top: 10px;
+  }
+  .note-box strong { color: var(--accent-d); }
+
+  /* 画布右上角横排图例 */
+  .legend-float {
+    position: absolute;
+    top: 6px;
+    right: 8px;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    column-gap: 10px;
+    row-gap: 3px;
+    padding: 3px 8px;
+    background: var(--surface);
+    opacity: 0.92;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 10px;
+    color: var(--text-2);
+    pointer-events: none;
+    max-width: calc(100% - 16px);
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+  }
+  .legend-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 2px;
+    border: 1.5px solid;
+    flex-shrink: 0;
+  }
+
+  /* Responsive */
+  @media (max-width: 800px) {
+    .main { flex-direction: column; }
+    .side-panel {
+      width: 100%;
+      max-height: 45%;
+      border-left: none;
+      border-top: 1px solid var(--border);
+    }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- Top Toolbar -->
+  <div class="topbar">
+    <div class="topbar-title">🌳 B 树</div>
+
+    <!-- 阶数切换 -->
+    <div class="mode-switch" id="orderSwitch">
+      <button class="active" data-order="3">3阶</button>
+      <button data-order="5">5阶</button>
+    </div>
+
+    <!-- 操作类型切换 -->
+    <div class="mode-switch mode-switch--accent" id="opSwitch">
+      <button class="active" data-op="insert">插入</button>
+      <button data-op="delete">删除</button>
+      <button data-op="special">必看</button>
+    </div>
+
+    <!-- 示例选择下拉 -->
+    <div class="preset-select-wrap">
+      <select class="preset-select" id="presetSelect"></select>
+    </div>
+
+    <!-- 播放控制 -->
+    <div class="play-controls">
+      <button class="ctrl-btn" id="resetBtn" title="重置">&#8634;</button>
+      <button class="ctrl-btn" id="prevBtn" title="上一步">&#9664;</button>
+      <button class="ctrl-btn play" id="playBtn" title="播放/暂停">&#9654;</button>
+      <button class="ctrl-btn" id="nextBtn" title="下一步">&#9654;</button>
+    </div>
+
+    <!-- 速度 -->
+    <div class="speed-control">
+      <label>速度</label>
+      <input type="range" id="speedSlider" min="0.3" max="2" step="0.1" value="0.5">
+      <span class="speed-val" id="speedVal">0.5x</span>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <div class="main">
+    <div class="canvas-wrap">
+      <canvas id="canvas"></canvas>
+      <div class="legend-float">
+        <div class="legend-item"><div class="legend-dot" style="border-color:var(--primary);background:var(--primary-soft);"></div>当前/活动节点</div>
+        <div class="legend-item"><div class="legend-dot" style="border-color:var(--success);background:#d3f9d8;"></div>新插入关键字</div>
+        <div class="legend-item"><div class="legend-dot" style="border-color:var(--danger);background:#ffe3e3;"></div>待删除关键字</div>
+        <div class="legend-item"><div class="legend-dot" style="border-color:var(--warning);background:#fff3bf;"></div>分裂 / 合并</div>
+        <div class="legend-item"><div class="legend-dot" style="border-color:var(--info);background:#e5dbff;"></div>后继关键字</div>
+      </div>
+      <div class="step-overlay" id="stepOverlay">
+        <span class="step-overlay__num" id="overlayNum"></span>
+        <span class="step-overlay__title" id="overlayTitle"></span>
+        <span class="step-overlay__desc" id="overlayDesc"></span>
+      </div>
+    </div>
+
+    <div class="side-panel">
+      <div class="panel-section">
+        <div class="panel-title">B 树性质</div>
+        <div class="b-tree-info" id="btreeInfo">
+          <table>
+            <thead>
+              <tr><th></th><th>最少</th><th>最多</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th>根节点关键字</th>
+                <td class="highlight" id="minRootKeys">1</td>
+                <td class="highlight" id="maxRootKeys">2</td>
+              </tr>
+              <tr>
+                <th>非根节点关键字</th>
+                <td class="highlight" id="minKeys">1</td>
+                <td class="highlight" id="maxKeys">2</td>
+              </tr>
+              <tr>
+                <th>子树数</th>
+                <td id="minChildren">2</td>
+                <td id="maxChildren">3</td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="note-box">
+            <strong>💡 注：</strong>同一组关键字用不同插入顺序构建的 B 树可能不唯一；删除时借兄弟的策略不同也会导致不同结果。
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+//  B-Tree Visualization
+// ============================================================
+
+const $ = id => document.getElementById(id);
+const canvas = $('canvas');
+const ctx = canvas.getContext('2d');
+
+// ===== State =====
+let S = {
+  order: 3,
+  opType: 'insert',
+  steps: [],
+  snapshots: [],
+  initialTree: null,
+  currentStep: -1,
+  playing: false,
+  speed: 0.5,
+  animDuration: 800,
+  timer: null,
+  tree: null,
+  highlights: {},
+};
+
+// ===== B-Tree Node =====
+class BNode {
+  constructor(keys = [], children = [], isLeaf = true) {
+    this.keys = [...keys];
+    this.children = [...children];
+    this.isLeaf = isLeaf;
+    this.id = BNode._idCounter++;
+    this.x = 0;
+    this.y = 0;
+    this.width = 0;
+  }
+}
+BNode._idCounter = 0;
+
+function cloneTree(root) {
+  if (!root) return null;
+  const node = new BNode([...root.keys], [], root.isLeaf);
+  node.id = root.id;
+  for (const child of root.children) {
+    node.children.push(cloneTree(child));
+  }
+  return node;
+}
+
+function insertKey(node, key) {
+  let i = 0;
+  while (i < node.keys.length && key > node.keys[i]) i++;
+  node.keys.splice(i, 0, key);
+  return i;
+}
+
+function findPath(root, key) {
+  const path = [];
+  let cur = root;
+  while (cur) {
+    path.push(cur);
+    let i = 0;
+    while (i < cur.keys.length && key > cur.keys[i]) i++;
+    if (i < cur.keys.length && cur.keys[i] === key) break;
+    if (cur.isLeaf) break;
+    cur = cur.children[i];
+  }
+  return path;
+}
+
+function findNodeById(root, id) {
+  if (!root) return null;
+  if (root.id === id) return root;
+  for (const child of root.children) {
+    const found = findNodeById(child, id);
+    if (found) return found;
+  }
+  return null;
+}
+
+// ===== Silent Insert (build initial tree) =====
+function silentInsert(root, key, order) {
+  let path = [root];
+  let cur = root;
+  while (!cur.isLeaf) {
+    let i = 0;
+    while (i < cur.keys.length && key > cur.keys[i]) i++;
+    cur = cur.children[i];
+    path.push(cur);
+  }
+  insertKey(cur, key);
+
+  let current = cur;
+  let pi = path.length - 2;
+  while (current.keys.length > order - 1) {
+    const midIdx = Math.floor(order / 2);
+    const midKey = current.keys[midIdx];
+    const rightKeys = current.keys.slice(midIdx + 1);
+    const rightChildren = current.isLeaf ? [] : current.children.slice(midIdx + 1);
+    current.keys = current.keys.slice(0, midIdx);
+    if (!current.isLeaf) current.children = current.children.slice(0, midIdx + 1);
+
+    const rightNode = new BNode(rightKeys, rightChildren, current.isLeaf);
+
+    if (pi >= 0) {
+      const parent = path[pi];
+      const idx = insertKey(parent, midKey);
+      parent.children.splice(idx + 1, 0, rightNode);
+      current = parent;
+      pi--;
+    } else {
+      // 根分裂：创建新左节点，root 变成新根
+      const leftNode = new BNode([...current.keys], [...current.children], current.isLeaf);
+      root.keys = [midKey];
+      root.children = [leftNode, rightNode];
+      root.isLeaf = false;
+      path.unshift(root);
+      break;
+    }
+  }
+}
+
+// ===== Build with Snapshots =====
+function buildWithSnapshots(preset) {
+  BNode._idCounter = 0;
+  const order = S.order;
+  const root = new BNode();
+  const steps = [];
+  const snapshots = [];
+
+  for (const key of preset.initialKeys) {
+    silentInsert(root, key, order);
+  }
+  const initialTree = cloneTree(root);
+  snapshots.push(cloneTree(root));
+
+  if (S.opType === 'insert') {
+    for (let i = 0; i < preset.insertSequence.length; i++) {
+      const key = preset.insertSequence[i];
+      const path = findPath(root, key);
+
+      // search
+      steps.push({
+        type: 'search',
+        path: path.map(n => n.id),
+        targetKey: key,
+        title: `插入 ${key}：查找位置`,
+        desc: `从根节点开始，比较关键字大小，向下搜索 <code>${key}</code> 应该插入的叶子节点`,
+      });
+      snapshots.push(cloneTree(root));
+
+      // insert into leaf
+      const leaf = path[path.length - 1];
+      insertKey(leaf, key);
+      steps.push({
+        type: 'insert-leaf',
+        nodeId: leaf.id,
+        key,
+        title: `插入 ${key}：写入叶子节点`,
+        desc: `将 <code>${key}</code> 插入到叶子节点的正确位置（保持有序）`,
+      });
+      snapshots.push(cloneTree(root));
+
+      // handle overflow
+      let current = leaf;
+      let parentIdx = path.length - 2;
+
+      while (current.keys.length > order - 1) {
+        const midIdx = Math.floor(order / 2);
+        const midKey = current.keys[midIdx];
+
+        steps.push({
+          type: 'split-before',
+          nodeId: current.id,
+          midIdx,
+          midKey,
+          title: `溢出：准备分裂`,
+          desc: `节点有 ${current.keys.length} 个关键字（上限 ${order - 1}），发生溢出。中间关键字 <code>${midKey}</code> 将上移到父节点`,
+        });
+        snapshots.push(cloneTree(root));
+
+        // split
+        const rightKeys = current.keys.slice(midIdx + 1);
+        const rightChildren = current.isLeaf ? [] : current.children.slice(midIdx + 1);
+        current.keys = current.keys.slice(0, midIdx);
+        if (!current.isLeaf) current.children = current.children.slice(0, midIdx + 1);
+        const leftNodeId = current.id;
+        const rightNode = new BNode(rightKeys, rightChildren, current.isLeaf);
+
+        if (parentIdx >= 0) {
+          const parent = path[parentIdx];
+          const insertIdx = insertKey(parent, midKey);
+          parent.children.splice(insertIdx + 1, 0, rightNode);
+
+          steps.push({
+            type: 'split-after',
+            leftNodeId,
+            rightNodeId: rightNode.id,
+            parentId: parent.id,
+            midKey,
+            title: `分裂完成`,
+            desc: `<code>${midKey}</code> 上移到父节点，原节点分裂为左右两部分，各 ${midIdx} 个关键字`,
+          });
+          snapshots.push(cloneTree(root));
+
+          current = parent;
+          parentIdx--;
+        } else {
+          // root split
+          const leftNode = new BNode([...current.keys], [...current.children], current.isLeaf);
+          root.keys = [midKey];
+          root.children = [leftNode, rightNode];
+          root.isLeaf = false;
+          path.unshift(root);
+
+          steps.push({
+            type: 'split-root',
+            rootId: root.id,
+            leftNodeId: leftNode.id,
+            rightNodeId: rightNode.id,
+            midKey,
+            title: `根分裂：树高 +1`,
+            desc: `根节点溢出，创建新根 <code>${midKey}</code>，原来的根分裂为两个子节点，树高增加一层`,
+          });
+          snapshots.push(cloneTree(root));
+          break;
+        }
+      }
+
+      // insert done
+      steps.push({
+        type: 'insert-done',
+        key,
+        title: `插入 ${key} 完成 ✓`,
+        desc: `关键字 <code>${key}</code> 插入完成，所有节点均满足 B 树性质`,
+      });
+      snapshots.push(cloneTree(root));
+    }
+  } else {
+    // DELETE
+    const key = preset.deleteKey;
+    const path = findPath(root, key);
+    const node = path[path.length - 1];
+    const keyIdx = node.keys.indexOf(key);
+
+    if (keyIdx === -1) {
+      steps.push({
+        type: 'not-found',
+        key,
+        title: '未找到',
+        desc: `关键字 <code>${key}</code> 不存在于树中`,
+      });
+      snapshots.push(cloneTree(root));
+      return { steps, snapshots, initialTree };
+    }
+
+    // search step
+    steps.push({
+      type: 'search-delete',
+      path: path.map(n => n.id),
+      targetKey: key,
+      title: `删除 ${key}：查找位置`,
+      desc: `从根节点向下搜索，找到关键字 <code>${key}</code> 所在的节点`,
+    });
+    snapshots.push(cloneTree(root));
+
+    let leafNode, leafIdx, leafPath;
+
+    if (!node.isLeaf) {
+      // internal node: find successor
+      const succPath = [...path];
+      let cur = node.children[keyIdx + 1];
+      succPath.push(cur);
+      while (!cur.isLeaf) {
+        cur = cur.children[0];
+        succPath.push(cur);
+      }
+      const succLeaf = succPath[succPath.length - 1];
+      const succKey = succLeaf.keys[0];
+
+      steps.push({
+        type: 'replace-with-successor',
+        nodeId: node.id,
+        keyIdx,
+        succNodeId: succLeaf.id,
+        oldKey: key,
+        newKey: succKey,
+        title: '内部节点删除：后继替换',
+        desc: `关键字 <code>${key}</code> 在内部节点，用其后继 <code>${succKey}</code>（右子树最左关键字）替换，转而删除叶子节点中的 <code>${succKey}</code>`,
+      });
+
+      node.keys[keyIdx] = succKey;
+      snapshots.push(cloneTree(root));
+
+      leafNode = succLeaf;
+      leafIdx = 0;
+      leafPath = succPath;
+    } else {
+      leafNode = node;
+      leafIdx = keyIdx;
+      leafPath = path;
+    }
+
+    const delVal = leafNode.keys[leafIdx];
+    steps.push({
+      type: 'delete-leaf',
+      nodeId: leafNode.id,
+      key: delVal,
+      keyIdx: leafIdx,
+      title: '从叶子节点删除',
+      desc: `从叶子节点删除关键字 <code>${delVal}</code>`,
+    });
+    leafNode.keys.splice(leafIdx, 1);
+    snapshots.push(cloneTree(root));
+
+    handleUnderflow(leafNode, leafPath, leafPath.length - 2, order, steps, snapshots);
+
+    steps.push({
+      type: 'delete-done',
+      key,
+      title: `删除 ${key} 完成 ✓`,
+      desc: `关键字 <code>${key}</code> 删除完成，所有节点均满足 B 树性质`,
+    });
+    snapshots.push(cloneTree(root));
+
+    // 演示等价做法：直接删除（不找后继）
+    if (preset.directAlt) {
+      const altRoot = cloneTree(initialTree);
+      const altKeyIdx = altRoot.keys.indexOf(key);
+
+      steps.push({
+        type: 'alt-start',
+        nodeId: altRoot.id,
+        keyIdx: altKeyIdx,
+        key,
+        title: '另一种做法：直接删除（等价）',
+        desc: `回到初始树。不找后继，<b>直接删除</b>根结点中的 <code>${key}</code>，看看结果是否相同`,
+      });
+      snapshots.push(cloneTree(altRoot));
+
+      altRoot.keys.splice(altKeyIdx, 1);
+      steps.push({
+        type: 'alt-empty',
+        nodeId: altRoot.id,
+        key,
+        title: `直接删除 ${key}，根结点变空`,
+        desc: `根结点关键字删空，但空结点下还有左右孩子——根据必看规则，可以合并`,
+      });
+      snapshots.push(cloneTree(altRoot));
+
+      const lc = altRoot.children[0];
+      const rc = altRoot.children[1];
+      lc.keys = lc.keys.concat(rc.keys);
+      if (!lc.isLeaf) lc.children = lc.children.concat(rc.children);
+      altRoot.keys = lc.keys;
+      altRoot.children = lc.children;
+      altRoot.isLeaf = lc.isLeaf;
+
+      steps.push({
+        type: 'alt-merge',
+        nodeId: altRoot.id,
+        key,
+        title: '空根的左右孩子合并 → 结果相同 ✓',
+        desc: `空根结点的左右孩子直接合并为新根，与「找后继替换」的做法结果完全一致`,
+      });
+      snapshots.push(cloneTree(altRoot));
+    }
+  }
+
+  return { steps, snapshots, initialTree };
+}
+
+function handleUnderflow(node, path, parentIdx, order, steps, snapshots) {
+  const isRoot = parentIdx < 0;
+  const minKeys = isRoot ? 1 : Math.ceil(order / 2) - 1;
+
+  if (isRoot) {
+    if (node.isLeaf) return; // root leaf is fine even with 0
+    if (node.keys.length === 0) {
+      const onlyChild = node.children[0];
+      steps.push({
+        type: 'root-collapse',
+        oldRootId: node.id,
+        newRootId: onlyChild.id,
+        title: '根节点收缩，树高 -1',
+        desc: `根节点关键字数变为 0，唯一的子节点成为新的根节点，树高降低一层`,
+      });
+      path[0].keys = onlyChild.keys;
+      path[0].children = onlyChild.children;
+      path[0].isLeaf = onlyChild.isLeaf;
+      snapshots.push(cloneTree(path[0]));
+      return;
+    }
+    return;
+  }
+
+  if (node.keys.length >= minKeys) {
+    steps.push({
+      type: 'delete-ok',
+      nodeId: node.id,
+      title: '直接删除，无需调整',
+      desc: `删除后仍有 <b>${node.keys.length}</b> 个关键字（≥ 最少 ${minKeys} 个），满足 B 树性质，无需调整`,
+    });
+    snapshots.push(cloneTree(path[0]));
+    return;
+  }
+
+  // underflow
+  const parent = path[parentIdx];
+  const nodeIdx = parent.children.indexOf(node);
+  const rightSib = nodeIdx < parent.children.length - 1 ? parent.children[nodeIdx + 1] : null;
+  const leftSib = nodeIdx > 0 ? parent.children[nodeIdx - 1] : null;
+
+  // borrow from right first
+  if (rightSib && rightSib.keys.length > minKeys) {
+    steps.push({
+      type: 'borrow-right-before',
+      nodeId: node.id,
+      siblingId: rightSib.id,
+      parentId: parent.id,
+      title: '下溢：借右兄弟',
+      desc: `节点下溢（只有 ${node.keys.length} 个，最少需 ${minKeys} 个）。右兄弟有 ${rightSib.keys.length} 个，可以借。<br><b>借父当子，借兄当父</b>：父关键字 <code>${parent.keys[nodeIdx]}</code> 下移到当前节点，右兄弟第一个关键字上移到父`,
+    });
+    snapshots.push(cloneTree(path[0]));
+
+    node.keys.push(parent.keys[nodeIdx]);
+    parent.keys[nodeIdx] = rightSib.keys[0];
+    rightSib.keys.shift();
+    if (!rightSib.isLeaf) {
+      node.children.push(rightSib.children[0]);
+      rightSib.children.shift();
+    }
+
+    steps.push({
+      type: 'borrow-right-after',
+      nodeId: node.id,
+      siblingId: rightSib.id,
+      parentId: parent.id,
+      title: '借右兄弟完成 ✓',
+      desc: `借用完成。当前节点有 ${node.keys.length} 个关键字，右兄弟剩 ${rightSib.keys.length} 个（仍 ≥ ${minKeys}）`,
+    });
+    snapshots.push(cloneTree(path[0]));
+    return;
+  }
+
+  // borrow from left
+  if (leftSib && leftSib.keys.length > minKeys) {
+    steps.push({
+      type: 'borrow-left-before',
+      nodeId: node.id,
+      siblingId: leftSib.id,
+      parentId: parent.id,
+      title: '下溢：借左兄弟',
+      desc: `右兄弟不够借${rightSib ? `（只有 ${rightSib.keys.length} 个）` : '（不存在）'}。左兄弟有 ${leftSib.keys.length} 个，可以借。<br><b>借父当子，借兄当父</b>：父关键字 <code>${parent.keys[nodeIdx - 1]}</code> 下移，左兄弟最后一个关键字上移到父`,
+    });
+    snapshots.push(cloneTree(path[0]));
+
+    node.keys.unshift(parent.keys[nodeIdx - 1]);
+    parent.keys[nodeIdx - 1] = leftSib.keys[leftSib.keys.length - 1];
+    leftSib.keys.pop();
+    if (!leftSib.isLeaf) {
+      node.children.unshift(leftSib.children[leftSib.children.length - 1]);
+      leftSib.children.pop();
+    }
+
+    steps.push({
+      type: 'borrow-left-after',
+      nodeId: node.id,
+      siblingId: leftSib.id,
+      parentId: parent.id,
+      title: '借左兄弟完成 ✓',
+      desc: `借用完成。当前节点有 ${node.keys.length} 个关键字，左兄弟剩 ${leftSib.keys.length} 个（仍 ≥ ${minKeys}）`,
+    });
+    snapshots.push(cloneTree(path[0]));
+    return;
+  }
+
+  // merge with right
+  if (rightSib) {
+    steps.push({
+      type: 'merge-right-before',
+      leftId: node.id,
+      rightId: rightSib.id,
+      parentId: parent.id,
+      title: '下溢：与右兄弟合并',
+      desc: `左右兄弟都不够借（右兄弟只有 ${rightSib.keys.length} 个），需要合并。<br>将父关键字 <code>${parent.keys[nodeIdx]}</code> 下移，与当前节点和右兄弟合并为一个节点`,
+    });
+    snapshots.push(cloneTree(path[0]));
+
+    node.keys.push(parent.keys[nodeIdx]);
+    node.keys = node.keys.concat(rightSib.keys);
+    if (!node.isLeaf) {
+      node.children = node.children.concat(rightSib.children);
+    }
+    parent.keys.splice(nodeIdx, 1);
+    parent.children.splice(nodeIdx + 1, 1);
+
+    steps.push({
+      type: 'merge-right-after',
+      mergedId: node.id,
+      parentId: parent.id,
+      title: '合并完成',
+      desc: `合并完成，新节点有 ${node.keys.length} 个关键字。父节点失去一个关键字，继续向上检查`,
+    });
+    snapshots.push(cloneTree(path[0]));
+
+  } else if (leftSib) {
+    steps.push({
+      type: 'merge-left-before',
+      leftId: leftSib.id,
+      rightId: node.id,
+      parentId: parent.id,
+      title: '下溢：与左兄弟合并',
+      desc: `右兄弟不存在，与左兄弟合并。<br>将父关键字 <code>${parent.keys[nodeIdx - 1]}</code> 下移，与左兄弟和当前节点合并`,
+    });
+    snapshots.push(cloneTree(path[0]));
+
+    leftSib.keys.push(parent.keys[nodeIdx - 1]);
+    leftSib.keys = leftSib.keys.concat(node.keys);
+    if (!leftSib.isLeaf) {
+      leftSib.children = leftSib.children.concat(node.children);
+    }
+    parent.keys.splice(nodeIdx - 1, 1);
+    parent.children.splice(nodeIdx, 1);
+
+    steps.push({
+      type: 'merge-left-after',
+      mergedId: leftSib.id,
+      parentId: parent.id,
+      title: '合并完成',
+      desc: `合并完成，新节点有 ${leftSib.keys.length} 个关键字。父节点失去一个关键字，继续向上检查`,
+    });
+    snapshots.push(cloneTree(path[0]));
+  }
+
+  // recursive check parent
+  handleUnderflow(parent, path, parentIdx - 1, order, steps, snapshots);
+}
+
+// ===== Layout =====
+function layoutTree(root, width, height) {
+  if (!root) return;
+  const levels = [];
+  function collectLevel(node, depth) {
+    if (!levels[depth]) levels[depth] = [];
+    levels[depth].push(node);
+    if (!node.isLeaf) {
+      for (const child of node.children) collectLevel(child, depth + 1);
+    }
+  }
+  collectLevel(root, 0);
+
+  const numLevels = levels.length;
+
+  // 根据画布大小自适应节点尺寸（预留图例与字幕的实际占用）
+  const baseCellW = 40;
+  const baseNodeH = 40;
+  const baseLevelGap = 60; // 层间距（节点底部到下一层节点顶部）
+
+  const legendFloat0 = document.querySelector('.legend-float');
+  const stepOverlay0 = document.getElementById('stepOverlay');
+  const reservedTop0 = legendFloat0 ? legendFloat0.offsetHeight + 16 : 44;
+  const reservedBottom0 = stepOverlay0 ? stepOverlay0.offsetHeight + 24 : 72;
+  const availH = height - reservedTop0 - reservedBottom0;
+
+  // 计算可用空间能放多大
+  const totalHeightNeeded = numLevels * baseNodeH + (numLevels - 1) * baseLevelGap;
+  const heightScale = Math.min(1.5, Math.max(0.55, availH / (totalHeightNeeded + 40)));
+
+  const cellW0 = Math.round(baseCellW * heightScale);
+  const nodeH0 = Math.round(baseNodeH * heightScale);
+  const minGap0 = Math.max(6, Math.round(20 * heightScale));
+
+  // 水平缩放：估算叶子层总宽度，超出画布时等比缩小节点
+  const leafNodes0 = levels[numLevels - 1];
+  let estLeafWidth = 0;
+  for (const n of leafNodes0) estLeafWidth += n.keys.length * cellW0 + 20 * heightScale;
+  estLeafWidth += minGap0 * (leafNodes0.length - 1);
+  const widthScale = Math.min(1, (width - 40) / Math.max(1, estLeafWidth));
+  const scale = heightScale * widthScale;
+
+  const cellW = Math.max(16, Math.round(baseCellW * scale));
+  const nodeH = Math.max(16, Math.round(baseNodeH * scale));
+  const levelGap = Math.round(baseLevelGap * scale);
+  const levelHeight = nodeH + levelGap;
+
+  // 保存节点尺寸供绘制使用
+  S._cellW = cellW;
+  S._nodeH = nodeH;
+
+  const leafLevel = numLevels - 1;
+  const leafNodes = levels[leafLevel];
+
+  // 计算所有叶子节点的总宽度 + 间距
+  const minGap = Math.max(4, 20 * scale); // 叶子之间最小间距
+  let totalLeafWidth = 0;
+  for (const n of leafNodes) {
+    n.width = computeNodeWidth(n, cellW);
+    totalLeafWidth += n.width;
+  }
+  totalLeafWidth += minGap * (leafNodes.length - 1);
+
+  // 如果总宽度 < 画布宽度，均匀展开
+  let startX, gap;
+  if (totalLeafWidth < width - 60) {
+    const available = width - 60 - totalLeafWidth;
+    gap = minGap + available / (leafNodes.length + 1);
+    startX = 30 + gap;
+  } else {
+    gap = minGap;
+    startX = 30;
+  }
+
+  let curX = startX;
+  for (let i = 0; i < leafNodes.length; i++) {
+    leafNodes[i].x = curX + leafNodes[i].width / 2;
+    leafNodes[i].y = leafLevel * levelHeight + nodeH / 2;
+    curX += leafNodes[i].width + gap;
+  }
+
+  // 非叶子节点居中于子节点
+  for (let d = leafLevel - 1; d >= 0; d--) {
+    for (const node of levels[d]) {
+      node.width = computeNodeWidth(node, cellW);
+      const leftChild = node.children[0];
+      const rightChild = node.children[node.children.length - 1];
+      node.x = (leftChild.x + rightChild.x) / 2;
+      node.y = d * levelHeight + nodeH / 2;
+    }
+  }
+
+  // 整体水平居中
+  const allNodes = levels.flat();
+  let minX = Infinity, maxX = -Infinity;
+  for (const n of allNodes) {
+    minX = Math.min(minX, n.x - n.width / 2);
+    maxX = Math.max(maxX, n.x + n.width / 2);
+  }
+  const treeWidth = maxX - minX;
+  if (treeWidth < width) {
+    const offset = (width - treeWidth) / 2 - minX;
+    for (const n of allNodes) n.x += offset;
+  } else {
+    // 超宽时贴左边留 8px，避免右侧截断
+    const offset = -minX + 8;
+    for (const n of allNodes) n.x += offset;
+  }
+
+  // 整体垂直居中（顶部预留图例、底部预留字幕浮层的实际高度）
+  const legendFloat = document.querySelector('.legend-float');
+  const reservedTop = legendFloat ? legendFloat.offsetHeight + 16 : 44;
+  const stepOverlay = document.getElementById('stepOverlay');
+  const reservedBottom = stepOverlay ? stepOverlay.offsetHeight + 24 : 72;
+  const usableHeight = height - reservedTop - reservedBottom;
+  const treeHeight = numLevels * nodeH + (numLevels - 1) * levelGap;
+  if (treeHeight < usableHeight - 20) {
+    const yOffset = reservedTop + (usableHeight - treeHeight) / 2 - (allNodes[0].y - nodeH / 2);
+    for (const n of allNodes) n.y += yOffset;
+  } else {
+    // 空间不够时也要保证树从图例下方开始，宁可底部被裁也不与图例重叠
+    const yOffset = reservedTop - (allNodes[0].y - nodeH / 2);
+    for (const n of allNodes) n.y += yOffset;
+  }
+}
+
+function computeNodeWidth(node, cellW) {
+  cellW = cellW || 40;
+  const pad = 10 * (cellW / 40);
+  return node.keys.length * cellW + pad * 2;
+}
+
+// ===== Rendering =====
+function resizeCanvas() {
+  const wrap = canvas.parentElement;
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = wrap.clientWidth * dpr;
+  canvas.height = wrap.clientHeight * dpr;
+  canvas.style.width = wrap.clientWidth + 'px';
+  canvas.style.height = wrap.clientHeight + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+
+function getCssVar(name) {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+
+function render() {
+  const w = canvas.width / (window.devicePixelRatio || 1);
+  const h = canvas.height / (window.devicePixelRatio || 1);
+  ctx.clearRect(0, 0, w, h);
+  if (!S.tree) return;
+  layoutTree(S.tree, w, h);
+  drawNode(S.tree);
+}
+
+function drawNode(node) {
+  const cellW = S._cellW || 40;
+  const nodeH = S._nodeH || 40;
+  const pad = 10 * (cellW / 40);
+  const fontSize = Math.round(15 * (cellW / 40));
+
+  if (!node.isLeaf) {
+    for (const child of node.children) {
+      ctx.beginPath();
+      ctx.moveTo(node.x, node.y + nodeH / 2);
+      ctx.lineTo(child.x, child.y - nodeH / 2);
+      ctx.strokeStyle = getCssVar('--border');
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      drawNode(child);
+    }
+  }
+
+  const highlight = getNodeHighlight(node.id);
+  const totalWidth = node.width;
+  const x = node.x - totalWidth / 2;
+  const y = node.y - nodeH / 2;
+
+  let bgColor = getCssVar('--surface');
+  let borderColor = getCssVar('--border');
+
+  if (highlight === 'active') {
+    bgColor = getCssVar('--primary-soft');
+    borderColor = getCssVar('--primary');
+  } else if (highlight === 'split') {
+    bgColor = '#fff3bf';
+    borderColor = getCssVar('--warning');
+  } else if (highlight === 'merge') {
+    bgColor = '#fff3bf';
+    borderColor = getCssVar('--warning');
+  } else if (highlight === 'borrow') {
+    bgColor = '#d3f9d8';
+    borderColor = getCssVar('--success');
+  } else if (highlight === 'successor') {
+    bgColor = '#e5dbff';
+    borderColor = getCssVar('--info');
+  }
+
+  roundRect(x, y, totalWidth, nodeH, 6);
+  ctx.fillStyle = bgColor;
+  ctx.fill();
+  ctx.strokeStyle = borderColor;
+  ctx.lineWidth = 2.5;
+  ctx.stroke();
+
+  const textColor = getCssVar('--text');
+  ctx.font = `bold ${fontSize}px -apple-system, sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
+  for (let i = 0; i < node.keys.length; i++) {
+    const cellX = x + pad + i * cellW;
+    const kx = cellX + cellW / 2;
+    const ky = y + nodeH / 2;
+
+    const keyHl = getKeyHighlight(node.id, i);
+    if (keyHl === 'new') {
+      ctx.fillStyle = '#d3f9d8';
+      roundRect(cellX, y + 3, cellW, nodeH - 6, 4);
+      ctx.fill();
+    } else if (keyHl === 'delete') {
+      ctx.fillStyle = '#ffe3e3';
+      roundRect(cellX, y + 3, cellW, nodeH - 6, 4);
+      ctx.fill();
+    } else if (keyHl === 'mid') {
+      ctx.fillStyle = '#fff3bf';
+      roundRect(cellX, y + 3, cellW, nodeH - 6, 4);
+      ctx.fill();
+    } else if (keyHl === 'replace') {
+      ctx.fillStyle = '#e5dbff';
+      roundRect(cellX, y + 3, cellW, nodeH - 6, 4);
+      ctx.fill();
+    }
+
+    ctx.fillStyle = textColor;
+    ctx.fillText(node.keys[i], kx, ky);
+
+    // 分割线
+    if (i < node.keys.length - 1) {
+      const lx = cellX + cellW;
+      ctx.beginPath();
+      ctx.moveTo(lx, y + 4);
+      ctx.lineTo(lx, y + nodeH - 4);
+      ctx.strokeStyle = getCssVar('--border');
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+  }
+}
+
+function roundRect(x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
+function getNodeHighlight(nodeId) {
+  const h = S.highlights;
+  if (!h) return null;
+  if (h.activeNodes && h.activeNodes.includes(nodeId)) return 'active';
+  if (h.splitNodes && h.splitNodes.includes(nodeId)) return 'split';
+  if (h.mergeNodes && h.mergeNodes.includes(nodeId)) return 'merge';
+  if (h.borrowNodes && h.borrowNodes.includes(nodeId)) return 'borrow';
+  if (h.successorNode === nodeId) return 'successor';
+  return null;
+}
+function getKeyHighlight(nodeId, keyIdx) {
+  const h = S.highlights;
+  if (!h) return null;
+  if (h.newKey && h.newKey.nodeId === nodeId && h.newKey.idx === keyIdx) return 'new';
+  if (h.delKey && h.delKey.nodeId === nodeId && h.delKey.idx === keyIdx) return 'delete';
+  if (h.midKey && h.midKey.nodeId === nodeId && h.midKey.idx === keyIdx) return 'mid';
+  if (h.replaceKey && h.replaceKey.nodeId === nodeId && h.replaceKey.idx === keyIdx) return 'replace';
+  return null;
+}
+
+function findKeyPos(root, nodeId, key) {
+  const node = findNodeById(root, nodeId);
+  if (!node) return null;
+  const idx = node.keys.indexOf(key);
+  return idx >= 0 ? { nodeId, idx } : null;
+}
+
+// ===== Apply Step =====
+function applyStep(idx) {
+  if (idx < 0 || idx >= S.steps.length) return;
+  // snapshots[0] 是初始状态，snapshots[1] 对应 step 0，以此类推
+  S.tree = cloneTree(S.snapshots[idx + 1]);
+  S.highlights = {};
+  applyHighlights(S.steps[idx]);
+  updateStepBar(idx);
+  render();
+}
+
+function applyHighlights(step) {
+  const h = {};
+  S.highlights = h;
+
+  switch (step.type) {
+    case 'search':
+    case 'search-delete':
+      h.activeNodes = step.path;
+      break;
+    case 'insert-leaf':
+      h.activeNodes = [step.nodeId];
+      h.newKey = findKeyPos(S.tree, step.nodeId, step.key);
+      break;
+    case 'split-before':
+      h.splitNodes = [step.nodeId];
+      h.midKey = { nodeId: step.nodeId, idx: step.midIdx };
+      break;
+    case 'split-after':
+      h.activeNodes = [step.parentId];
+      h.splitNodes = [step.leftNodeId, step.rightNodeId];
+      break;
+    case 'split-root':
+      h.activeNodes = [step.rootId];
+      h.splitNodes = [step.leftNodeId, step.rightNodeId];
+      break;
+    case 'insert-done':
+      break;
+    case 'replace-with-successor':
+      h.activeNodes = [step.nodeId];
+      h.replaceKey = { nodeId: step.nodeId, idx: step.keyIdx };
+      h.successorNode = step.succNodeId;
+      break;
+    case 'delete-leaf':
+      h.activeNodes = [step.nodeId];
+      h.delKey = { nodeId: step.nodeId, idx: step.keyIdx };
+      break;
+    case 'delete-ok':
+      h.activeNodes = [step.nodeId];
+      break;
+    case 'borrow-right-before':
+    case 'borrow-right-after':
+      h.borrowNodes = [step.nodeId, step.siblingId];
+      h.activeNodes = [step.parentId];
+      break;
+    case 'borrow-left-before':
+    case 'borrow-left-after':
+      h.borrowNodes = [step.nodeId, step.siblingId];
+      h.activeNodes = [step.parentId];
+      break;
+    case 'merge-right-before':
+    case 'merge-left-before':
+      h.mergeNodes = [step.leftId, step.rightId];
+      h.activeNodes = [step.parentId];
+      break;
+    case 'merge-right-after':
+    case 'merge-left-after':
+      h.mergeNodes = [step.mergedId];
+      h.activeNodes = [step.parentId];
+      break;
+    case 'root-collapse':
+      h.activeNodes = [step.newRootId];
+      break;
+    case 'delete-done':
+      break;
+    case 'alt-start':
+      h.delKey = { nodeId: step.nodeId, idx: step.keyIdx };
+      break;
+    case 'alt-empty':
+      h.mergeNodes = [step.nodeId];
+      break;
+    case 'alt-merge':
+      h.mergeNodes = [step.nodeId];
+      break;
+    case 'not-found':
+      break;
+  }
+}
+
+function updateStepBar(idx) {
+  const step = S.steps[idx];
+  if (!step) return;
+  $('overlayNum').textContent = `${idx + 1} / ${S.steps.length}`;
+  $('overlayTitle').textContent = step.title || '';
+  $('overlayDesc').innerHTML = step.desc || '';
+}
+
+function updateBTreeInfo() {
+  const m = S.order;
+  const minNonRoot = Math.ceil(m / 2) - 1;
+  const maxKeys = m - 1;
+  $('minRootKeys').textContent = '1';
+  $('maxRootKeys').textContent = maxKeys;
+  $('minKeys').textContent = minNonRoot;
+  $('maxKeys').textContent = maxKeys;
+  $('minChildren').textContent = Math.ceil(m / 2);
+  $('maxChildren').textContent = m;
+}
+
+// ===== Presets =====
+const PRESETS = {
+  3: { // 3阶
+    insert: [
+      {
+        name: '基础插入（不分裂）',
+        desc: '插入2个关键字，不触发分裂',
+        initialKeys: [],
+        insertSequence: [30, 50],
+      },
+      {
+        name: '插入触发根分裂',
+        desc: '插入第3个关键字，根节点分裂，树高+1',
+        initialKeys: [30, 50],
+        insertSequence: [20],
+      },
+      {
+        name: '连续插入多次分裂',
+        desc: '从空树开始插入 20,30,50,52,60,70,80',
+        initialKeys: [],
+        insertSequence: [20, 30, 50, 52, 60, 70, 80],
+      },
+      {
+        name: '降序插入（左斜）',
+        desc: '按 60,50,40,30,20,10 降序插入',
+        initialKeys: [],
+        insertSequence: [60, 50, 40, 30, 20, 10],
+      },
+    ],
+    delete: [
+      {
+        name: '直接删除（不调整）',
+        desc: '叶子有两个关键字，删除一个后仍满足最少要求，直接结束',
+        initialKeys: [30, 20, 50, 40],
+        deleteKey: 40,
+      },
+      {
+        name: '借右兄弟',
+        desc: '删除后下溢，右兄弟有两个关键字可借',
+        initialKeys: [30, 50, 20, 40, 80, 8, 25, 35, 45, 60, 90, 100],
+        deleteKey: 60,
+      },
+      {
+        name: '借左兄弟',
+        desc: '该节点是最右孩子，无右兄弟，左兄弟有两个关键字可借',
+        initialKeys: [40, 30, 10, 20],
+        deleteKey: 40,
+      },
+      {
+        name: '合并（兄弟不够借）',
+        desc: '左右兄弟都不够借，与右兄弟合并',
+        initialKeys: [30, 50, 20, 40, 90, 8, 25, 35, 45, 80, 100],
+        deleteKey: 80,
+      },
+      {
+        name: '合并导致根收缩',
+        desc: '叶子合并→父结点也变空再合并→根收缩，树高 -1',
+        initialKeys: [60, 40, 20, 50, 90, 70, 95],
+        deleteKey: 20,
+      },
+      {
+        name: '删除内部节点',
+        desc: '关键字在内部节点，用后继替换后从叶子删',
+        initialKeys: [30, 50, 20, 40, 80, 8, 25, 35, 45, 60, 90, 100],
+        deleteKey: 50,
+      },
+      {
+        name: '删除根唯一关键字',
+        desc: '根节点变空，子节点成为新根',
+        initialKeys: [30, 20, 50],
+        deleteKey: 30,
+        directAlt: true,
+      },
+    ],
+    special: [
+      {
+        name: '必看：空结点的合并规则',
+        desc: '结点删空 → 拉父结点关键字下来与兄弟合并；父结点也变空 → 再拉下来再合并，直至根收缩',
+        initialKeys: [50, 30, 10, 40, 80, 60, 90],
+        deleteKey: 10,
+      },
+    ],
+  },
+  5: { // 5阶
+    insert: [
+      {
+        name: '基础插入（不分裂）',
+        desc: '插入4个关键字，不触发分裂',
+        initialKeys: [],
+        insertSequence: [10, 20, 30, 40],
+      },
+      {
+        name: '插入触发根分裂',
+        desc: '插入第5个关键字，根节点分裂',
+        initialKeys: [10, 20, 30, 40],
+        insertSequence: [50],
+      },
+      {
+        name: '连续插入演示',
+        desc: '从空树插入 1~16，观察多层分裂',
+        initialKeys: [],
+        insertSequence: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
+      },
+    ],
+    delete: [
+      {
+        name: '直接删除（不调整）',
+        desc: '删除后仍满足最少关键字要求',
+        initialKeys: [10, 20, 30, 40, 50, 60, 70],
+        deleteKey: 70,
+      },
+      {
+        name: '借右兄弟',
+        desc: '删除后下溢，右兄弟有三个关键字可借',
+        initialKeys: [40, 10, 20, 50, 60, 70],
+        deleteKey: 10,
+      },
+      {
+        name: '合并 + 根收缩',
+        desc: '兄弟不够借，拉父结点关键字下来合并，根变空收缩',
+        initialKeys: [30, 10, 20, 40, 50],
+        deleteKey: 20,
+      },
+    ],
+  },
+};
+
+// ===== Controls =====
+function play() {
+  if (S.playing) return;
+  if (S.currentStep >= S.steps.length - 1) {
+    S.currentStep = -1;
+  }
+  S.playing = true;
+  $('playBtn').innerHTML = '&#10074;&#10074;';
+  tick();
+}
+function pause() {
+  S.playing = false;
+  if (S.timer) { clearTimeout(S.timer); S.timer = null; }
+  $('playBtn').innerHTML = '&#9654;';
+}
+function togglePlay() { S.playing ? pause() : play(); }
+function tick() {
+  if (!S.playing) return;
+  if (S.currentStep < S.steps.length - 1) {
+    S.currentStep++;
+    applyStep(S.currentStep);
+    S.timer = setTimeout(tick, S.animDuration / S.speed);
+  } else {
+    pause();
+  }
+}
+function stepForward() {
+  pause();
+  if (S.currentStep < S.steps.length - 1) {
+    S.currentStep++;
+    applyStep(S.currentStep);
+  }
+}
+function stepBackward() {
+  pause();
+  if (S.currentStep > 0) {
+    S.currentStep--;
+    applyStep(S.currentStep);
+  }
+}
+function reset() {
+  pause();
+  S.currentStep = -1;
+  S.tree = cloneTree(S.initialTree);
+  S.highlights = {};
+  $('overlayNum').textContent = `0 / ${S.steps.length}`;
+  $('overlayTitle').textContent = '点击播放开始';
+  $('overlayDesc').textContent = '';
+  render();
+}
+
+// ===== Load Preset =====
+function getPresetList() {
+  if (S.opType === 'special') return PRESETS[3].special;
+  return PRESETS[S.order][S.opType];
+}
+
+function loadPreset(presetIdx) {
+  pause();
+  const list = getPresetList();
+  const preset = list[presetIdx];
+  if (!preset) return;
+
+  const result = buildWithSnapshots(preset);
+  S.steps = result.steps;
+  S.snapshots = result.snapshots;
+  S.initialTree = result.initialTree;
+  S.currentStep = -1;
+  S.tree = cloneTree(S.initialTree);
+  S.highlights = {};
+
+  $('overlayNum').textContent = `0 / ${S.steps.length}`;
+  $('overlayTitle').textContent = '点击播放开始';
+  $('overlayDesc').textContent = '';
+  render();
+}
+
+function renderPresetSelect() {
+  const list = getPresetList();
+  const sel = $('presetSelect');
+  sel.innerHTML = list.map((p, i) =>
+    `<option value="${i}">${p.name}</option>`
+  ).join('');
+  sel.value = '0';
+}
+
+// ===== Init =====
+function getUrlParams() {
+  const params = new URLSearchParams(window.location.search);
+  return {
+    order: params.get('order') || '3',
+    op: params.get('op') || 'insert',
+    preset: params.get('preset'),
+    autoplay: params.get('autoplay') !== '0',
+    hideside: params.get('hideside') === '1',
+  };
+}
+
+function init() {
+  const urlParams = getUrlParams();
+
+  resizeCanvas();
+  window.addEventListener('resize', () => {
+    resizeCanvas();
+    render();
+  });
+
+  // Op type from URL
+  S.opType = urlParams.op === 'delete' ? 'delete'
+           : urlParams.op === 'special' ? 'special'
+           : 'insert';
+  if (S.opType === 'special') urlParams.order = '3';
+
+  // Order switch
+  S.order = parseInt(urlParams.order) || 3;
+  document.querySelectorAll('#orderSwitch button').forEach(btn => {
+    btn.classList.toggle('active', parseInt(btn.dataset.order) === S.order);
+    btn.addEventListener('click', () => {
+      S.order = parseInt(btn.dataset.order);
+      document.querySelectorAll('#orderSwitch button').forEach(b => b.classList.toggle('active', b === btn));
+      if (S.opType === 'special') {
+        S.opType = 'insert';
+        document.querySelectorAll('#opSwitch button').forEach(b => b.classList.toggle('active', b.dataset.op === 'insert'));
+      }
+      updateBTreeInfo();
+      renderPresetSelect();
+      loadPreset(0);
+      if (urlParams.autoplay) setTimeout(play, 300);
+    });
+  });
+
+  // Op switch
+  document.querySelectorAll('#opSwitch button').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.op === S.opType);
+    btn.addEventListener('click', () => {
+      S.opType = btn.dataset.op;
+      if (S.opType === 'special') {
+        S.order = 3;
+        document.querySelectorAll('#orderSwitch button').forEach(b => b.classList.toggle('active', parseInt(b.dataset.order) === 3));
+        updateBTreeInfo();
+      }
+      document.querySelectorAll('#opSwitch button').forEach(b => b.classList.toggle('active', b === btn));
+      renderPresetSelect();
+      loadPreset(0);
+      if (urlParams.autoplay) setTimeout(play, 300);
+    });
+  });
+
+  // Preset select
+  renderPresetSelect();
+  $('presetSelect').addEventListener('change', e => {
+    loadPreset(parseInt(e.target.value));
+    play();
+  });
+
+  // Control buttons
+  $('resetBtn').addEventListener('click', reset);
+  $('prevBtn').addEventListener('click', stepBackward);
+  $('nextBtn').addEventListener('click', stepForward);
+  $('playBtn').addEventListener('click', togglePlay);
+
+  // Speed
+  S.speed = parseFloat(urlParams.speed) || 0.5;
+  $('speedSlider').value = S.speed;
+  $('speedVal').textContent = S.speed.toFixed(1) + 'x';
+  $('speedSlider').addEventListener('input', e => {
+    S.speed = parseFloat(e.target.value);
+    $('speedVal').textContent = S.speed.toFixed(1) + 'x';
+  });
+
+  // Keyboard
+  document.addEventListener('keydown', e => {
+    if (e.target.tagName === 'SELECT') return;
+    switch (e.key) {
+      case 'ArrowLeft': stepBackward(); break;
+      case 'ArrowRight': stepForward(); break;
+      case ' ': e.preventDefault(); togglePlay(); break;
+      case 'r': case 'R': reset(); break;
+    }
+  });
+
+  // Hide side panel if requested
+  if (urlParams.hideside) {
+    document.querySelector('.side-panel').style.display = 'none';
+  }
+
+  // Update info
+  updateBTreeInfo();
+
+  // Load first preset
+  const presetIdx = urlParams.preset !== null ? parseInt(urlParams.preset) : 0;
+  loadPreset(presetIdx);
+
+  // Autoplay
+  if (urlParams.autoplay) {
+    setTimeout(play, 400);
+  }
+
+  // Theme sync
+  window.addEventListener('message', e => {
+    if (e.data?.type === 'viz-theme') {
+      if (e.data.dark) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+      render();
+    }
+  });
+}
+
+init();
+</script>
+</body>
+</html>
