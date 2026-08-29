@@ -31,7 +31,6 @@ tags:
   :height="720"
   :collapsed="true"
   show-source
-  download="timeline.html"
   source-href="https://web.lonemonk.xyz/article/5"
 />
 
@@ -55,7 +54,6 @@ tags:
   :height="620"
   :collapsed="true"
   show-source
-  download="login-slide.html"
   source-href="https://web.lonemonk.xyz/article/5"
 />
 
