@@ -1,0 +1,322 @@
+<!--
+    滚动时间线（Timeline）效果演示
+    - 页面整体是一个时间线：中间一条竖线，年份卡片左右交替排列
+    - 滚动页面时，进入视口中心的卡片"激活"：由模糊变清晰，并在竖线另一侧显示书名
+    - 同时页面全屏背景图切换为当前激活卡片内的图片
+    - 纯原生 HTML + CSS + JS 实现，不依赖任何框架
+-->
+<!DOCTYPE html>
+
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Copy From:山羊の前端小窝</title>
+        <style>
+            /* ===== 基础重置：清除所有元素的默认内外边距 ===== */
+            *{
+              padding: 0;
+              margin: 0;
+            }
+            /* 页面底色：内容不足一屏时，外壳外的区域不会露出白底 */
+            html, body {
+                background: #333;
+            }
+            /* ===== 页面外壳 .shell =====
+               背景图由 JS 动态设置为当前激活卡片的图片：
+               - background-attachment: fixed 背景固定不随滚动移动
+               - background-size: cover 图片铺满整个容器
+               - min-height: 100vh 保证至少撑满一屏 */
+             .shell{
+                width: 100%;
+                min-height: 100vh;
+                position: relative;
+                padding: 80px 0;
+                transition: 0.3s ease 0s;
+                background-attachment: fixed;
+                background-size: cover;
+                background-position: center;
+                background-repeat: no-repeat;
+             }
+             /* 外壳上的暗色蒙层：压暗背景图，保证白色文字清晰可读 */
+             .shell:before{
+                content: "";
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.3);
+             }
+             /* ===== 顶部标题区 ===== */
+             .header{
+                width: 100%;
+                text-align: center;
+                margin-bottom: 80px;
+                position: relative;   /* 抬到蒙层之上 */
+             }
+             .title{
+                font-size: 46px;
+                font-weight: normal;
+                margin: 0;
+                color: #fff;
+             }
+             /* ===== 时间线容器：所有卡片 .item 必须放在同一个 .timeline 内 =====
+               - flex 纵向排列，子项靠 :nth-child(even) 左右交替
+               - 注意：拆成多个 .timeline 会导致交替失效 */
+             .timeline{
+                position: relative;
+                display: flex;
+                margin: 0 auto;
+                flex-wrap: wrap;
+                flex-direction: column;
+                max-width: 700px;   /* 时间线整体最大宽度，居中显示 */
+             }
+             /* 卡片内的大年份标题（如 2002） */
+             .content-title{
+                font-size: 66px;
+                font-weight: normal;
+                margin: -10px 0 0 0;
+                transition: 0.4s;       /* 激活时 margin 变化带过渡动画 */
+                padding: 0 10px;
+                box-sizing: border-box;
+                color: #fff;
+             }
+             /* 卡片内的描述段落 */
+             .content-desc{
+                font-size: 15px;
+                box-sizing: border-box;
+                margin: 0;
+                color: rgba(255, 255, 255, 0.7);
+                line-height: 25px;
+             }
+             /* 时间线中间的竖线：用伪元素画在容器正中央 */
+             .timeline:before{
+                position: absolute;
+                left: 50%;
+                width: 2px;
+                height: 100%;
+                margin-left: -1px;     /* 向左回退半个线宽，保证视觉居中 */
+                content: "";
+                background: rgba(255, 255, 255, 0.07);
+             }
+             /* ===== 单个时间线卡片 .item（未激活的默认状态）=====
+               - width: calc(50% - 40px) 占一半宽度，给中间竖线和侧标题留空隙
+               - 默认半透明 + 模糊 + 下移，激活后由 .item--active 恢复 */
+             .item{
+                position: relative;
+                width: calc(50% - 40px);
+                transform: translateY(-80px);
+                padding: 40px 0;
+                opacity: 0.3;
+                filter: blur(2px);
+                transition: 0.5s;      /* 激活/失活的过渡动画 */
+                display: flex;
+                box-sizing: border-box;
+             }
+             /* 卡片侧边的书名标题：
+               content: attr(data-text) 直接读取 HTML 上 data-text 属性的文字
+               默认藏在竖线另一侧（right 定位到左侧卡片的右边外面），opacity:0 不可见 */
+             .item:before{
+                content: attr(data-text);
+                letter-spacing: 3px;
+                width: 100%;
+                position: absolute;
+                color: rgba(255, 255, 255, 0.5);
+                font-size: 13px;
+                border-left: 2px solid rgba(255, 255, 255, 0.5);
+                top: 70%;
+                margin-top: -5px;
+                padding-left: 15px;
+                opacity: 0;
+                right: calc(-100% - 56px);
+                font: 900 20px '';
+                letter-spacing: 5px;
+             }
+             /* 偶数卡片排到右侧（flex 交叉轴末端对齐） */
+             .item:nth-child(even){
+                align-self: flex-end;
+             }
+             /* 偶数卡片的侧标题镜像到左侧：文字右对齐、竖线改在右边 */
+             .item:nth-child(even):before{
+                right: auto;
+                text-align: right;
+                left: calc(-100% - 56px);
+                padding-left: 0;
+                border-left: none;
+                border-right: 2px solid rgba(255, 255, 255, 0.5);
+                padding-right: 15px;
+             }
+             /* ===== 激活状态 .item--active（由 JS 滚动时动态添加/移除）===== */
+             /* 卡片恢复清晰、回到原位 */
+             .item--active{
+                opacity: 1;
+                transform: translateY(0);
+                filter: blur(0px);
+             }
+             /* 侧标题淡入并移动到垂直居中位置 */
+             .item--active:before{
+                top: 50%;
+                transition: 0.3s all 0.2s;
+                opacity: 1;
+             }
+             /* 激活时大年份上移，与图片产生叠压效果 */
+             .item--active .content-title{
+                margin: -50px 0 20px 0;
+             }
+             /* 卡片内图片：宽度自适应，带投影 */
+             .img{
+                max-width: 100%;
+                box-shadow: 0 10px 15px rgba(0, 0, 0, 0.4);
+             }
+             /* 顶部副标题（BILIBILI） */
+             .subtitle{
+                color: rgba(255, 255, 255, 0.5);
+                font-size: 15px;
+                margin: 10px 0 0 0;
+                letter-spacing: 5px;
+                font-weight: normal;
+             }
+             /* 页脚（当前页面未使用，保留备用） */
+             .footer{
+                padding: 95px 0;
+                text-align: center;
+             }
+             .footer a{
+                color: #999;
+                display: inline-block;
+             }
+             /* ===== 移动端适配（宽度 ≤ 768px）=====
+               卡片改为单列全宽、靠左排列，侧标题竖线统一收起到左侧 */
+             @media only screen and (max-width: 768px) {
+                .item{
+                    align-self: baseline !important;
+                    width: 100%;
+                    padding: 0 30px 150px 80px;
+                }
+                .item:before{
+                    left: 10px !important;
+                    padding: 0 !important;
+                    top: 50%;
+                    text-align: center !important;
+                    width: 60px;
+                    border: none !important;
+                }
+                .item:last-child{
+                    padding-bottom: 40px;
+                }
+             }
+             /* 移动端：时间线竖线从中间移到左侧 40px 处 */
+             @media only screen and (max-width: 768px) {
+                .timeline:before{
+                    left: 40px;
+                }
+             }
+
+
+        </style>
+    </head>
+    <body>
+        <!-- #shell：页面外壳，全屏背景图就挂在这个元素上（由 JS 动态切换） -->
+        <div class="shell" id="shell">
+            <!-- 顶部标题区 -->
+            <div class="header">
+                <h2 class="title">响应式滚动时间线效果演示</h2>
+                <h3 class="subtitle">BILIBILI</h3>
+            </div>
+            <!-- 时间线容器：所有卡片都放在这一个容器内，才能左右交替 -->
+            <div class="timeline">
+                <!-- 单个时间线卡片：
+                     data-text 属性的值会通过 CSS 的 attr() 显示为竖线另一侧的书名
+                     卡片内图片路径同时也是该卡片激活时的全屏背景图 -->
+                <div class="item" data-text="《你的孤独，虽败犹荣》">
+                    <div class="content">
+                        <img src="./img/1.jpg" alt="" class="img">
+                        <h2 class="content-title">2002</h2>
+                        <p class="content-desc">
+                            如果你停止，就是谷底。如果你还在继续，
+                            就是上坡。这是我听过关于人生低谷最好的阐述。
+                        </p>
+                    </div>
+                </div>
+                <!-- 卡片 2（偶数项，自动排到竖线右侧，书名显示在左侧） -->
+                <div class="item" data-text="《你的孤独，虽败犹荣》">
+                    <div class="content">
+                        <img src="./img/2.jpg" alt="" class="img">
+                        <h2 class="content-title">2003</h2>
+                        <p class="content-desc">
+                            如果你停止，就是谷底。如果你还在继续，
+                            就是上坡。这是我听过关于人生低谷最好的阐述。
+                        </p>
+                    </div>
+                </div>
+                <!-- 卡片 3 -->
+                <div class="item" data-text="《你的孤独，虽败犹荣》">
+                    <div class="content">
+                        <img src="./img/3.jpg" alt="" class="img">
+                        <h2 class="content-title">2004</h2>
+                        <p class="content-desc">
+                            如果你停止，就是谷底。如果你还在继续，
+                            就是上坡。这是我听过关于人生低谷最好的阐述。
+                        </p>
+                    </div>
+                </div>
+                <!-- 卡片 4 -->
+                <div class="item" data-text="《你的孤独，虽败犹荣》">
+                    <div class="content">
+                        <img src="./img/4.jpg" alt="" class="img">
+                        <h2 class="content-title">2005</h2>
+                        <p class="content-desc">
+                            如果你停止，就是谷底。如果你还在继续，
+                            就是上坡。这是我听过关于人生低谷最好的阐述。
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    <script>
+        // 立即执行函数：避免变量污染全局作用域
+        (function(){
+            var shell = document.getElementById('shell');        // 外壳元素（背景图挂在这里）
+            var items = shell.querySelectorAll('.item');          // 所有时间线卡片
+            var activeClass = 'item--active';                     // 激活状态的 class 名
+
+            // 激活指定卡片：加激活类 + 把外壳背景图换成该卡片内的图片
+            function activate(el){
+                items.forEach(function(it){ it.classList.remove(activeClass); });
+                el.classList.add(activeClass);
+                var img = el.querySelector('.img');
+                if(img){
+                    shell.style.backgroundImage = 'url(' + img.getAttribute('src') + ')';
+                }
+            }
+
+            // 滚动/缩放时计算：哪张卡片正处在视口中心，就激活它
+            function update(){
+                var scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+                var viewportCenter = scrollTop + window.innerHeight / 2;   // 视口中心线（相对文档）
+                var current = null;
+                items.forEach(function(el){
+                    // getBoundingClientRect().top 是相对视口的，加上 scrollTop 换算成相对文档
+                    var top = el.getBoundingClientRect().top + scrollTop;
+                    var bottom = top + el.offsetHeight;
+                    // 视口中心线落在该卡片范围内 → 它就是当前要激活的卡片
+                    if(viewportCenter >= top && viewportCenter < bottom){
+                        current = el;
+                    }
+                });
+                if(current) activate(current);
+            }
+
+            // 初始化：先激活第一张卡片，再绑定滚动和窗口缩放事件
+            if(items.length){
+                activate(items[0]);
+                window.addEventListener('scroll', update, { passive: true });
+                window.addEventListener('resize', update);
+                update();
+            }
+        })();
+    </script>
+    </body>
+    </html>

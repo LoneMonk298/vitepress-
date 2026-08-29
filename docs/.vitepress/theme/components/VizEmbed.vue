@@ -59,6 +59,34 @@
         <p class="viz-embed__error-path">{{ iframeSrc }}</p>
       </div>
       <p v-if="caption && !isFullscreen" class="viz-embed__caption">▲ {{ caption }}</p>
+      <!-- 源码下载 / 新窗口预览链接条（需 show-source 开启，全屏时隐藏） -->
+      <div v-if="showSource && !isFullscreen" class="viz-embed__source-bar">
+        <a
+          class="viz-embed__source-btn viz-embed__source-btn--primary"
+          :href="sourceUrl"
+          :download="downloadFile"
+        >
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+          <span>下载源码</span>
+        </a>
+        <a
+          class="viz-embed__source-btn viz-embed__source-btn--ghost"
+          :href="sourceUrl"
+          target="_blank"
+          rel="noopener"
+        >
+          <span>新窗口预览</span>
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+            <polyline points="15 3 21 3 21 9"></polyline>
+            <line x1="10" y1="14" x2="21" y2="3"></line>
+          </svg>
+        </a>
+      </div>
     </div>
   </div>
 </template>
@@ -80,6 +108,12 @@ const props = defineProps({
   title: { type: String, default: '交互式可视化' },
   /** 默认是否折叠 */
   collapsed: { type: Boolean, default: false },
+  /** 是否显示"下载源码 / 新窗口预览"链接条（默认关闭，需要时在文章中传 show-source 开启） */
+  showSource: { type: Boolean, default: false },
+  /** 源码/下载链接，默认自动指向 public/visualizers/<name>/index.html */
+  sourceHref: { type: String, default: '' },
+  /** 下载源码时保存的文件名 */
+  downloadName: { type: String, default: '' },
 })
 
 const emit = defineEmits(['expand', 'collapse', 'fullscreen-change'])
@@ -104,6 +138,12 @@ const fallbackSrc = computed(() => {
   const basePath = `${baseUrl}/visualizers/${props.name}/`
   return props.params ? `${basePath}?${props.params}` : basePath
 })
+
+/** 源码链接：未显式传入时自动指向原型 index.html */
+const sourceUrl = computed(() => props.sourceHref || `${baseUrl}/visualizers/${props.name}/index.html`)
+
+/** 下载保存的文件名：未显式传入时用 <name>.html */
+const downloadFile = computed(() => props.downloadName || `${props.name}.html`)
 
 const bodyStyle = computed(() => {
   if (collapsed.value && !isFullscreen.value) {
@@ -318,6 +358,66 @@ onBeforeUnmount(() => {
   margin: 0;
   padding: 10px 16px 14px;
   line-height: 1.5;
+}
+
+/* ===== 源码下载 / 预览链接条 ===== */
+.viz-embed__source-bar {
+  display: flex;
+  gap: 10px;
+  padding: 0 16px 16px;
+}
+
+.viz-embed__source-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease,
+    border-color 0.2s ease, color 0.2s ease, background 0.2s ease;
+}
+
+.viz-embed__source-btn svg {
+  flex-shrink: 0;
+}
+
+/* 主按钮：品牌绿渐变 + 投影 */
+.viz-embed__source-btn--primary {
+  background: linear-gradient(135deg, var(--vp-c-brand-1, #2f9e44), var(--vp-c-brand-2, #37b24d));
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(47, 158, 68, 0.25);
+}
+
+.viz-embed__source-btn--primary:hover {
+  color: #fff;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(47, 158, 68, 0.4);
+}
+
+/* 次按钮：透明底 + 描边 */
+.viz-embed__source-btn--ghost {
+  background: var(--vp-c-bg, #fff);
+  color: var(--vp-c-text-2, #495057);
+  border: 1px solid var(--vp-c-divider, #dee2e6);
+}
+
+.viz-embed__source-btn--ghost:hover {
+  color: var(--vp-c-brand-1, #2f9e44);
+  border-color: var(--vp-c-brand-1, #2f9e44);
+  background: var(--vp-c-brand-soft, #d3f9d8);
+}
+
+/* 窄屏：两个按钮上下堆叠，避免文字挤压 */
+@media (max-width: 480px) {
+  .viz-embed__source-bar {
+    flex-direction: column;
+  }
 }
 
 /* Error state */

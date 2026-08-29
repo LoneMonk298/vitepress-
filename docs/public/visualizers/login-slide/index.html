@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>登录注册界面</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: linear-gradient(200deg, #f3e7e9, #e3eeff);
+            font-family: sans-serif;
+            overflow: hidden;
+        }
+
+        .container {
+        width: 900px;
+        height: 550px;
+        background: rgba(255, 255, 255, 0.25);
+        backdrop-filter: blur(15px);
+        -webkit-backdrop-filter: blur(15px);
+        border-radius: 20px;
+        box-shadow: 0 8px 32px rgba(136, 96, 208, 0.2);
+        border: 1px solid rgba(255,255,255,0.3);
+        display: flex;
+        overflow: hidden;
+        position: relative;
+        
+        /* 加载入场动画 */
+        opacity: 0;
+        transform: translateY(40px) scale(0.95);
+        animation: pageLoad 0.9s cubic-bezier(0.25, 0.8, 0.25, 1) forwards;
+        }
+            @keyframes pageLoad {
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+        /* 左侧欢迎栏 */
+        .welcome-box {
+            width: 40%;
+            /* background: url('./img/liuhua.png') center/cover no-repeat; */
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: #fff;
+            padding: 2rem;
+            transition: transform 0.6s cubic-bezier(0.645, 0.045, 0.355, 1);
+            /* 毛玻璃基础效果 */
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            overflow: hidden;
+            opacity: 0;
+            animation: fadeInLeft 0.8s 0.3s cubic-bezier(0.25,0.8,0.25,1) forwards;
+        }
+
+        @keyframes fadeInLeft {
+                to {
+                    opacity: 1;
+                }
+            }
+        .welcome-box::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.3);
+            transition: 0.3s ease;
+        }
+        /* 鼠标跟随高亮遮罩 */
+        .welcome-box::after {
+            content: '';
+            position: absolute;
+            width: 200px;
+            height: 200px;
+            background: radial-gradient(circle, rgba(255,255,255,0.15) 0%, transparent 70%);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            z-index: 2;
+        }
+        .welcome-box:hover::after {
+            opacity: 1;
+        }
+        .welcome-box:hover::before {
+            background: rgba(0,0,0,0.15);
+        }
+        .welcome-box h2 {
+            font-size: 2.5rem;
+            letter-spacing: 2px;
+            margin-bottom: 1rem;
+            z-index: 1;
+            /* 文字跳动动画 */
+            text-shadow: 0 0 10px rgba(255, 180, 255, 0.6), 0 0 20px rgba(255,120,255,0.4);
+            animation: textBounce 2s ease-in-out infinite;
+        }
+        .welcome-box p {
+            font-size: 1rem;
+            letter-spacing: 1px;
+            text-align: center;
+            margin-bottom: 2rem;
+            z-index: 1;
+            line-height: 1.6;
+            text-shadow: 0 0 8px rgba(255,255,255,0.5);
+            animation: textBounce 2s ease-in-out infinite 0.3s;
+        }
+        .welcome-box button {
+            padding: 12px 40px;
+            border: none;
+            border-radius: 25px;
+            background: rgba(255,255,255,0.2);
+            color: #fff;
+            font-size: 1rem;
+            letter-spacing: 1px;
+            cursor: pointer;
+            backdrop-filter: blur(5px);
+            transition: 0.3s;
+            z-index: 1;
+            animation: textBounce 2s ease-in-out infinite 0.6s;
+        }
+        .welcome-box button:hover {
+            background: rgba(255,255,255,0.4);
+            transform: scale(1.05);
+        }
+        /* 右侧表单栏 */
+        .form-box {
+            width: 60%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem;
+            background: #eef5ff;
+            position: relative;
+            transition: transform 0.6s cubic-bezier(0.645, 0.045, 0.355, 1);
+            opacity: 0;
+            animation: fadeInRight 0.8s 0.5s cubic-bezier(0.25,0.8,0.25,1) forwards;
+        }
+        @keyframes fadeInRight {
+                to {
+                    opacity: 1;
+                }
+            }
+        .form-box h1 {
+            font-size: 2rem;
+            color: #7f53ac;
+            margin-bottom: 2rem;
+            letter-spacing: 2px;
+            text-align: center;
+        }
+        .input-group {
+            width: 100%;
+            margin-bottom: 1rem;
+            display: flex;
+            justify-content: center;
+        }
+        .input-group input {
+            width: 100%;
+            padding: 14px 18px;
+            border: none;
+            border-radius: 12px;
+            background: #fff;
+            font-size: 0.95rem;
+            color: #666;
+            transition: 0.3s;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .input-group input:focus {
+            background: #fff;
+            transform: translateY(-3px);
+            box-shadow: 0 3px 8px rgba(138, 180, 248, 0.2);
+            outline: none;
+        }
+        .input-group input::placeholder {
+            color: #999;
+        }
+        /* 验证码行 */
+        .captcha-group {
+            width: 100%;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            justify-content: center;
+        }
+        .captcha-group input {
+            flex: 1;
+            padding: 12px 15px;
+            border: none;
+            border-radius: 5px;
+            background: #fff;
+            transition: 0.3s;
+        }
+        .captcha-group input:focus {
+            transform: translateY(-2px);
+            box-shadow: 0 3px 8px rgba(138, 180, 248, 0.2);
+            outline: none;
+        }
+        .captcha-img {
+            padding: 10px 14px;
+            background: #eee;
+            border-radius: 12px;
+            font-size: 1.2rem;
+            letter-spacing: 3px;
+            user-select: none;
+            transition: 0.3s;
+            cursor: pointer;
+            color: #7f53ac;
+        }
+        .captcha-img:hover {
+            transform: scale(1.05);
+        }
+        .forgot-pwd {
+            width: 80%;
+            text-align: right;
+            margin-bottom: 1.5rem;
+        }
+        .forgot-pwd a {
+            color: #666;
+            font-size: 0.9rem;
+            text-decoration: none;
+        }
+        .forgot-pwd a:hover {
+            color: #333;
+        }
+        .form-box button {
+            width: 65%;
+            padding: 15px;
+            border: none;
+            border-radius: 30px;
+            background: linear-gradient(45deg, #a88beb, #f8ceec);
+            color: #fff;
+            font-size: 1rem;
+            font-weight: bold;
+            letter-spacing: 1px;
+            cursor: pointer;
+            transition: 0.3s;
+            /* 按钮居中 */
+            display: block;
+            margin: 0 auto;
+            box-shadow: 0 4px 12px rgba(168, 139, 235, 0.3);
+        }
+        .form-box button:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 6px 20px rgba(168, 139, 235, 0.4);
+            background: linear-gradient(45deg, #9575de, #f5b8e8);
+        }
+        /* 隐藏类 */
+        .hidden {
+            visibility: hidden;
+            opacity: 0;
+            position: absolute;
+            transition: opacity 0.4s ease;
+        }
+        /* 关闭按钮 */
+        .close-btn {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: #ccc;
+            color: #fff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            font-size: 1.2rem;
+            transition: 0.3s;
+        }
+        .close-btn:hover {
+            background: #999;
+            transform: rotate(90deg);
+        }
+
+        /* 切换动画样式 */
+        .container.active .welcome-box {
+            transform: translateX(150%);
+        }
+        .container.active .form-box {
+            transform: translateX(-66.666%);
+        }
+
+        /* 文字跳动动画 */
+        @keyframes textBounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+        }
+
+        /* 标题弹性跳动动画 */
+        @keyframes titleBounce {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.03); }
+        }
+
+        /* 登录成功退场动画 */
+        @keyframes pageLoadReverse {
+        0% {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+        100% {
+            opacity: 0;
+            transform: translateY(-60px) scale(0.85);
+            visibility: hidden;
+        }
+        }
+    </style>
+</head>
+<body>
+    <div id="sakura"></div>
+    <div id="stars"></div>
+    <div id="particles"></div>
+    <div class="container">
+        <!-- 左侧欢迎区域 -->
+        <div class="welcome-box">
+            <h2>HelloFriend!</h2>
+            <p id="welcome-text">点击下面按钮注册账号，一起成为linxin-blog的伙伴吧！</p>
+            <button id="side-btn">Register</button>
+        </div>
+
+        <!-- 右侧表单区域 -->
+        <div class="form-box" >
+            <div class="close-btn">×</div>
+            <!-- 登录表单 -->
+            <div class="login-box">
+                <h1>登录账号</h1>
+                <div class="input-group">
+                    <input type="text" placeholder="Account">
+                </div>
+                <div class="input-group">
+                    <input type="password" placeholder="Password">
+                </div>
+                <div class="captcha-group">
+                    <input type="text" placeholder="Verification Code">
+                    <div class="captcha-img">EHAE</div>
+                </div>
+                <button>Login</button>
+            </div>
+            <!-- 注册表单 -->
+            <div class="register-box hidden">
+                <h1>注册账号</h1>
+                <div class="input-group">
+                    <input type="text" placeholder="用户名">
+                </div>
+                <div class="input-group">
+                    <input type="email" placeholder="邮箱">
+                </div>
+                <div class="input-group">
+                    <input type="password" placeholder="密码">
+                </div>
+                <div class="input-group">
+                    <input type="password" placeholder="确认密码">
+                </div>
+                <div class="captcha-group">
+                    <input type="text" placeholder="Verification Code">
+                    <div class="captcha-img">EHAE</div>
+                </div>
+                <button>Register</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const container = document.querySelector('.container');
+        const sideBtn = document.getElementById('side-btn');
+        const welcomeText = document.getElementById('welcome-text');
+        const welcomeBox = document.querySelector('.welcome-box');
+        const loginBox = document.querySelector('.login-box');
+        const registerBox = document.querySelector('.register-box');
+
+        // 左侧鼠标跟随高亮效果
+        welcomeBox.addEventListener('mousemove', (e) => {
+            const rect = welcomeBox.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            welcomeBox.style.setProperty('--x', x + 'px');
+            welcomeBox.style.setProperty('--y', y + 'px');
+            welcomeBox.querySelector('::after').style.left = x + 'px';
+            welcomeBox.querySelector('::after').style.top = y + 'px';
+        });
+
+        // 去注册
+        function goRegister() {
+            container.classList.add('active');
+            welcomeText.textContent = '点击下面按钮登录账号，一起成为linxin-blog的伙伴吧！';
+            sideBtn.textContent = 'Login';
+            loginBox.classList.add('hidden');
+            setTimeout(() => {
+                registerBox.classList.remove('hidden');
+            }, 300);
+        }
+
+        // 去登录
+        function goLogin() {
+            container.classList.remove('active');
+            welcomeText.textContent = '点击下面按钮注册账号，一起成为linxin-blog的伙伴吧！';
+            sideBtn.textContent = 'Register';
+            registerBox.classList.add('hidden');
+            setTimeout(() => {
+                loginBox.classList.remove('hidden');
+            }, 300);
+        }
+
+        // 绑定切换按钮
+        sideBtn.addEventListener('click', () => {
+            container.classList.contains('active') ? goLogin() : goRegister();
+        });
+
+        // ==============================================
+        // 登录按钮 → 成功退场动画
+        // ==============================================
+        const loginBtn = document.querySelector('.login-box button');
+        loginBtn.addEventListener('click', function () {
+        // 添加入场相反的退场动画
+        container.style.animation = 'pageLoadReverse 0.8s cubic-bezier(0.645, 0.045, 0.355, 1) forwards';
+        
+        // 动画结束后可以在这里跳页面
+        setTimeout(() => {
+            alert('登录成功！');
+            location.href = 'index.html';
+        }, 800);
+        });
+
+        // 关闭按钮功能
+        document.querySelector('.close-btn').addEventListener('click', () => {
+            alert('关闭功能已触发');
+        });
+
+        // 验证码点击刷新
+        document.querySelectorAll('.captcha-img').forEach(item => {
+            item.addEventListener('click', () => {
+                const chars = 'ABCDEFGHJKLMNPQRSTWXY23456789';
+                let code = '';
+                for(let i=0; i<4; i++){
+                    code += chars[Math.floor(Math.random() * chars.length)];
+                }
+                item.textContent = code;
+            });
+        });
+
+        </script>
+</body>
+</html>
