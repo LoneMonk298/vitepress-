@@ -5,8 +5,15 @@
     <link>https://blog.lonemonk.xyz</link>
     <description>个人技术知识库，记录 &amp; 分享个人碎片化、结构化、体系化的技术知识内容。</description>
     <language>zh-CN</language>
-    <lastBuildDate>Fri, 28 Aug 2026 00:43:13 GMT</lastBuildDate>
+    <lastBuildDate>Sat, 29 Aug 2026 11:24:41 GMT</lastBuildDate>
     <atom:link href="https://blog.lonemonk.xyz/rss.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>HTML 原型收集</title>
+      <link>https://blog.lonemonk.xyz/categories/awesome/2026/8/29/HTML%E5%8E%9F%E5%9E%8B%E6%94%B6%E9%9B%86</link>
+      <guid isPermaLink="true">https://blog.lonemonk.xyz/categories/awesome/2026/8/29/HTML%E5%8E%9F%E5%9E%8B%E6%94%B6%E9%9B%86</guid>
+      <pubDate>Sat, 29 Aug 2026 21:00:00 GMT</pubDate>
+      <description>收集平时练习的纯 HTML/CSS/JS 原型，通过 VizEmbed 组件直接嵌入博客，方便留存与回顾。</description>
+    </item>
     <item>
       <title>408-计算机组成原理公式篇</title>
       <link>https://blog.lonemonk.xyz/categories/data-structures/2026/8/23/408-%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BB%84%E6%88%90%E5%8E%9F%E7%90%86%E5%85%AC%E5%BC%8F%E7%AF%87</link>
