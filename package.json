@@ -41,7 +41,7 @@
     "axios": "1.6.2",
     "blueimp-md5": "2.19.0",
     "dayjs": "1.11.10",
-    "fast-glob": "3.3.2",
+    "fast-glob": "^3.3.2",
     "gray-matter": "4.0.3"
   }
 }
