@@ -140,6 +140,30 @@ body {
 
 .error-msg.show { display: block; }
 
+/* 醒目提示条 */
+.tip-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #fff8e1, #fff3c4);
+  border: 1.5px solid #ffc107;
+  border-left: 4px solid #f59f00;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #664d03;
+  box-shadow: 0 1px 8px rgba(245, 159, 0, 0.12);
+}
+.tip-banner__icon {
+  font-size: 16px;
+  flex-shrink: 0;
+}
+.tip-banner strong {
+  color: #b8860b;
+}
+
 /* Step Info */
 .step-info {
   background: var(--card);
@@ -345,6 +369,10 @@ canvas {
       <button class="btn btn-primary" id="buildBtn">构建</button>
     </div>
     <div class="error-msg" id="errorMsg"></div>
+    <div class="tip-banner">
+      <span class="tip-banner__icon">💡</span>
+      <span>层次 + 中序的方法与前序 + 中序一致</span>
+    </div>
   </div>
 
   <div class="step-info">

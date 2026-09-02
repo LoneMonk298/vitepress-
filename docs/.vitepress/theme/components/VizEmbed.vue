@@ -61,26 +61,19 @@
       <p v-if="caption && !isFullscreen" class="viz-embed__caption">▲ {{ caption }}</p>
       <!-- 源码下载 / 新窗口预览链接条（需 show-source 开启，全屏时隐藏） -->
       <div v-if="showSource && !isFullscreen" class="viz-embed__source-bar">
-        <!-- 同源链接：直接下载文件；外站链接：download 无效，自动改为新窗口打开 -->
         <a
           class="viz-embed__source-btn viz-embed__source-btn--primary"
           :href="sourceUrl"
-          :download="isExternalSource ? undefined : downloadFile"
+          :download="downloadFile"
           :target="isExternalSource ? '_blank' : undefined"
           :rel="isExternalSource ? 'noopener' : undefined"
         >
-          <!-- 外站：外链图标；同源：下载图标 -->
-          <svg v-if="isExternalSource" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
-            <polyline points="15 3 21 3 21 9"></polyline>
-            <line x1="10" y1="14" x2="21" y2="3"></line>
-          </svg>
-          <svg v-else viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
             <polyline points="7 10 12 15 17 10"></polyline>
             <line x1="12" y1="15" x2="12" y2="3"></line>
           </svg>
-          <span>{{ isExternalSource ? '访问源码' : '下载源码' }}</span>
+          <span>下载源码</span>
         </a>
         <a
           class="viz-embed__source-btn viz-embed__source-btn--ghost"
@@ -154,7 +147,7 @@ const sourceUrl = computed(() => props.sourceHref || `${baseUrl}/visualizers/${p
 /** 下载保存的文件名：未显式传入时用 <name>.html */
 const downloadFile = computed(() => props.downloadName || `${props.name}.html`)
 
-/** 是否为外站链接：跨域时 download 属性无效，改为新窗口打开，避免整页跳走 */
+/** 是否为外站链接：跨域时 download 属性无效，自动改为新标签页打开 */
 const isExternalSource = computed(() => /^https?:\/\//i.test(sourceUrl.value))
 
 const bodyStyle = computed(() => {

@@ -83,6 +83,8 @@
         .welcome-box::after {
             content: '';
             position: absolute;
+            left: var(--x, 50%);
+            top: var(--y, 50%);
             width: 200px;
             height: 200px;
             background: radial-gradient(circle, rgba(255,255,255,0.15) 0%, transparent 70%);
@@ -391,8 +393,6 @@
             const y = e.clientY - rect.top;
             welcomeBox.style.setProperty('--x', x + 'px');
             welcomeBox.style.setProperty('--y', y + 'px');
-            welcomeBox.querySelector('::after').style.left = x + 'px';
-            welcomeBox.querySelector('::after').style.top = y + 'px';
         });
 
         // 去注册
