@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>平衡二叉树（AVL）插入可视化</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+:root {
+  --bg: transparent;
+  --card: #ffffff;
+  --primary: #2f9e44;
+  --primary-d: #2b8a3e;
+  --primary-soft: #d3f9d8;
+  --text: #343a40;
+  --text-2: #868e96;
+  --border: #e9ecef;
+  --shadow: 0 2px 10px rgba(0,0,0,0.07);
+  --radius: 10px;
+  --success: #40c057;
+  --warning: #fab005;
+  --danger: #fa5252;
+  --info: #228be6;
+}
+html.dark {
+  --card: #1e1e20;
+  --text: #e9ecef;
+  --text-2: #adb5bd;
+  --border: #3a3d44;
+  --shadow: 0 2px 10px rgba(0,0,0,0.3);
+  --primary-soft: rgba(47,158,68,0.2);
+}
+body {
+  background: var(--bg);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  color: var(--text);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ===== Toolbar ===== */
+.toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  padding: 8px 16px;
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+  box-shadow: var(--shadow);
+}
+.toolbar__title {
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--primary);
+  white-space: nowrap;
+}
+.select {
+  border: 1.5px solid var(--border);
+  border-radius: 6px;
+  padding: 5px 8px;
+  font-size: 13px;
+  background: var(--card);
+  color: var(--text);
+  max-width: 260px;
+  cursor: pointer;
+}
+.ctrl-group {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.ctrl-btn {
+  border: 1.5px solid var(--border);
+  background: var(--card);
+  color: var(--text);
+  border-radius: 6px;
+  min-width: 34px;
+  height: 32px;
+  padding: 0 8px;
+  font-size: 13px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all .15s;
+}
+.ctrl-btn:hover { border-color: var(--primary); color: var(--primary); }
+.ctrl-btn.play {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+.ctrl-btn.play:hover { background: var(--primary-d); }
+.speed-control {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-2);
+  margin-left: auto;
+}
+.speed-control input { width: 90px; accent-color: var(--primary); }
+.speed-value { min-width: 34px; font-weight: 600; color: var(--primary); }
+
+/* ===== Main ===== */
+.main { flex: 1; display: flex; overflow: hidden; }
+.canvas-wrap {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  background: var(--card);
+}
+canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+
+/* 画布右上角横排图例 */
+.legend-float {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  column-gap: 10px;
+  row-gap: 3px;
+  padding: 3px 8px;
+  background: var(--card);
+  opacity: .92;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 10px;
+  color: var(--text-2);
+  pointer-events: none;
+  max-width: calc(100% - 16px);
+}
+.legend-item { display: flex; align-items: center; gap: 4px; white-space: nowrap; }
+.legend-dot { width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid; flex-shrink: 0; }
+
+/* 画布底部步骤字幕 */
+.step-overlay {
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.10);
+  pointer-events: none;
+  font-size: 13px;
+  line-height: 1.45;
+}
+.step-overlay__num {
+  flex-shrink: 0;
+  background: var(--primary);
+  color: #fff;
+  padding: 1px 9px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+}
+.step-overlay__title { flex-shrink: 0; font-weight: 600; color: var(--primary-d); }
+.step-overlay__desc {
+  flex: 1; min-width: 0; color: var(--text);
+  overflow: hidden; display: -webkit-box;
+  -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+}
+.step-overlay__desc code {
+  background: var(--primary-soft);
+  padding: 0 5px; border-radius: 3px;
+  font-family: monospace; font-size: 12px;
+  color: var(--primary-d); font-weight: 600;
+}
+
+/* ===== Side Panel ===== */
+.side-panel {
+  width: 240px;
+  flex-shrink: 0;
+  border-left: 1px solid var(--border);
+  background: var(--card);
+  overflow-y: auto;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.panel-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--primary);
+  margin-bottom: 8px;
+  padding-bottom: 5px;
+  border-bottom: 2px solid var(--primary-soft);
+}
+.prop-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.prop-table th, .prop-table td {
+  border: 1px solid var(--border);
+  padding: 4px 6px;
+  text-align: center;
+}
+.prop-table th { background: var(--primary-soft); color: var(--primary-d); font-weight: 600; }
+.rot-table td:nth-child(2), .rot-table td:nth-child(3) { text-align: left; }
+.note-box {
+  font-size: 12px;
+  color: var(--text-2);
+  background: var(--primary-soft);
+  border-radius: 6px;
+  padding: 8px 10px;
+  line-height: 1.6;
+}
+.note-box strong { color: var(--primary-d); }
+
+@media (max-width: 800px) {
+  .main { flex-direction: column; }
+  .side-panel {
+    width: 100%;
+    max-height: 38%;
+    border-left: none;
+    border-top: 1px solid var(--border);
+  }
+  .speed-control { margin-left: 0; }
+}
+</style>
+</head>
+<body>
+<div class="toolbar">
+  <div class="toolbar__title">🌳 平衡二叉树（AVL）</div>
+  <select id="presetSelect" class="select"></select>
+  <div class="ctrl-group">
+    <button class="ctrl-btn" id="prevBtn" title="上一步">⏮</button>
+    <button class="ctrl-btn play" id="playBtn" title="播放/暂停">▶</button>
+    <button class="ctrl-btn" id="nextBtn" title="下一步">⏭</button>
+    <button class="ctrl-btn" id="resetBtn" title="重置">↺</button>
+  </div>
+  <div class="speed-control">
+    🐢 <input type="range" id="speedSlider" min="0.3" max="2" step="0.1" value="0.5">
+    <span class="speed-value" id="speedValue">0.5x</span>
+  </div>
+</div>
+
+<div class="main">
+  <div class="canvas-wrap">
+    <canvas id="canvas"></canvas>
+    <div class="legend-float">
+      <div class="legend-item"><div class="legend-dot" style="border-color:var(--info);background:#e7f5ff;"></div>查找路径</div>
+      <div class="legend-item"><div class="legend-dot" style="border-color:var(--success);background:#d3f9d8;"></div>新插入</div>
+      <div class="legend-item"><div class="legend-dot" style="border-color:var(--warning);background:#fff3bf;"></div>失衡节点</div>
+      <div class="legend-item"><div class="legend-dot" style="border-color:var(--danger);background:#ffe3e3;"></div>旋转</div>
+    </div>
+    <div class="step-overlay" id="stepOverlay">
+      <span class="step-overlay__num" id="overlayNum"></span>
+      <span class="step-overlay__title" id="overlayTitle"></span>
+      <span class="step-overlay__desc" id="overlayDesc"></span>
+    </div>
+  </div>
+
+  <div class="side-panel">
+    <div class="panel-section">
+      <div class="panel-title">AVL 树性质</div>
+      <table class="prop-table">
+        <tr><th>项目</th><th>内容</th></tr>
+        <tr><td>平衡因子</td><td>BF = 左子树高 − 右子树高</td></tr>
+        <tr><td>平衡条件</td><td>所有节点 |BF| ≤ 1</td></tr>
+        <tr><td>失衡判定</td><td>插入后从下往上<br>找最小不平衡子树</td></tr>
+      </table>
+    </div>
+    <div class="panel-section">
+      <div class="panel-title">四种旋转速查</div>
+      <table class="prop-table rot-table">
+        <tr><th>类型</th><th>插入位置</th><th>处理</th></tr>
+        <tr><td>LL</td><td>左孩子的左子树</td><td>右单旋</td></tr>
+        <tr><td>RR</td><td>右孩子的右子树</td><td>左单旋</td></tr>
+        <tr><td>LR</td><td>左孩子的右子树</td><td>先左旋再右旋</td></tr>
+        <tr><td>RL</td><td>右孩子的左子树</td><td>先右旋再左旋</td></tr>
+      </table>
+    </div>
+    <div class="panel-section">
+      <div class="panel-title">备注</div>
+      <div class="note-box">
+        💡 旋转只发生在<strong>最小不平衡子树</strong>上，一次旋转即可恢复整棵树的平衡；BF 数值标注在节点下方。
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const canvas = $('canvas');
+const ctx = canvas.getContext('2d');
+
+// ===== 树结构与工具 =====
+let NID = 0;
+function makeNode(v) { return { value: v, left: null, right: null, id: ++NID, h: 1 }; }
+function cloneTree(n) {
+  if (!n) return null;
+  return { value: n.value, left: cloneTree(n.left), right: cloneTree(n.right), id: n.id, h: n.h };
+}
+function height(n) { return n ? n.h : 0; }
+function bf(n) { return n ? height(n.left) - height(n.right) : 0; }
+function updAll(n) {
+  if (!n) return 0;
+  const l = updAll(n.left), r = updAll(n.right);
+  n.h = 1 + Math.max(l, r);
+  return n.h;
+}
+// spec: [value, leftSpec, rightSpec]
+function buildTree(spec) {
+  if (!spec) return null;
+  const n = makeNode(spec[0]);
+  n.left = buildTree(spec[1]);
+  n.right = buildTree(spec[2]);
+  updAll(n);
+  return n;
+}
+function rotateRight(y) {
+  const x = y.left;
+  y.left = x.right;
+  x.right = y;
+  return x;
+}
+function rotateLeft(x) {
+  const y = x.right;
+  x.right = y.left;
+  y.left = x;
+  return y;
+}
+function reattach(tree, oldNode, newSub) {
+  const stack = [tree];
+  while (stack.length) {
+    const c = stack.pop();
+    if (c.left === oldNode) { c.left = newSub; return tree; }
+    if (c.right === oldNode) { c.right = newSub; return tree; }
+    if (c.left) stack.push(c.left);
+    if (c.right) stack.push(c.right);
+  }
+  return tree;
+}
+
+// ===== 步骤生成（按手写步骤：找失衡→旋转→接回）=====
+function genInsertSteps(tree, value, steps) {
+  const path = [];
+  let cur = tree, parent = null, dir = null;
+  while (cur) {
+    if (value === cur.value) {
+      steps.push({ tree: cloneTree(tree), hl: { [cur.id]: 'path' }, title: '重复关键字',
+        desc: `${value} 已存在于树中，AVL 树不允许重复关键字` });
+      return tree;
+    }
+    dir = value < cur.value ? 'left' : 'right';
+    steps.push({ tree: cloneTree(tree), hl: { [cur.id]: 'path' }, title: '查找插入位置',
+      desc: `比较 <code>${value}</code> 与 <code>${cur.value}</code>：${value < cur.value ? '小于' : '大于'}，进入${dir === 'left' ? '左' : '右'}子树` });
+    parent = cur; path.push(cur); cur = cur[dir];
+  }
+  const nn = makeNode(value);
+  if (!parent) { tree = nn; }
+  else parent[dir] = nn;
+  updAll(tree);
+  steps.push({ tree: cloneTree(tree), hl: { [nn.id]: 'insert' }, title: '插入新节点',
+    desc: `将 <code>${value}</code> 作为 ${parent ? `${parent.value} 的${dir === 'left' ? '左' : '右'}孩子` : '根节点'}插入` });
+
+  // 步骤一：从下往上找最小不平衡子树
+  let unb = null;
+  for (let i = path.length - 1; i >= 0; i--) {
+    if (Math.abs(bf(path[i])) > 1) { unb = path[i]; break; }
+  }
+  if (!unb) {
+    steps.push({ tree: cloneTree(tree), hl: { [nn.id]: 'insert' }, title: '插入完成 ✓',
+      desc: `插入后各节点均满足 |BF| ≤ 1，树仍然平衡，<code>无需旋转</code>` });
+    return tree;
+  }
+  const b = bf(unb);
+  steps.push({ tree: cloneTree(tree), hl: { [unb.id]: 'unbalanced' }, title: '步骤一：找到最小不平衡子树',
+    desc: `从下往上检查，节点 <code>${unb.value}</code> 的 BF = ${b}（${b > 0 ? '左' : '右'}子树过高），它是<strong>最小不平衡子树</strong>的根` });
+
+  // 步骤二：确定旋转类型并恢复平衡
+  const heavyLeft = b > 1;
+  const child = heavyLeft ? unb.left : unb.right;
+  const cbf = bf(child);
+  const type = heavyLeft ? (cbf >= 0 ? 'LL' : 'LR') : (cbf <= 0 ? 'RR' : 'RL');
+
+  if (type === 'LL') {
+    const pivot = rotateRight(unb);
+    tree = (unb === tree) ? pivot : reattach(tree, unb, pivot);
+    updAll(tree);
+    steps.push({ tree: cloneTree(tree), hl: { [pivot.id]: 'rotate', [unb.id]: 'rotated' },
+      title: '步骤二：LL 型右单旋恢复平衡',
+      desc: `失衡节点 <code>${unb.value}</code> 顺时针右旋，左孩子 <code>${pivot.value}</code> 上升为新子树根` });
+  } else if (type === 'RR') {
+    const pivot = rotateLeft(unb);
+    tree = (unb === tree) ? pivot : reattach(tree, unb, pivot);
+    updAll(tree);
+    steps.push({ tree: cloneTree(tree), hl: { [pivot.id]: 'rotate', [unb.id]: 'rotated' },
+      title: '步骤二：RR 型左单旋恢复平衡',
+      desc: `失衡节点 <code>${unb.value}</code> 逆时针左旋，右孩子 <code>${pivot.value}</code> 上升为新子树根` });
+  } else if (type === 'LR') {
+    const c = unb.left;
+    const newChild = rotateLeft(c);
+    unb.left = newChild;
+    updAll(tree);
+    steps.push({ tree: cloneTree(tree), hl: { [newChild.id]: 'rotate', [c.id]: 'rotated' },
+      title: '步骤二：LR 型第一步左旋',
+      desc: `先对失衡节点的左孩子 <code>${c.value}</code> 左旋，<code>${newChild.value}</code> 上升，化 LR 为 LL` });
+    const pivot = rotateRight(unb);
+    tree = (unb === tree) ? pivot : reattach(tree, unb, pivot);
+    updAll(tree);
+    steps.push({ tree: cloneTree(tree), hl: { [pivot.id]: 'rotate' },
+      title: '步骤二：LR 型第二步右旋',
+      desc: `再对失衡节点 <code>${unb.value}</code> 右旋，<code>${pivot.value}</code> 成为新子树根` });
+  } else {
+    const c = unb.right;
+    const newChild = rotateRight(c);
+    unb.right = newChild;
+    updAll(tree);
+    steps.push({ tree: cloneTree(tree), hl: { [newChild.id]: 'rotate', [c.id]: 'rotated' },
+      title: '步骤二：RL 型第一步右旋',
+      desc: `先对失衡节点的右孩子 <code>${c.value}</code> 右旋，<code>${newChild.value}</code> 上升，化 RL 为 RR` });
+    const pivot = rotateLeft(unb);
+    tree = (unb === tree) ? pivot : reattach(tree, unb, pivot);
+    updAll(tree);
+    steps.push({ tree: cloneTree(tree), hl: { [pivot.id]: 'rotate' },
+      title: '步骤二：RL 型第二步左旋',
+      desc: `再对失衡节点 <code>${unb.value}</code> 左旋，<code>${pivot.value}</code> 成为新子树根` });
+  }
+
+  // 步骤三：接回原二叉树
+  steps.push({ tree: cloneTree(tree), hl: {}, title: '步骤三：接回原二叉树 ✓',
+    desc: `将恢复平衡后的子树接回原树，整棵树重新满足 AVL 性质（所有 |BF| ≤ 1），<code>插入结束</code>` });
+  return tree;
+}
+
+// ===== 预设示例（严格匹配手写图）=====
+const N = null;
+const PRESETS = [
+  // 手写图1：RR型（插入67）
+  { name: '手写示例1：RR 型左单旋（插67）',
+    initial: [50, [26,[21,N,N],[30,N,N]], [66,[60,N,N],[68,N,[70,N,N]]]], inserts: [67] },
+  // 手写图2：RR型（插入90，接图1结果）
+  { name: '手写示例2：RR 型左单旋（插90）',
+    initial: [50, [26,[21,N,N],[30,N,N]], [68,[66,[60,N,N],[67,N,N]],[70,N,N]]], inserts: [90] },
+  // 手写图3：RL型（插入63，接图2结果）
+  { name: '手写示例3：RL 型双旋（插63）',
+    initial: [50, [26,[21,N,N],[30,N,N]], [68,[66,[60,N,N],[67,N,N]],[70,N,[90,N,N]]]], inserts: [63] },
+  // 加深理解：LL型
+  { name: '加深：LL 型右单旋',
+    initial: [50, [40,[30,[20,N,N],N],N], [60,N,N]], inserts: [10] },
+  // 加深理解：LR型
+  { name: '加深：LR 型双旋',
+    initial: [50, [30,[20,N,N],N], [60,N,N]], inserts: [25] },
+  // 真题风格：连续插入含多次旋转
+  { name: '真题风格：连续插入（多次旋转）',
+    initial: null, inserts: [50,30,70,20,40,60,80,10,5] },
+  // 简单：无需旋转
+  { name: '简单插入：无需旋转',
+    initial: [50, [30,[20,N,N],[40,N,N]], [70,[60,N,N],[80,N,N]]], inserts: [45] },
+];
+
+// ===== 状态 =====
+const S = {
+  presetIdx: 0, steps: [], currentStep: -1,
+  playing: false, timer: null, speed: 0.5,
+  display: {}, hl: {}, bfMap: {}, curTree: null, nodeR: 18,
+};
+
+// ===== 布局（中序定位 + 自适应缩放）=====
+function computeLayout(root, width, height) {
+  const pos = {};
+  if (!root) return { pos, r: 18 };
+  const order = [], depthOf = {};
+  let maxDepth = 0;
+  (function io(n) { if (!n) return; io(n.left); order.push(n); io(n.right); })(root);
+  (function d(n, d0) { if (!n) return; depthOf[n.id] = d0; if (d0 > maxDepth) maxDepth = d0; d(n.left, d0 + 1); d(n.right, d0 + 1); })(root, 0);
+
+  const legendEl = document.querySelector('.legend-float');
+  const overlayEl = document.getElementById('stepOverlay');
+  const topPad = (legendEl ? legendEl.offsetHeight : 24) + 26;
+  const botPad = (overlayEl ? overlayEl.offsetHeight : 44) + 30;
+  const availW = Math.max(80, width - 40);
+  const availH = Math.max(80, height - topPad - botPad);
+
+  const n = order.length;
+  const gapX = Math.min(92, availW / n);
+  const r = Math.max(10, Math.min(22, gapX * 0.36));
+  const gapY = Math.max(44, Math.min(96, availH / (maxDepth + 1) - r));
+  const totalW = gapX * (n - 1);
+  const startX = (width - totalW) / 2;
+  const startY = topPad + Math.max(0, (availH - (gapY * maxDepth + 2 * r)) / 2) + r;
+  for (let i = 0; i < n; i++) {
+    const node = order[i];
+    pos[node.id] = { x: startX + i * gapX, y: startY + depthOf[node.id] * (gapY + r) };
+  }
+  return { pos, r };
+}
+
+// ===== 应用步骤（快照 → 动画目标）=====
+function applyStep(idx) {
+  const st = S.steps[idx];
+  if (!st) return;
+  S.currentStep = idx;
+  $('overlayNum').textContent = `${idx + 1} / ${S.steps.length}`;
+  $('overlayTitle').textContent = st.title || '';
+  $('overlayDesc').innerHTML = st.desc || '';
+
+  const w = canvas.width / (window.devicePixelRatio || 1);
+  const h = canvas.height / (window.devicePixelRatio || 1);
+  const { pos, r } = computeLayout(st.tree, w, h);
+  S.nodeR = r;
+  S.hl = st.hl || {};
+  S.curTree = st.tree;
+  S.bfMap = {};
+  (function walk(n) { if (!n) return; S.bfMap[n.id] = bf(n); walk(n.left); walk(n.right); })(st.tree);
+
+  const seen = new Set();
+  for (const id in pos) {
+    seen.add(+id);
+    const p = pos[id];
+    if (S.display[id]) {
+      S.display[id].tx = p.x; S.display[id].ty = p.y; S.display[id].ta = 1;
+    } else {
+      S.display[id] = { x: p.x, y: p.y - 14, a: 0, tx: p.x, ty: p.y, ta: 1 };
+    }
+  }
+  for (const id in S.display) if (!seen.has(+id)) S.display[id].ta = 0;
+}
+
+// ===== 渲染 =====
+function getVar(name) {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+function draw(ts) {
+  const dpr = window.devicePixelRatio || 1;
+  const w = canvas.width / dpr, h = canvas.height / dpr;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, w, h);
+  const hl = S.hl, disp = S.display, r = S.nodeR;
+  const dark = document.documentElement.classList.contains('dark');
+  const edgeCol = dark ? '#495057' : '#ced4da';
+  const textCol = dark ? '#e9ecef' : '#343a40';
+  const mutedCol = dark ? '#868e96' : '#868e96';
+
+  // 边
+  (function edges(n) {
+    if (!n) return;
+    const pd = disp[n.id];
+    if (n.left && disp[n.left.id]) {
+      const cd = disp[n.left.id];
+      const a = Math.min(pd.a, cd.a);
+      if (a > 0.05) {
+        ctx.globalAlpha = a;
+        ctx.strokeStyle = edgeCol; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(pd.x, pd.y); ctx.lineTo(cd.x, cd.y); ctx.stroke();
+      }
+      edges(n.left);
+    }
+    if (n.right && disp[n.right.id]) {
+      const cd = disp[n.right.id];
+      const a = Math.min(pd.a, cd.a);
+      if (a > 0.05) {
+        ctx.globalAlpha = a;
+        ctx.strokeStyle = edgeCol; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(pd.x, pd.y); ctx.lineTo(cd.x, cd.y); ctx.stroke();
+      }
+      edges(n.right);
+    }
+  })(S.curTree);
+
+  // 节点
+  for (const idStr in disp) {
+    const id = +idStr;
+    const d = disp[idStr];
+    if (d.a < 0.05) continue;
+    const type = hl[id];
+    let fill = dark ? '#2b2f36' : '#ffffff';
+    let border = dark ? '#495057' : '#adb5bd';
+    let rr = r;
+    if (type === 'path') { fill = dark ? '#10314e' : '#e7f5ff'; border = getVar('--info') || '#228be6'; }
+    if (type === 'insert') { fill = dark ? '#113823' : '#d3f9d8'; border = getVar('--success') || '#40c057'; rr = r * (1 + 0.07 * Math.sin(ts / 160)); }
+    if (type === 'unbalanced') { fill = dark ? '#3b3110' : '#fff3bf'; border = getVar('--warning') || '#fab005'; rr = r * (1 + 0.07 * Math.sin(ts / 160)); }
+    if (type === 'rotate') { fill = dark ? '#3d1a1a' : '#ffe3e3'; border = getVar('--danger') || '#fa5252'; }
+    if (type === 'rotated') { border = getVar('--danger') || '#fa5252'; }
+
+    ctx.globalAlpha = d.a;
+    ctx.beginPath();
+    ctx.arc(d.x, d.y, rr, 0, Math.PI * 2);
+    ctx.fillStyle = fill; ctx.fill();
+    ctx.lineWidth = 2.5; ctx.strokeStyle = border; ctx.stroke();
+
+    ctx.fillStyle = textCol;
+    ctx.font = `bold ${Math.round(rr * 0.85)}px -apple-system, sans-serif`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(S.nodeVal(id), d.x, d.y + 0.5);
+
+    // BF 标注
+    const b = S.bfMap[id];
+    if (b !== undefined) {
+      ctx.font = `600 10px -apple-system, sans-serif`;
+      ctx.fillStyle = Math.abs(b) > 1 ? '#e03131' : mutedCol;
+      ctx.fillText(`BF ${b}`, d.x, d.y + rr + 9);
+    }
+  }
+  ctx.globalAlpha = 1;
+}
+S.nodeVal = id => {
+  const st = S.steps[S.currentStep];
+  if (!st) return '';
+  let found = null;
+  (function w(n) { if (!n || found) return; if (n.id === id) { found = n.value; return; } w(n.left); w(n.right); })(st.tree);
+  return found === null ? '' : found;
+};
+
+// ===== 动画主循环 =====
+function frame(ts) {
+  for (const id in S.display) {
+    const d = S.display[id];
+    d.x += (d.tx - d.x) * 0.14;
+    d.y += (d.ty - d.y) * 0.14;
+    d.a += (d.ta - d.a) * 0.12;
+  }
+  draw(ts);
+  requestAnimationFrame(frame);
+}
+
+// ===== 播放控制 =====
+function stepDur() { return 1500 / S.speed; }
+function play() {
+  if (S.playing) return;
+  if (S.currentStep >= S.steps.length - 1) applyStep(0);
+  S.playing = true;
+  $('playBtn').textContent = '⏸';
+  tick();
+}
+function tick() {
+  if (!S.playing) return;
+  if (S.currentStep >= S.steps.length - 1) { pause(); return; }
+  S.timer = setTimeout(() => {
+    applyStep(S.currentStep + 1);
+    tick();
+  }, stepDur());
+}
+function pause() {
+  S.playing = false;
+  if (S.timer) { clearTimeout(S.timer); S.timer = null; }
+  $('playBtn').textContent = '▶';
+}
+function stepTo(idx) {
+  pause();
+  applyStep(Math.max(0, Math.min(S.steps.length - 1, idx)));
+}
+
+// ===== 加载预设 =====
+function loadPreset(idx) {
+  pause();
+  S.presetIdx = idx;
+  const preset = PRESETS[idx];
+  const steps = [];
+  let tree = preset.initial ? buildTree(preset.initial) : null;
+  if (!tree) {
+    steps.push({ tree: null, hl: {}, title: '空树开始', desc: '从空树开始，依次插入构建 AVL 树' });
+  } else {
+    steps.push({ tree: cloneTree(tree), hl: {}, title: '初始 AVL 树', desc: `准备插入 <code>${preset.inserts.join('、')}</code>` });
+  }
+  for (const v of preset.inserts) tree = genInsertSteps(tree, v, steps);
+  S.steps = steps;
+  S.display = {};
+  applyStep(0);
+}
+
+// ===== Canvas 尺寸 =====
+function resizeCanvas() {
+  const wrap = canvas.parentElement;
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = wrap.clientWidth * dpr;
+  canvas.height = wrap.clientHeight * dpr;
+  if (S.currentStep >= 0) {
+    S.display = {};
+    applyStep(S.currentStep);
+  }
+}
+
+// ===== 初始化 =====
+function getUrlParams() {
+  const p = new URLSearchParams(window.location.search);
+  return {
+    preset: p.has('preset') ? parseInt(p.get('preset')) : null,
+    autoplay: p.has('autoplay') ? p.get('autoplay') === '1' : true,
+    speed: p.has('speed') ? parseFloat(p.get('speed')) : null,
+    hidepanel: p.get('hidepanel') === '1',
+  };
+}
+window.addEventListener('DOMContentLoaded', () => {
+  const u = getUrlParams();
+
+  // 跟随嵌入方主题
+  window.addEventListener('message', e => {
+    if (e.data && e.data.type === 'theme') {
+      document.documentElement.classList.toggle('dark', !!e.data.dark);
+    }
+  });
+  if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+    document.documentElement.classList.add('dark');
+  }
+
+  if (u.hidepanel) {
+    const sp = document.querySelector('.side-panel');
+    if (sp) sp.style.display = 'none';
+  }
+  if (u.speed) {
+    S.speed = Math.max(0.3, Math.min(2, u.speed));
+    $('speedSlider').value = S.speed;
+  }
+  $('speedValue').textContent = `${S.speed}x`;
+  $('speedSlider').addEventListener('input', e => {
+    S.speed = parseFloat(e.target.value);
+    $('speedValue').textContent = `${S.speed}x`;
+  });
+
+  const sel = $('presetSelect');
+  PRESETS.forEach((p, i) => {
+    const o = document.createElement('option');
+    o.value = i; o.textContent = p.name;
+    sel.appendChild(o);
+  });
+  sel.addEventListener('change', () => {
+    loadPreset(parseInt(sel.value));
+    play();
+  });
+
+  $('playBtn').addEventListener('click', () => S.playing ? pause() : play());
+  $('prevBtn').addEventListener('click', () => stepTo(S.currentStep - 1));
+  $('nextBtn').addEventListener('click', () => stepTo(S.currentStep + 1));
+  $('resetBtn').addEventListener('click', () => { pause(); S.display = {}; applyStep(0); });
+
+  document.addEventListener('keydown', e => {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+    if (e.key === 'ArrowLeft') stepTo(S.currentStep - 1);
+    else if (e.key === 'ArrowRight') stepTo(S.currentStep + 1);
+    else if (e.key === ' ') { e.preventDefault(); S.playing ? pause() : play(); }
+    else if (e.key === 'r' || e.key === 'R') { pause(); S.display = {}; applyStep(0); }
+  });
+
+  resizeCanvas();
+  window.addEventListener('resize', () => { resizeCanvas(); });
+
+  loadPreset(u.preset !== null && !isNaN(u.preset) ? Math.max(0, Math.min(PRESETS.length - 1, u.preset)) : 0);
+  sel.value = S.presetIdx;
+  if (u.autoplay) play();
+  requestAnimationFrame(frame);
+});
+</script>
+</body>
+</html>
