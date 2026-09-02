@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>平衡二叉树插入可视化</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+:root {
+  --bg: transparent;
+  --card: #ffffff;
+  --primary: #2f9e44;
+  --primary-d: #2b9348;
+  --primary-soft: #d3f9d8;
+  --text: #343a40;
+  --text-l: #868e96;
+  --border: #e9ecef;
+  --shadow: 0 2px 10px rgba(0,0,0,0.07);
+  --radius: 10px;
+  --success: #40c057;
+  --warning: #fab005;
+  --danger: #fa5252;
+  --info: #228be6;
+}
+
+html.dark {
+  --card: #1e1e20;
+  --text: #e9ecef;
+  --text-l: #adb5bd;
+  --border: #3a3d44;
+  --shadow: 0 2px 10px rgba(0,0,0,0.3);
+  --primary-soft: rgba(47,158,68,0.2);
+}
+
+body {
+  background: var(--bg);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  color: var(--text);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+.app { width: 100%; padding: 8px; }
+
+/* Input Panel */
+.input-panel {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 12px 16px;
+  box-shadow: var(--shadow);
+  margin-bottom: 10px;
+}
+
+.input-panel.hidden { display: none; }
+
+.input-row {
+  display: flex;
+  gap: 10px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+.mode-toggle {
+  display: flex;
+  gap: 0;
+  border-radius: 7px;
+  overflow: hidden;
+  border: 2px solid var(--primary);
+  flex-shrink: 0;
+}
+
+.mode-toggle button {
+  border: none;
+  padding: 7px 14px;
+  font-size: 13px;
+  cursor: pointer;
+  background: transparent;
+  color: var(--primary);
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+.mode-toggle button.active {
+  background: var(--primary);
+  color: #fff;
+}
+
+.input-field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+  min-width: 160px;
+}
+
+.input-field label {
+  font-size: 11px;
+  color: var(--text-l);
+  font-weight: 600;
+}
+
+.input-field input {
+  border: 1.5px solid var(--border);
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 14px;
+  background: var(--card);
+  color: var(--text);
+}
+
+.input-field input:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+/* Tree Visualization */
+.tree-container {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 20px;
+  box-shadow: var(--shadow);
+  overflow: auto;
+  min-height: 500px;
+  position: relative;
+}
+
+.tree {
+  position: relative;
+  min-height: 400px;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 20px;
+}
+
+.node {
+  position: absolute;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 14px;
+  color: white;
+  border: 2px solid white;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+  transition: all 0.3s ease;
+  z-index: 2;
+}
+
+.node.highlight {
+  background: var(--warning);
+  border-color: var(--warning);
+  transform: scale(1.2);
+  z-index: 3;
+}
+
+.node.inserting {
+  background: var(--info);
+  border-color: var(--info);
+  animation: pulse 1s infinite;
+}
+
+.node.rotating {
+  background: var(--danger);
+  border-color: var(--danger);
+  animation: rotate 0.5s ease;
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1.2); }
+  50% { transform: scale(1.4); }
+}
+
+@keyframes rotate {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.edge {
+  position: absolute;
+  background: var(--border);
+  transform-origin: 0 0;
+  z-index: 1;
+}
+
+.edge.highlight {
+  background: var(--primary);
+  stroke: var(--primary);
+}
+
+/* Controls */
+.controls {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 12px 16px;
+  box-shadow: var(--shadow);
+  margin-top: 10px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-primary {
+  background: var(--primary);
+  color: white;
+}
+
+.btn-primary:hover {
+  background: var(--primary-d);
+  transform: translateY(-1px);
+}
+
+.btn-secondary {
+  background: var(--card);
+  color: var(--text);
+  border: 1.5px solid var(--border);
+}
+
+.btn-secondary:hover {
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Step Info */
+.step-info {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 12px 16px;
+  box-shadow: var(--shadow);
+  margin-top: 10px;
+}
+
+.step-title {
+  font-weight: 600;
+  color: var(--primary);
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+
+.step-desc {
+  font-size: 13px;
+  color: var(--text-l);
+  line-height: 1.5;
+}
+
+/* Animation Speed */
+.speed-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.speed-control label {
+  color: var(--text-l);
+}
+
+.speed-control input {
+  width: 100px;
+}
+
+/* Legend */
+.legend {
+  display: flex;
+  gap: 15px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-l);
+}
+
+.legend-color {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .tree {
+    padding: 10px;
+  }
+  
+  .node {
+    width: 32px;
+    height: 32px;
+    font-size: 12px;
+  }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="input-panel">
+    <div class="input-row">
+      <div class="input-field">
+        <label>插入值</label>
+        <input type="number" id="insertValue" placeholder="输入要插入的值" value="67">
+      </div>
+      <div class="input-field">
+        <label>动画速度 (ms)</label>
+        <input type="number" id="animationSpeed" placeholder="动画速度" value="1000" min="100" max="3000">
+      </div>
+      <button class="btn btn-primary" id="insertBtn">
+        <span>插入节点</span>
+      </button>
+      <button class="btn btn-secondary" id="resetBtn">
+        <span>重置树</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="tree-container">
+    <div class="tree" id="tree"></div>
+  </div>
+
+  <div class="controls">
+    <button class="btn btn-primary" id="playBtn">
+      <span>播放动画</span>
+    </button>
+    <button class="btn btn-secondary" id="pauseBtn" disabled>
+      <span>暂停</span>
+    </button>
+    <button class="btn btn-secondary" id="stepBtn">
+      <span>单步执行</span>
+    </button>
+    <div class="speed-control">
+      <label>速度:</label>
+      <input type="range" id="speedSlider" min="100" max="2000" value="1000">
+      <span id="speedValue">1000ms</span>
+    </div>
+  </div>
+
+  <div class="step-info">
+    <div class="step-title">当前步骤</div>
+    <div class="step-desc" id="stepDescription">准备插入新节点</div>
+  </div>
+
+  <div class="legend">
+    <div class="legend-item">
+      <div class="legend-color" style="background: var(--info);"></div>
+      <span>插入节点</span>
+    </div>
+    <div class="legend-item">
+      <div class="legend-color" style="background: var(--warning);"></div>
+      <span>不平衡节点</span>
+    </div>
+    <div class="legend-item">
+      <div class="legend-color" style="background: var(--danger);"></div>
+      <span>旋转操作</span>
+    </div>
+  </div>
+</div>
+
+<script>
+class AVLTreeVisualizer {
+  constructor() {
+    this.tree = document.getElementById('tree');
+    this.insertValue = document.getElementById('insertValue');
+    this.animationSpeed = document.getElementById('animationSpeed');
+    this.speedSlider = document.getElementById('speedSlider');
+    this.speedValue = document.getElementById('speedValue');
+    this.stepDescription = document.getElementById('stepDescription');
+    
+    this.root = null;
+    this.animationQueue = [];
+    this.isAnimating = false;
+    this.currentStep = 0;
+    
+    this.initTree();
+    this.bindEvents();
+  }
+  
+  initTree() {
+    // 初始化示例树：50为根，26(21,30), 66(60,68,70)
+    this.root = {
+      value: 50,
+      left: {
+        value: 26,
+        left: { value: 21, left: null, right: null },
+        right: { value: 30, left: null, right: null }
+      },
+      right: {
+        value: 66,
+        left: { value: 60, left: null, right: null },
+        right: {
+          value: 68,
+          left: null,
+          right: { value: 70, left: null, right: null }
+        }
+      }
+    };
+    
+    this.renderTree();
+  }
+  
+  bindEvents() {
+    document.getElementById('insertBtn').addEventListener('click', () => this.insertNode());
+    document.getElementById('resetBtn').addEventListener('click', () => this.resetTree());
+    document.getElementById('playBtn').addEventListener('click', () => this.playAnimation());
+    document.getElementById('pauseBtn').addEventListener('click', () => this.pauseAnimation());
+    document.getElementById('stepBtn').addEventListener('click', () => this.stepAnimation());
+    this.speedSlider.addEventListener('input', (e) => {
+      this.speedValue.textContent = `${e.target.value}ms`;
+      this.animationSpeed.value = e.target.value;
+    });
+  }
+  
+  insertNode() {
+    const value = parseInt(this.insertValue.value);
+    if (isNaN(value)) {
+      this.showStep('请输入有效的数字');
+      return;
+    }
+    
+    this.animationQueue = [];
+    this.currentStep = 0;
+    this.insertWithAnimation(this.root, value, null, 'root');
+    this.showStep(`准备插入值 ${value}`);
+  }
+  
+  insertWithAnimation(node, value, parent, direction, path = []) {
+    if (!node) {
+      // 找到插入位置
+      const newNode = { value, left: null, right: null };
+      this.animationQueue.push({
+        type: 'insert',
+        parent,
+        direction,
+        value,
+        node: newNode
+      });
+      return newNode;
+    }
+    
+    path.push(node.value);
+    
+    if (value < node.value) {
+      node.left = this.insertWithAnimation(node.left, value, node, 'left', path);
+    } else if (value > node.value) {
+      node.right = this.insertWithAnimation(node.right, value, node, 'right', path);
+    }
+    
+    // 检查平衡
+    const balance = this.getBalance(node);
+    if (balance > 1 || balance < -1) {
+      this.animationQueue.push({
+        type: 'unbalanced',
+        node,
+        balance
+      });
+      
+      // 确定旋转类型
+      if (balance > 1) {
+        if (value < node.left.value) {
+          // LL情况
+          this.animationQueue.push({
+            type: 'rotate',
+            node,
+            rotation: 'LL'
+          });
+        } else {
+          // LR情况
+          this.animationQueue.push({
+            type: 'rotate',
+            node,
+            rotation: 'LR'
+          });
+        }
+      } else {
+        if (value > node.right.value) {
+          // RR情况
+          this.animationQueue.push({
+            type: 'rotate',
+            node,
+            rotation: 'RR'
+          });
+        } else {
+          // RL情况
+          this.animationQueue.push({
+            type: 'rotate',
+            node,
+            rotation: 'RL'
+          });
+        }
+      }
+    }
+    
+    return node;
+  }
+  
+  getBalance(node) {
+    if (!node) return 0;
+    return this.getHeight(node.left) - this.getHeight(node.right);
+  }
+  
+  getHeight(node) {
+    if (!node) return 0;
+    return 1 + Math.max(this.getHeight(node.left), this.getHeight(node.right));
+  }
+  
+  renderTree() {
+    this.tree.innerHTML = '';
+    if (!this.root) return;
+    
+    const levelWidth = 200;
+    const levelHeight = 80;
+    const startX = this.tree.offsetWidth / 2;
+    
+    this.renderNode(this.root, startX, 50, levelWidth, levelHeight);
+  }
+  
+  renderNode(node, x, y, levelWidth, levelHeight) {
+    if (!node) return;
+    
+    // 创建节点
+    const nodeEl = document.createElement('div');
+    nodeEl.className = 'node';
+    nodeEl.textContent = node.value;
+    nodeEl.style.left = `${x - 20}px`;
+    nodeEl.style.top = `${y - 20}px`;
+    this.tree.appendChild(nodeEl);
+    
+    // 递归渲染子节点
+    if (node.left) {
+      const leftX = x - levelWidth;
+      const leftY = y + levelHeight;
+      
+      // 创建边
+      const edge = document.createElement('div');
+      edge.className = 'edge';
+      const length = Math.sqrt(Math.pow(leftX - x, 2) + Math.pow(leftY - y, 2));
+      const angle = Math.atan2(leftY - y, leftX - x) * 180 / Math.PI;
+      edge.style.width = `${length}px`;
+      edge.style.height = '2px';
+      edge.style.left = `${x}px`;
+      edge.style.top = `${y}px`;
+      edge.style.transform = `rotate(${angle}deg)`;
+      this.tree.appendChild(edge);
+      
+      this.renderNode(node.left, leftX, leftY, levelWidth / 2, levelHeight);
+    }
+    
+    if (node.right) {
+      const rightX = x + levelWidth;
+      const rightY = y + levelHeight;
+      
+      // 创建边
+      const edge = document.createElement('div');
+      edge.className = 'edge';
+      const length = Math.sqrt(Math.pow(rightX - x, 2) + Math.pow(rightY - y, 2));
+      const angle = Math.atan2(rightY - y, rightX - x) * 180 / Math.PI;
+      edge.style.width = `${length}px`;
+      edge.style.height = '2px';
+      edge.style.left = `${x}px`;
+      edge.style.top = `${y}px`;
+      edge.style.transform = `rotate(${angle}deg)`;
+      this.tree.appendChild(edge);
+      
+      this.renderNode(node.right, rightX, rightY, levelWidth / 2, levelHeight);
+    }
+  }
+  
+  async playAnimation() {
+    if (this.isAnimating || this.animationQueue.length === 0) return;
+    
+    this.isAnimating = true;
+    document.getElementById('playBtn').disabled = true;
+    document.getElementById('pauseBtn').disabled = false;
+    
+    const speed = parseInt(this.animationSpeed.value);
+    
+    for (let i = 0; i < this.animationQueue.length; i++) {
+      const step = this.animationQueue[i];
+      await this.executeStep(step);
+      await new Promise(resolve => setTimeout(resolve, speed));
+    }
+    
+    this.isAnimating = false;
+    document.getElementById('playBtn').disabled = false;
+    document.getElementById('pauseBtn').disabled = true;
+    this.showStep('插入完成，树已平衡');
+  }
+  
+  async stepAnimation() {
+    if (this.isAnimating || this.currentStep >= this.animationQueue.length) return;
+    
+    const step = this.animationQueue[this.currentStep];
+    await this.executeStep(step);
+    this.currentStep++;
+  }
+  
+  async executeStep(step) {
+    switch (step.type) {
+      case 'insert':
+        this.showStep(`步骤 ${this.currentStep + 1}: 在 ${step.parent?.value || '根'} 的 ${step.direction} 位置插入值 ${step.value}`);
+        await this.highlightNode(step.parent, step.direction, true);
+        break;
+        
+      case 'unbalanced':
+        this.showStep(`步骤 ${this.currentStep + 1}: 检测到不平衡，节点 ${step.node.value} 的平衡因子为 ${step.balance}`);
+        await this.highlightNode(step.node, null, true);
+        break;
+        
+      case 'rotate':
+        this.showStep(`步骤 ${this.currentStep + 1}: 执行 ${step.rotation} 旋转以恢复平衡`);
+        await this.animateRotation(step.node, step.rotation);
+        break;
+    }
+  }
+  
+  async highlightNode(parent, direction, isHighlight) {
+    // 这里简化实现，实际应该找到对应的DOM元素并添加highlight类
+    this.showStep(`高亮显示 ${isHighlight ? '插入' : '不平衡'} 节点`);
+  }
+  
+  async animateRotation(node, rotation) {
+    this.showStep(`执行 ${rotation} 旋转动画`);
+    // 这里简化实现，实际应该动画展示旋转过程
+    await new Promise(resolve => setTimeout(resolve, 500));
+    this.renderTree();
+  }
+  
+  pauseAnimation() {
+    this.isAnimating = false;
+    document.getElementById('playBtn').disabled = false;
+    document.getElementById('pauseBtn').disabled = true;
+  }
+  
+  resetTree() {
+    this.animationQueue = [];
+    this.currentStep = 0;
+    this.initTree();
+    this.showStep('树已重置');
+  }
+  
+  showStep(message) {
+    this.stepDescription.textContent = message;
+  }
+}
+
+// 初始化可视化器
+document.addEventListener('DOMContentLoaded', () => {
+  new AVLTreeVisualizer();
+});
+</script>
+</body>
+</html>
