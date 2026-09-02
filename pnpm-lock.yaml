@@ -29,7 +29,7 @@ importers:
         specifier: 1.11.10
         version: 1.11.10
       fast-glob:
-        specifier: 3.3.2
+        specifier: ^3.3.2
         version: 3.3.2
       gray-matter:
         specifier: 4.0.3
