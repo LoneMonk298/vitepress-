@@ -71,41 +71,53 @@ body {
 }
 .ctrl-group {
   display: flex;
-  gap: 6px;
+  gap: 8px;
   align-items: center;
 }
 .ctrl-btn {
-  border: 1.5px solid var(--border);
-  background: var(--card);
-  color: var(--text);
-  border-radius: 6px;
-  min-width: 34px;
-  height: 32px;
-  padding: 0 8px;
-  font-size: 13px;
+  border: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 7px;
   cursor: pointer;
-  display: inline-flex;
+  font-size: 16px;
+  display: flex;
   align-items: center;
   justify-content: center;
-  transition: all .15s;
+  transition: all 0.15s;
+  background: var(--border);
+  color: var(--text);
 }
-.ctrl-btn:hover { border-color: var(--primary); color: var(--primary); }
+.ctrl-btn:hover:not(:disabled) { opacity: 0.85; }
+.ctrl-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 .ctrl-btn.play {
   background: var(--primary);
-  border-color: var(--primary);
   color: #fff;
+  width: 44px;
+  height: 36px;
+  font-size: 14px;
 }
 .ctrl-btn.play:hover { background: var(--primary-d); }
 .speed-control {
   display: flex;
   align-items: center;
   gap: 6px;
+  margin-left: 6px;
+}
+.speed-control label {
   font-size: 12px;
   color: var(--text-2);
-  margin-left: auto;
+  white-space: nowrap;
 }
-.speed-control input { width: 90px; accent-color: var(--primary); }
-.speed-value { min-width: 34px; font-weight: 600; color: var(--primary); }
+.speed-control input[type=range] {
+  width: 80px;
+  cursor: pointer;
+}
+.speed-val {
+  font-size: 11px;
+  color: var(--text-2);
+  min-width: 28px;
+}
 
 /* ===== Main ===== */
 .main { flex: 1; display: flex; overflow: hidden; }
@@ -146,7 +158,7 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
   position: absolute;
   left: 14px;
   right: 14px;
-  bottom: 12px;
+  bottom: 18px;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -233,17 +245,18 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
 </head>
 <body>
 <div class="toolbar">
-  <div class="toolbar__title">🌳 平衡二叉树（AVL）</div>
+  <div class="toolbar__title">平衡二叉树（AVL）</div>
   <select id="presetSelect" class="select"></select>
   <div class="ctrl-group">
-    <button class="ctrl-btn" id="prevBtn" title="上一步">⏮</button>
-    <button class="ctrl-btn play" id="playBtn" title="播放/暂停">▶</button>
-    <button class="ctrl-btn" id="nextBtn" title="下一步">⏭</button>
-    <button class="ctrl-btn" id="resetBtn" title="重置">↺</button>
-  </div>
-  <div class="speed-control">
-    🐢 <input type="range" id="speedSlider" min="0.3" max="2" step="0.1" value="0.5">
-    <span class="speed-value" id="speedValue">0.5x</span>
+    <button class="ctrl-btn" id="resetBtn">&#8634;</button>
+    <button class="ctrl-btn" id="prevBtn">&#9664;</button>
+    <button class="ctrl-btn play" id="playBtn">&#9654;</button>
+    <button class="ctrl-btn" id="nextBtn">&#9654;</button>
+    <div class="speed-control">
+      <label>速度</label>
+      <input type="range" id="speedSlider" min="0.5" max="2.5" step="0.5" value="0.5">
+      <span class="speed-val" id="speedValue">0.5x</span>
+    </div>
   </div>
 </div>
 
@@ -274,19 +287,8 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
       </table>
     </div>
     <div class="panel-section">
-      <div class="panel-title">四种旋转速查</div>
-      <table class="prop-table rot-table">
-        <tr><th>类型</th><th>插入位置</th><th>处理</th></tr>
-        <tr><td>LL</td><td>左孩子的左子树</td><td>右单旋</td></tr>
-        <tr><td>RR</td><td>右孩子的右子树</td><td>左单旋</td></tr>
-        <tr><td>LR</td><td>左孩子的右子树</td><td>先左旋再右旋</td></tr>
-        <tr><td>RL</td><td>右孩子的左子树</td><td>先右旋再左旋</td></tr>
-      </table>
-    </div>
-    <div class="panel-section">
-      <div class="panel-title">备注</div>
       <div class="note-box">
-        💡 旋转只发生在<strong>最小不平衡子树</strong>上，一次旋转即可恢复整棵树的平衡；BF 数值标注在节点下方。
+        💡<strong>注：</strong> 旋转只发生在<strong>最小不平衡子树</strong>上，一次旋转即可恢复整棵树的平衡；BF 数值标注在节点下方。
       </div>
     </div>
   </div>
@@ -441,22 +443,22 @@ function genInsertSteps(tree, value, steps) {
 const N = null;
 const PRESETS = [
   // 手写图1：RR型（插入67）
-  { name: '手写示例1：RR 型左单旋（插67）',
+  { name: 'RR 型左单旋（插67）',
     initial: [50, [26,[21,N,N],[30,N,N]], [66,[60,N,N],[68,N,[70,N,N]]]], inserts: [67] },
   // 手写图2：RR型（插入90，接图1结果）
-  { name: '手写示例2：RR 型左单旋（插90）',
+  { name: 'RR 型左单旋（插90）',
     initial: [50, [26,[21,N,N],[30,N,N]], [68,[66,[60,N,N],[67,N,N]],[70,N,N]]], inserts: [90] },
   // 手写图3：RL型（插入63，接图2结果）
-  { name: '手写示例3：RL 型双旋（插63）',
+  { name: 'RL 型双旋（插63）',
     initial: [50, [26,[21,N,N],[30,N,N]], [68,[66,[60,N,N],[67,N,N]],[70,N,[90,N,N]]]], inserts: [63] },
   // 加深理解：LL型
-  { name: '加深：LL 型右单旋',
+  { name: 'LL 型右单旋',
     initial: [50, [40,[30,[20,N,N],N],N], [60,N,N]], inserts: [10] },
   // 加深理解：LR型
-  { name: '加深：LR 型双旋',
+  { name: 'LR 型双旋',
     initial: [50, [30,[20,N,N],N], [60,N,N]], inserts: [25] },
   // 真题风格：连续插入含多次旋转
-  { name: '真题风格：连续插入（多次旋转）',
+  { name: '连续插入（多次旋转）',
     initial: null, inserts: [50,30,70,20,40,60,80,10,5] },
   // 简单：无需旋转
   { name: '简单插入：无需旋转',
@@ -482,7 +484,7 @@ function computeLayout(root, width, height) {
   const legendEl = document.querySelector('.legend-float');
   const overlayEl = document.getElementById('stepOverlay');
   const topPad = (legendEl ? legendEl.offsetHeight : 24) + 26;
-  const botPad = (overlayEl ? overlayEl.offsetHeight : 44) + 30;
+  const botPad = (overlayEl ? overlayEl.offsetHeight : 44) + 52;
   const availW = Math.max(80, width - 40);
   const availH = Math.max(80, height - topPad - botPad);
 
@@ -508,6 +510,8 @@ function applyStep(idx) {
   $('overlayNum').textContent = `${idx + 1} / ${S.steps.length}`;
   $('overlayTitle').textContent = st.title || '';
   $('overlayDesc').innerHTML = st.desc || '';
+  $('prevBtn').disabled = idx <= 0;
+  $('nextBtn').disabled = idx >= S.steps.length - 1;
 
   const w = canvas.width / (window.devicePixelRatio || 1);
   const h = canvas.height / (window.devicePixelRatio || 1);
@@ -603,7 +607,7 @@ function draw(ts) {
     if (b !== undefined) {
       ctx.font = `600 10px -apple-system, sans-serif`;
       ctx.fillStyle = Math.abs(b) > 1 ? '#e03131' : mutedCol;
-      ctx.fillText(`BF ${b}`, d.x, d.y + rr + 9);
+      ctx.fillText(`BF ${b}`, d.x, d.y + rr + 14);
     }
   }
   ctx.globalAlpha = 1;
@@ -634,7 +638,7 @@ function play() {
   if (S.playing) return;
   if (S.currentStep >= S.steps.length - 1) applyStep(0);
   S.playing = true;
-  $('playBtn').textContent = '⏸';
+  $('playBtn').innerHTML = '&#10074;&#10074;';
   tick();
 }
 function tick() {
@@ -648,7 +652,7 @@ function tick() {
 function pause() {
   S.playing = false;
   if (S.timer) { clearTimeout(S.timer); S.timer = null; }
-  $('playBtn').textContent = '▶';
+  $('playBtn').innerHTML = '&#9654;';
 }
 function stepTo(idx) {
   pause();
@@ -713,7 +717,7 @@ window.addEventListener('DOMContentLoaded', () => {
     if (sp) sp.style.display = 'none';
   }
   if (u.speed) {
-    S.speed = Math.max(0.3, Math.min(2, u.speed));
+    S.speed = Math.max(0.5, Math.min(2.5, u.speed));
     $('speedSlider').value = S.speed;
   }
   $('speedValue').textContent = `${S.speed}x`;
