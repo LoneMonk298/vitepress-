@@ -158,10 +158,11 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
   position: absolute;
   left: 14px;
   right: 14px;
-  bottom: 18px;
+  bottom: 14px;
   display: flex;
-  align-items: center;
-  gap: 10px;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 10px;
   padding: 8px 14px;
   background: var(--card);
   border: 1px solid var(--border);
@@ -179,10 +180,11 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
   border-radius: 10px;
   font-size: 11px;
   font-weight: 600;
+  align-self: center;
 }
 .step-overlay__title { flex-shrink: 0; font-weight: 600; color: var(--primary-d); }
 .step-overlay__desc {
-  flex: 1; min-width: 0; color: var(--text);
+  flex: 1 1 220px; min-width: 0; color: var(--text);
   overflow: hidden; display: -webkit-box;
   -webkit-line-clamp: 2; -webkit-box-orient: vertical;
 }
@@ -191,6 +193,10 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
   padding: 0 5px; border-radius: 3px;
   font-family: monospace; font-size: 12px;
   color: var(--primary-d); font-weight: 600;
+}
+@media (max-width: 640px) {
+  .step-overlay { font-size: 12px; padding: 6px 10px; gap: 4px 8px; left: 8px; right: 8px; }
+  .step-overlay__desc code { font-size: 11px; }
 }
 
 /* ===== Side Panel ===== */
@@ -266,8 +272,8 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
     <div class="legend-float">
       <div class="legend-item"><div class="legend-dot" style="border-color:var(--info);background:#e7f5ff;"></div>查找路径</div>
       <div class="legend-item"><div class="legend-dot" style="border-color:var(--success);background:#d3f9d8;"></div>新插入</div>
-      <div class="legend-item"><div class="legend-dot" style="border-color:var(--warning);background:#fff3bf;"></div>失衡节点</div>
-      <div class="legend-item"><div class="legend-dot" style="border-color:var(--danger);background:#ffe3e3;"></div>旋转</div>
+      <div class="legend-item"><div class="legend-dot" style="border-color:var(--warning);background:#fff3bf;"></div>不平衡子树根</div>
+      <div class="legend-item"><div class="legend-dot" style="border-color:var(--danger);background:#ffe3e3;"></div>摘出结点/新根</div>
     </div>
     <div class="step-overlay" id="stepOverlay">
       <span class="step-overlay__num" id="overlayNum"></span>
@@ -288,7 +294,7 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
     </div>
     <div class="panel-section">
       <div class="note-box">
-        💡<strong>注：</strong> 旋转只发生在<strong>不平衡节点</strong>上，一次旋转即可恢复整棵树的平衡；BF 数值标注在节点下方。
+        💡<strong>注：</strong>插入后从新结点沿路径<strong>从下往上</strong>找到第一个 BF 失衡结点，把该子树<strong>摘出来</strong>；再从新结点向上遍历，圈出与根最邻近的三个结点（含根）<strong>摘出</strong>，按关键字排序——<strong>中间值作新根</strong>、小的左孩子、大的右孩子，其余子树按二叉树性质连回，最后<strong>放回</strong>原树。BF 标注在节点下方，红色表示已失衡。
       </div>
     </div>
   </div>
@@ -323,18 +329,6 @@ function buildTree(spec) {
   updAll(n);
   return n;
 }
-function rotateRight(y) {
-  const x = y.left;
-  y.left = x.right;
-  x.right = y;
-  return x;
-}
-function rotateLeft(x) {
-  const y = x.right;
-  x.right = y.left;
-  y.left = x;
-  return y;
-}
 function reattach(tree, oldNode, newSub) {
   const stack = [tree];
   while (stack.length) {
@@ -346,8 +340,41 @@ function reattach(tree, oldNode, newSub) {
   }
   return tree;
 }
+function subtreeIds(n, set) {
+  if (!n) return set;
+  set.push(n.id);
+  subtreeIds(n.left, set);
+  subtreeIds(n.right, set);
+  return set;
+}
+// 摘出三个结点，按二叉树性质重组：中间值作新根，小的左孩子、大的右孩子；
+// 其余悬空子树按关键字大小关系重新连回
+function rebuildThree(A, B, C) {
+  const three = [A, B, C].slice().sort((x, y) => x.value - y.value);
+  const [n1, n2, n3] = three;
+  const ids = new Set(three.map(n => n.id));
+  const orphans = [];
+  for (const n of three) {
+    if (n.left && !ids.has(n.left.id)) orphans.push(n.left);
+    if (n.right && !ids.has(n.right.id)) orphans.push(n.right);
+    n.left = null; n.right = null;
+  }
+  n2.left = n1; n2.right = n3;
+  const placement = [];
+  for (const sub of orphans) {
+    if (sub.value < n1.value) { n1.left = sub; placement.push(`<code>${sub.value}</code>→<code>${n1.value}</code>左`); }
+    else if (sub.value < n2.value) { n1.right = sub; placement.push(`<code>${sub.value}</code>→<code>${n1.value}</code>右`); }
+    else if (sub.value < n3.value) { n3.left = sub; placement.push(`<code>${sub.value}</code>→<code>${n3.value}</code>左`); }
+    else { n3.right = sub; placement.push(`<code>${sub.value}</code>→<code>${n3.value}</code>右`); }
+  }
+  return { newRoot: n2, n1, n2, n3, placement };
+}
 
-// ===== 步骤生成（按手写步骤：找失衡→旋转→接回）=====
+// 教学法（摘出重组，不讲旋转）：
+// 步骤一：从新结点沿路径从下往上查 BF，第一个 |BF|>1 的结点 = 最小不平衡子树根 A，把该子树【摘出来】
+// 步骤二：从插入结点所在路径从下往上，取与子树根最邻近的三个结点（含根），把这三个结点【摘出来】
+// 步骤三：三个结点按关键字排序，中间值作新根、小的左孩子、大的右孩子；其余子树按二叉树性质连回
+// 步骤四：把重组好的子树【放回】原二叉树原位置
 function genInsertSteps(tree, value, steps) {
   const path = [];
   let cur = tree, parent = null, dir = null;
@@ -359,110 +386,120 @@ function genInsertSteps(tree, value, steps) {
     }
     dir = value < cur.value ? 'left' : 'right';
     steps.push({ tree: cloneTree(tree), hl: { [cur.id]: 'path' }, title: '查找插入位置',
-      desc: `比较 <code>${value}</code> 与 <code>${cur.value}</code>：${value < cur.value ? '小于' : '大于'}，进入${dir === 'left' ? '左' : '右'}子树` });
+      desc: `<code>${value}</code> ${value < cur.value ? '&lt;' : '&gt;'} <code>${cur.value}</code>，走${dir === 'left' ? '左' : '右'}子树` });
     parent = cur; path.push(cur); cur = cur[dir];
   }
   const nn = makeNode(value);
   if (!parent) { tree = nn; }
   else parent[dir] = nn;
   updAll(tree);
-  steps.push({ tree: cloneTree(tree), hl: { [nn.id]: 'insert' }, title: '插入新节点',
-    desc: `将 <code>${value}</code> 作为 ${parent ? `${parent.value} 的${dir === 'left' ? '左' : '右'}孩子` : '根节点'}插入` });
+  steps.push({ tree: cloneTree(tree), hl: { [nn.id]: 'insert' }, title: '插入新结点',
+    desc: `<code>${value}</code> 挂到 <code>${parent ? parent.value : ''}</code> ${dir === 'left' ? '左' : '右'}侧` });
 
-  // 步骤一：从下往上找不平衡节点
-  let unb = null;
-  for (let i = path.length - 1; i >= 0; i--) {
-    if (Math.abs(bf(path[i])) > 1) { unb = path[i]; break; }
+  // 从根到新结点的完整路径
+  const fullPath = path.concat([nn]);
+
+  // 从新结点沿路径从下往上，找第一个 |BF|>1 的结点
+  let A = null, aIdx = -1;
+  for (let i = fullPath.length - 1; i >= 0; i--) {
+    if (Math.abs(bf(fullPath[i])) > 1) { A = fullPath[i]; aIdx = i; break; }
   }
-  if (!unb) {
-    steps.push({ tree: cloneTree(tree), hl: { [nn.id]: 'insert' }, title: '插入完成 ✓',
-      desc: `插入后各节点均满足 |BF| ≤ 1，树仍然平衡，<code>无需旋转</code>` });
+  if (!A) {
+    steps.push({ tree: cloneTree(tree), hl: {}, title: '平衡检查通过 ✓',
+      desc: `从 <code>${value}</code> 向上查 BF，各结点 |BF| ≤ 1，<code>无需调整</code>，插入结束` });
     return tree;
   }
-  const b = bf(unb);
-  steps.push({ tree: cloneTree(tree), hl: { [unb.id]: 'unbalanced' }, title: '步骤一：找到不平衡节点',
-    desc: `从插入位置向上检查，节点 <code>${unb.value}</code> 的 BF = ${b}（${b > 0 ? '左' : '右'}子树过高），它是<strong>不平衡节点</strong>的根` });
 
-  // 步骤二：确定旋转类型并恢复平衡
-  const heavyLeft = b > 1;
-  const child = heavyLeft ? unb.left : unb.right;
-  const cbf = bf(child);
-  const type = heavyLeft ? (cbf >= 0 ? 'LL' : 'LR') : (cbf <= 0 ? 'RR' : 'RL');
+  const B = fullPath[aIdx + 1];
+  const C = fullPath[aIdx + 2];
+  const bA = bf(A);
+  const chainDir = bA > 1 ? '左' : '右';
 
-  if (type === 'LL') {
-    const pivot = rotateRight(unb);
-    tree = (unb === tree) ? pivot : reattach(tree, unb, pivot);
-    updAll(tree);
-    steps.push({ tree: cloneTree(tree), hl: { [pivot.id]: 'rotate', [unb.id]: 'rotated' },
-      title: '步骤二：LL 型右单旋恢复平衡',
-      desc: `失衡节点 <code>${unb.value}</code> 顺时针右旋，左孩子 <code>${pivot.value}</code> 上升为新子树根` });
-  } else if (type === 'RR') {
-    const pivot = rotateLeft(unb);
-    tree = (unb === tree) ? pivot : reattach(tree, unb, pivot);
-    updAll(tree);
-    steps.push({ tree: cloneTree(tree), hl: { [pivot.id]: 'rotate', [unb.id]: 'rotated' },
-      title: '步骤二：RR 型左单旋恢复平衡',
-      desc: `失衡节点 <code>${unb.value}</code> 逆时针左旋，右孩子 <code>${pivot.value}</code> 上升为新子树根` });
-  } else if (type === 'LR') {
-    const c = unb.left;
-    const newChild = rotateLeft(c);
-    unb.left = newChild;
-    updAll(tree);
-    steps.push({ tree: cloneTree(tree), hl: { [newChild.id]: 'rotate', [c.id]: 'rotated' },
-      title: '步骤二：LR 型第一步左旋',
-      desc: `先对失衡节点的左孩子 <code>${c.value}</code> 左旋，<code>${newChild.value}</code> 上升，化 LR 为 LL` });
-    const pivot = rotateRight(unb);
-    tree = (unb === tree) ? pivot : reattach(tree, unb, pivot);
-    updAll(tree);
-    steps.push({ tree: cloneTree(tree), hl: { [pivot.id]: 'rotate' },
-      title: '步骤二：LR 型第二步右旋',
-      desc: `再对失衡节点 <code>${unb.value}</code> 右旋，<code>${pivot.value}</code> 成为新子树根` });
-  } else {
-    const c = unb.right;
-    const newChild = rotateRight(c);
-    unb.right = newChild;
-    updAll(tree);
-    steps.push({ tree: cloneTree(tree), hl: { [newChild.id]: 'rotate', [c.id]: 'rotated' },
-      title: '步骤二：RL 型第一步右旋',
-      desc: `先对失衡节点的右孩子 <code>${c.value}</code> 右旋，<code>${newChild.value}</code> 上升，化 RL 为 RR` });
-    const pivot = rotateLeft(unb);
-    tree = (unb === tree) ? pivot : reattach(tree, unb, pivot);
-    updAll(tree);
-    steps.push({ tree: cloneTree(tree), hl: { [pivot.id]: 'rotate' },
-      title: '步骤二：RL 型第二步左旋',
-      desc: `再对失衡节点 <code>${unb.value}</code> 左旋，<code>${pivot.value}</code> 成为新子树根` });
+  // —— 步骤一：找到最小不平衡子树，摘出来 ——
+  const hlCheck = {};
+  for (let i = fullPath.length - 1; i > aIdx; i--) {
+    hlCheck[fullPath[i].id] = (i === fullPath.length - 1) ? 'insert' : 'path';
   }
+  hlCheck[A.id] = 'unbalanced';
+  steps.push({
+    tree: cloneTree(tree), hl: hlCheck,
+    focus: subtreeIds(A, []), box: true,
+    title: '步骤一：摘出最小不平衡子树',
+    desc: `从 <code>${value}</code> 向上查 BF：<code>${A.value}</code> 的 BF=${bA}（${chainDir}子树过高）→ <strong>最小不平衡子树根</strong>，整棵子树<strong>摘出</strong>`
+  });
 
-  // 步骤三：接回原二叉树
-  steps.push({ tree: cloneTree(tree), hl: {}, title: '步骤三：接回原二叉树 ✓',
-    desc: `将恢复平衡后的子树接回原树，整棵树重新满足 AVL 性质（所有 |BF| ≤ 1），<code>插入结束</code>` });
+  // —— 步骤二：从新结点沿插入路径向上遍历 ——
+  const chain = fullPath.slice(aIdx).map(nd => nd.value).reverse();
+  const chainStr = chain.map(v => `<code>${v}</code>`).join(' → ');
+  const hlWalk = {};
+  for (let i = aIdx; i < fullPath.length; i++) {
+    if (i === fullPath.length - 1) hlWalk[fullPath[i].id] = 'insert';   // 新结点：绿
+    else if (i === aIdx) hlWalk[fullPath[i].id] = 'unbalanced';          // 失衡根：黄
+    else hlWalk[fullPath[i].id] = 'path';                                // 途经结点：蓝
+  }
+  steps.push({
+    tree: cloneTree(tree), hl: hlWalk,
+    focus: subtreeIds(A, []), box: true,
+    title: '步骤二：从新结点向上遍历',
+    desc: `从新结点 <code>${value}</code> 沿插入路径<strong>从下往上</strong>走：${chainStr}，到失衡根 <code>${A.value}</code> 为止`
+  });
+
+  // —— 步骤三：圈出与子树根最邻近的三个结点（含根），摘出 ——
+  steps.push({
+    tree: cloneTree(tree),
+    hl: { [A.id]: 'three', [B.id]: 'three', [C.id]: 'three' },
+    focus: [A.id, B.id, C.id], box: true,
+    title: '步骤三：圈出三个结点',
+    desc: `与根 <code>${A.value}</code> 最邻近的三个结点（<strong>含根</strong>）：<code>${A.value}</code>、<code>${B.value}</code>、<code>${C.value}</code>，<strong>摘出</strong>，其余搁置`
+  });
+
+  // —— 步骤四：按二叉树性质重组（在真实树上操作）——
+  const { newRoot, n1, n2, n3, placement } = rebuildThree(A, B, C);
+  const wasRoot = (A === tree);
+  if (wasRoot) tree = newRoot;
+  else tree = reattach(tree, A, newRoot);
+  updAll(tree);
+
+  let rebuildDesc = `排序 <code>${n1.value}</code> &lt; <code>${n2.value}</code> &lt; <code>${n3.value}</code>：<strong><code>${n2.value}</code> 作新根</strong>，<code>${n1.value}</code> 左、<code>${n3.value}</code> 右`;
+  if (placement.length) rebuildDesc += `；连回 ${placement.join('，')}`;
+  steps.push({
+    tree: cloneTree(tree),
+    hl: { [n2.id]: 'pivot', [n1.id]: 'three', [n3.id]: 'three' },
+    focus: subtreeIds(newRoot, []), box: true,
+    title: '步骤四：排序重组',
+    desc: rebuildDesc
+  });
+
+  // —— 步骤五：放回原二叉树 ——
+  steps.push({
+    tree: cloneTree(tree), hl: {}, focus: null,
+    title: '步骤五：放回原树 ✓',
+    desc: `重组子树<strong>放回</strong>${wasRoot ? '作新根' : ` <code>${A.value}</code> 原位`}，|BF| 全部 ≤ 1`
+  });
   return tree;
 }
 
-// ===== 预设示例（严格匹配手写图）=====
+// ===== 预设示例（严格匹配手写图，先做 LL/RR 单链情况）=====
 const N = null;
 const PRESETS = [
-  // 手写图1：RR型（插入67）
-  { name: 'RR 型左单旋（插67）',
-    initial: [50, [26,[21,N,N],[30,N,N]], [66,[60,N,N],[68,N,[70,N,N]]]], inserts: [67] },
-  // 手写图2：RR型（插入90，接图1结果）
-  { name: 'RR 型左单旋（插90）',
-    initial: [50, [26,[21,N,N],[30,N,N]], [68,[66,[60,N,N],[67,N,N]],[70,N,N]]], inserts: [90] },
-  // 手写图3：RL型（插入63，接图2结果）
-  { name: 'RL 型双旋（插63）',
-    initial: [50, [26,[21,N,N],[30,N,N]], [68,[66,[60,N,N],[67,N,N]],[70,N,[90,N,N]]]], inserts: [63] },
-  // 加深理解：LL型
-  { name: 'LL 型右单旋',
-    initial: [50, [40,[30,[20,N,N],N],N], [60,N,N]], inserts: [10] },
-  // 加深理解：LR型
-  { name: 'LR 型双旋',
-    initial: [50, [30,[20,N,N],N], [60,N,N]], inserts: [25] },
-  // 真题风格：连续插入含多次旋转
-  { name: '连续插入（多次旋转）',
-    initial: null, inserts: [50,30,70,20,40,60,80,10,5] },
-  // 简单：无需旋转
-  { name: '简单插入：无需旋转',
+  // 默认第一个：插入后仍平衡，帮助回忆 AVL 性质
+  { name: '简单插入：无需调整',
     initial: [50, [30,[20,N,N],[40,N,N]], [70,[60,N,N],[80,N,N]]], inserts: [45] },
+  // LL 型（手写图1）：插67，最小不平衡子树根=70，三结点 70/68/67（左链），重组后 68 为新根
+  { name: 'LL 型（插67）',
+    initial: [50, [26,[21,N,N],[30,N,N]], [66,[60,N,N],[70,[68,N,N],N]]], inserts: [67] },
+  // RR 型（手写图2）：接图1结果，插90，最小不平衡子树根=66，三结点 66/68/70（右链），重组后 68 为新根
+  { name: 'RR 型（插90）',
+    initial: [50, [26,[21,N,N],[30,N,N]], [66,[60,N,N],[68,[67,N,N],[70,N,N]]]], inserts: [90] },
+  // RL 型（手写图3）：接图2结果，插63，最小不平衡子树根=50（整棵树），三结点 50/68/66（之字形），重组后 66 为新根
+  { name: 'RL 型（插63）',
+    initial: [50, [26,[21,N,N],[30,N,N]], [68,[66,[60,N,N],[67,N,N]],[70,N,[90,N,N]]]], inserts: [63] },
+  // LR 型（图3镜像）：插55，最小不平衡子树根=60（整棵树），三结点 60/40/50（之字形），重组后 50 为新根
+  { name: 'LR 型（插55）',
+    initial: [60, [40,[20,N,N],[50,N,N]], [70,N,N]], inserts: [55] },
+  // 综合：从空树连续插入
+  { name: '连续插入（综合练习）',
+    initial: null, inserts: [50,30,70,20,40,60,80,10,5] },
 ];
 
 // ===== 状态 =====
@@ -470,6 +507,7 @@ const S = {
   presetIdx: 0, steps: [], currentStep: -1,
   playing: false, timer: null, speed: 0.5,
   display: {}, hl: {}, bfMap: {}, curTree: null, nodeR: 18,
+  focus: null, box: false,
 };
 
 // ===== 布局（中序定位 + 自适应缩放）=====
@@ -483,18 +521,32 @@ function computeLayout(root, width, height) {
 
   const legendEl = document.querySelector('.legend-float');
   const overlayEl = document.getElementById('stepOverlay');
-  const topPad = (legendEl ? legendEl.offsetHeight : 24) + 26;
-  const botPad = (overlayEl ? overlayEl.offsetHeight : 44) + 52;
+  const topPad = (legendEl ? legendEl.offsetHeight : 24) + 22;
+  const captionH = overlayEl ? overlayEl.offsetHeight : 44;
+  // 字幕条上边界（树绝对不可越过）
+  const maxBottom = height - 14 - captionH - 14;
   const availW = Math.max(80, width - 40);
-  const availH = Math.max(80, height - topPad - botPad);
 
   const n = order.length;
   const gapX = Math.min(92, availW / n);
   const r = Math.max(10, Math.min(22, gapX * 0.36));
-  const gapY = Math.max(44, Math.min(96, availH / (maxDepth + 1) - r));
+  const bfExtra = 24; // 最底层节点下方 BF 标注占用
+  const usableH = Math.max(60, maxBottom - topPad);
+
+  // 层间距：优先舒展，空间不够时压缩（不设下限卡死，保证不越界）
+  let gapY = Math.max(18, Math.min(96, usableH / (maxDepth + 1) - r));
+  const treeH = maxDepth * (gapY + r) + 2 * r + bfExtra;
+  let startY = topPad + Math.max(0, (usableH - treeH) / 2) + r;
+  // 底部越界 → 整体上移
+  const overflow = (startY + maxDepth * (gapY + r) + r + bfExtra) - maxBottom;
+  if (overflow > 0) startY -= overflow;
+  // 顶部也顶死 → 压缩层间距兜底
+  if (startY - r < topPad - 2) {
+    gapY = Math.max(14, (maxBottom - topPad - 2 * r - bfExtra) / Math.max(1, maxDepth) - r);
+    startY = topPad + r;
+  }
   const totalW = gapX * (n - 1);
   const startX = (width - totalW) / 2;
-  const startY = topPad + Math.max(0, (availH - (gapY * maxDepth + 2 * r)) / 2) + r;
   for (let i = 0; i < n; i++) {
     const node = order[i];
     pos[node.id] = { x: startX + i * gapX, y: startY + depthOf[node.id] * (gapY + r) };
@@ -518,6 +570,8 @@ function applyStep(idx) {
   const { pos, r } = computeLayout(st.tree, w, h);
   S.nodeR = r;
   S.hl = st.hl || {};
+  S.focus = st.focus ? new Set(st.focus) : null;
+  S.box = !!st.box;
   S.curTree = st.tree;
   S.bfMap = {};
   (function walk(n) { if (!n) return; S.bfMap[n.id] = bf(n); walk(n.left); walk(n.right); })(st.tree);
@@ -544,11 +598,13 @@ function draw(ts) {
   const w = canvas.width / dpr, h = canvas.height / dpr;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, w, h);
-  const hl = S.hl, disp = S.display, r = S.nodeR;
+  const hl = S.hl, disp = S.display, r = S.nodeR, focus = S.focus;
   const dark = document.documentElement.classList.contains('dark');
   const edgeCol = dark ? '#495057' : '#ced4da';
   const textCol = dark ? '#e9ecef' : '#343a40';
   const mutedCol = dark ? '#868e96' : '#868e96';
+  const inFocus = id => !focus || focus.has(id);
+  const DIM = 0.1;
 
   // 边
   (function edges(n) {
@@ -556,8 +612,8 @@ function draw(ts) {
     const pd = disp[n.id];
     if (n.left && disp[n.left.id]) {
       const cd = disp[n.left.id];
-      const a = Math.min(pd.a, cd.a);
-      if (a > 0.05) {
+      const a = Math.min(pd.a, cd.a) * (inFocus(n.id) && inFocus(n.left.id) ? 1 : DIM);
+      if (a > 0.02) {
         ctx.globalAlpha = a;
         ctx.strokeStyle = edgeCol; ctx.lineWidth = 2;
         ctx.beginPath(); ctx.moveTo(pd.x, pd.y); ctx.lineTo(cd.x, cd.y); ctx.stroke();
@@ -566,8 +622,8 @@ function draw(ts) {
     }
     if (n.right && disp[n.right.id]) {
       const cd = disp[n.right.id];
-      const a = Math.min(pd.a, cd.a);
-      if (a > 0.05) {
+      const a = Math.min(pd.a, cd.a) * (inFocus(n.id) && inFocus(n.right.id) ? 1 : DIM);
+      if (a > 0.02) {
         ctx.globalAlpha = a;
         ctx.strokeStyle = edgeCol; ctx.lineWidth = 2;
         ctx.beginPath(); ctx.moveTo(pd.x, pd.y); ctx.lineTo(cd.x, cd.y); ctx.stroke();
@@ -575,6 +631,32 @@ function draw(ts) {
       edges(n.right);
     }
   })(S.curTree);
+
+  // 摘出区域虚线框
+  if (S.box && focus) {
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    focus.forEach(id => {
+      const d = disp[id];
+      if (!d || d.a < 0.5) return;
+      minX = Math.min(minX, d.x); maxX = Math.max(maxX, d.x);
+      minY = Math.min(minY, d.y); maxY = Math.max(maxY, d.y);
+    });
+    if (minX !== Infinity) {
+      const padX = r + 18, padY = r + 26;
+      const bx = minX - padX, by = minY - padY;
+      const bw = (maxX - minX) + padX * 2, bh = (maxY - minY) + padY * 2;
+      ctx.save();
+      ctx.globalAlpha = 0.9;
+      ctx.fillStyle = dark ? 'rgba(250,176,5,0.06)' : 'rgba(250,176,5,0.07)';
+      roundRectPath(bx, by, bw, bh, 12); ctx.fill();
+      ctx.strokeStyle = 'rgba(250,176,5,0.95)';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([8, 6]);
+      roundRectPath(bx, by, bw, bh, 12); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.restore();
+    }
+  }
 
   // 节点
   for (const idStr in disp) {
@@ -588,10 +670,10 @@ function draw(ts) {
     if (type === 'path') { fill = dark ? '#10314e' : '#e7f5ff'; border = getVar('--info') || '#228be6'; }
     if (type === 'insert') { fill = dark ? '#113823' : '#d3f9d8'; border = getVar('--success') || '#40c057'; rr = r * (1 + 0.07 * Math.sin(ts / 160)); }
     if (type === 'unbalanced') { fill = dark ? '#3b3110' : '#fff3bf'; border = getVar('--warning') || '#fab005'; rr = r * (1 + 0.07 * Math.sin(ts / 160)); }
-    if (type === 'rotate') { fill = dark ? '#3d1a1a' : '#ffe3e3'; border = getVar('--danger') || '#fa5252'; }
-    if (type === 'rotated') { border = getVar('--danger') || '#fa5252'; }
+    if (type === 'three') { fill = dark ? '#3d1a1a' : '#ffe3e3'; border = getVar('--danger') || '#fa5252'; rr = r * (1 + 0.05 * Math.sin(ts / 180)); }
+    if (type === 'pivot') { fill = dark ? '#4a1616' : '#ffc9c9'; border = getVar('--danger') || '#fa5252'; rr = r * (1 + 0.09 * Math.sin(ts / 150)); }
 
-    ctx.globalAlpha = d.a;
+    ctx.globalAlpha = d.a * (inFocus(id) ? 1 : DIM);
     ctx.beginPath();
     ctx.arc(d.x, d.y, rr, 0, Math.PI * 2);
     ctx.fillStyle = fill; ctx.fill();
@@ -611,6 +693,15 @@ function draw(ts) {
     }
   }
   ctx.globalAlpha = 1;
+}
+function roundRectPath(x, y, w, h, rad) {
+  ctx.beginPath();
+  ctx.moveTo(x + rad, y);
+  ctx.arcTo(x + w, y, x + w, y + h, rad);
+  ctx.arcTo(x + w, y + h, x, y + h, rad);
+  ctx.arcTo(x, y + h, x, y, rad);
+  ctx.arcTo(x, y, x + w, y, rad);
+  ctx.closePath();
 }
 S.nodeVal = id => {
   const st = S.steps[S.currentStep];
