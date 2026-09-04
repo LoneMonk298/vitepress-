@@ -51,6 +51,11 @@ export const nav: DefaultTheme.Config["nav"] = [
     target: "_blank",
   },
   {
+    text: "草稿纸",
+    link: "https://draft.lonemonk.xyz/",
+    target: "_blank",
+  },
+  {
     text: "考研资源",
     items: [
       { text: "研砖", link: "https://yanbrick.com/?ref=1", target: "_blank" },
