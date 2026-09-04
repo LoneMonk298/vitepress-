@@ -26,9 +26,7 @@ function restoreReadingPosition(to?: string) {
   const position = Number(storedPosition);
   if (!Number.isFinite(position)) return;
 
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => window.scrollTo({ top: position, behavior: 'auto' }));
-  });
+  requestAnimationFrame(() => window.scrollTo({ top: position, behavior: 'auto' }));
 }
 
 export default {
@@ -54,6 +52,7 @@ export default {
       const beforeRouteChange = ctx.router.onBeforeRouteChange;
       ctx.router.onBeforeRouteChange = async (to) => {
         saveReadingPosition();
+        document.body.style.overflow = '';
         return beforeRouteChange?.(to);
       };
 
@@ -62,6 +61,13 @@ export default {
         await afterRouteChange?.(to);
         restoreReadingPosition(to);
       };
+
+      // bfcache: 从缓存恢复时重置 body overflow
+      window.addEventListener('pageshow', (e) => {
+        if (e.persisted) {
+          document.body.style.overflow = '';
+        }
+      });
 
       window.setTimeout(() => restoreReadingPosition(), 0);
     }

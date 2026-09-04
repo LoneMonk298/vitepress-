@@ -41,7 +41,7 @@
     </div>
 
     <!-- Iframe body -->
-    <div class="viz-embed__body" :style="bodyStyle">
+    <div class="viz-embed__body" v-show="!collapsed || isFullscreen" :style="bodyStyle">
       <iframe
         v-if="!iframeError"
         ref="iframeRef"
@@ -151,10 +151,10 @@ const downloadFile = computed(() => props.downloadName || `${props.name}.html`)
 const isExternalSource = computed(() => /^https?:\/\//i.test(sourceUrl.value))
 
 const bodyStyle = computed(() => {
-  if (collapsed.value && !isFullscreen.value) {
-    return { maxHeight: '0px', opacity: '0' }
+  if (isFullscreen.value) {
+    return { maxHeight: '100%', opacity: '1' }
   }
-  return { maxHeight: isFullscreen.value ? '100%' : '2000px', opacity: '1' }
+  return { maxHeight: 'none', opacity: '1' }
 })
 
 function toggleCollapse() {
@@ -346,7 +346,6 @@ onBeforeUnmount(() => {
 /* Body */
 .viz-embed__body {
   overflow: hidden;
-  transition: max-height 0.35s ease, opacity 0.3s ease;
 }
 
 .viz-embed__iframe {

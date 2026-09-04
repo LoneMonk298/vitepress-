@@ -1,19 +1,21 @@
 <template>
-  <ClientOnly>
-    <Layout>
-      <template #doc-footer-before>
-        <Copyright
-          v-if="(frontmatter?.aside ?? true) && (frontmatter?.showArticleMetadata ?? true) && !(frontmatter.authorLink)"
-          :key="md5(page.relativePath)" />
-      </template>
-      <template #doc-after>
+  <Layout>
+    <template #doc-footer-before>
+      <Copyright
+        v-if="(frontmatter?.aside ?? true) && (frontmatter?.showArticleMetadata ?? true) && !(frontmatter.authorLink)"
+        :key="md5(page.relativePath)" />
+    </template>
+    <template #doc-after>
+      <ClientOnly>
         <Comment v-if="(theme.commentConfig?.showComment ?? true) && (frontmatter?.showComment ?? true)"
           :commentConfig="theme.commentConfig" :key="md5(page.relativePath)" />
-      </template>
-      <template #layout-bottom>
-        <Footer v-if="!hasSidebar && (theme.footerConfig?.showFooter ?? true) && (frontmatter?.showFooter ?? true)" />
-      </template>
-    </Layout>
+      </ClientOnly>
+    </template>
+    <template #layout-bottom>
+      <Footer v-if="!hasSidebar && (theme.footerConfig?.showFooter ?? true) && (frontmatter?.showFooter ?? true)" />
+    </template>
+  </Layout>
+  <ClientOnly>
     <ImageViewer />
   </ClientOnly>
 </template>
