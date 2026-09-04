@@ -1411,7 +1411,7 @@
   
   <div class="toolbar">
     <div class="search-box">
-      <input type="text" id="search-input" placeholder="搜索考点、章节...">
+      <input type="search" id="search-input" placeholder="搜索考点、章节..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" form="nope" name="q" inputmode="search" readonly="" onfocus="this.removeAttribute('readonly')">
     </div>
     <div class="filter-group">
       <button class="filter-btn active" data-filter="all">全部</button>
@@ -1575,15 +1575,15 @@
     
     <div class="form-group">
       <label>Access Key ID</label>
-      <input type="text" id="sync-key-id" placeholder="输入你的 Access Key ID">
+      <input autocomplete="off" data-lpignore="true" spellcheck="false" type="text" id="sync-key-id" placeholder="输入你的 Access Key ID">
     </div>
     <div class="form-group">
       <label>X-Access-Key</label>
-      <input type="password" id="sync-access-key" placeholder="输入你的 X-Access-Key">
+      <input autocomplete="off" data-lpignore="true" spellcheck="false" type="password" id="sync-access-key" placeholder="输入你的 X-Access-Key">
     </div>
     <div class="form-group">
       <label>Bin ID（第一次使用留空，推送后自动创建）</label>
-      <input type="text" id="sync-bin-id" placeholder="已有Bin ID则填入，没有则留空">
+      <input autocomplete="off" data-lpignore="true" spellcheck="false" type="text" id="sync-bin-id" placeholder="已有Bin ID则填入，没有则留空">
     </div>
     
     <div class="sync-btn-group">
@@ -1637,7 +1637,7 @@
     <div class="detail-section">
       <div class="detail-section-title">🔗 我的笔记博客</div>
       <div class="blog-link-row">
-        <input type="text" id="detail-blog-link" placeholder="粘贴博客文章链接，如 https://myblog.com/post/123">
+        <input autocomplete="off" data-lpignore="true" spellcheck="false" type="text" id="detail-blog-link" placeholder="粘贴博客文章链接，如 https://myblog.com/post/123">
         <button class="blog-open-btn" onclick="openBlogLink()">打开</button>
         <button class="blog-save-btn" onclick="saveBlogLink()">保存</button>
       </div>
@@ -1710,16 +1710,16 @@
     </div>
     <div class="form-group">
       <label>考点名称 *</label>
-      <input type="text" id="add-point" placeholder="请输入考点名称">
+      <input autocomplete="off" data-lpignore="true" spellcheck="false" type="text" id="add-point" placeholder="请输入考点名称">
     </div>
     <div class="form-row">
       <div class="form-group">
         <label>考频</label>
-        <input type="text" value="—" disabled="" style="background:#f3f4f6;color:#9ca3af">
+        <input autocomplete="off" data-lpignore="true" spellcheck="false" type="text" value="—" disabled="" style="background:#f3f4f6;color:#9ca3af">
       </div>
       <div class="form-group">
         <label>热度等级</label>
-        <input type="text" value="—" disabled="" style="background:#f3f4f6;color:#9ca3af">
+        <input autocomplete="off" data-lpignore="true" spellcheck="false" type="text" value="—" disabled="" style="background:#f3f4f6;color:#9ca3af">
       </div>
     </div>
     <div class="form-row">
@@ -1733,12 +1733,12 @@
       </div>
       <div class="form-group">
         <label>回顾次数</label>
-        <input type="number" id="add-review" value="0" min="0">
+        <input autocomplete="off" data-lpignore="true" spellcheck="false" type="number" id="add-review" value="0" min="0">
       </div>
     </div>
     <div class="form-group">
       <label>备注</label>
-      <textarea id="add-note" placeholder="可选：添加备注信息"></textarea>
+      <textarea autocomplete="off" spellcheck="false" id="add-note" placeholder="可选：添加备注信息"></textarea>
     </div>
     <div class="modal-actions">
       <button class="action-btn" style="background:#e5e7eb;color:#374151" onclick="closeAddModal()">取消</button>
