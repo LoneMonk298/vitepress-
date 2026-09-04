@@ -1,0 +1,3785 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>2026考研408考点考频学习管理表</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    background: #f0f2f5;
+    color: #1f2937;
+    min-height: 100vh;
+  }
+  .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+  
+
+  /* Countdown timer in header */
+  .header-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 6px;
+  }
+  .header-time {
+    font-size: 13px;
+    opacity: 0.9;
+    font-variant-numeric: tabular-nums;
+  }
+  .header-countdown {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    background: rgba(255,255,255,0.2);
+    padding: 6px 14px;
+    border-radius: 20px;
+    backdrop-filter: blur(10px);
+  }
+  .countdown-days {
+    font-size: 22px;
+    font-weight: 700;
+  }
+  .countdown-label {
+    font-size: 12px;
+    opacity: 0.9;
+    font-weight: 400;
+  }
+
+  /* Header */
+  .header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 24px 32px;
+    border-radius: 12px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+  }
+  .header h1 { font-size: 24px; font-weight: 700; margin-bottom: 8px; }
+  .header p { font-size: 14px; opacity: 0.9; }
+  
+  /* Stats Bar */
+  .stats-bar {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+  .stat-card {
+    background: white;
+    border-radius: 10px;
+    padding: 16px 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  }
+  .stat-card .label { font-size: 13px; color: #6b7280; margin-bottom: 6px; }
+  .stat-card .value { font-size: 28px; font-weight: 700; color: #1f2937; }
+  .stat-card .sub { font-size: 12px; color: #9ca3af; margin-top: 4px; }
+  .stat-card.total .value { color: #667eea; }
+  .stat-card.mastered .value { color: #10b981; }
+  .stat-card.learning .value { color: #f59e0b; }
+  .stat-card.not-started .value { color: #ef4444; }
+  
+  /* Toolbar */
+  .toolbar {
+    background: white;
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin-bottom: 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+  }
+  .search-box {
+    flex: 1;
+    min-width: 200px;
+    position: relative;
+  }
+  .search-box input {
+    width: 100%;
+    padding: 10px 14px 10px 38px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .search-box input:focus { border-color: #667eea; }
+  .search-box::before {
+    content: "🔍";
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 14px;
+  }
+  .filter-group { display: flex; gap: 8px; flex-wrap: wrap; }
+  .filter-btn {
+    padding: 8px 14px;
+    border: 1px solid #e5e7eb;
+    background: white;
+    border-radius: 6px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .filter-btn:hover { border-color: #667eea; color: #667eea; }
+  .filter-btn.active {
+    background: #667eea;
+    color: white;
+    border-color: #667eea;
+  }
+  .action-btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 6px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-weight: 500;
+  }
+  .action-btn.primary { background: #667eea; color: white; }
+  .action-btn.primary:hover { background: #5a67d8; }
+  .action-btn.danger { background: #fee2e2; color: #dc2626; }
+  .action-btn.danger:hover { background: #fecaca; }
+  .action-btn.success { background: #d1fae5; color: #059669; }
+  .action-btn.success:hover { background: #a7f3d0; }
+  
+  /* Tabs */
+  .tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 16px;
+    background: white;
+    padding: 6px;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    overflow-x: auto;
+  }
+  .tab {
+    padding: 10px 20px;
+    border: none;
+    background: transparent;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    color: #6b7280;
+    white-space: nowrap;
+    transition: all 0.2s;
+  }
+  .tab:hover { color: #374151; }
+  .tab.active {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+  }
+  .tab .count {
+    display: inline-block;
+    background: rgba(255,255,255,0.25);
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 12px;
+    margin-left: 6px;
+  }
+  
+  /* Table */
+  .table-container {
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    overflow: hidden;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+  }
+  thead {
+    background: #f9fafb;
+    border-bottom: 2px solid #e5e7eb;
+  }
+  th {
+    padding: 14px 12px;
+    text-align: left;
+    font-weight: 600;
+    color: #374151;
+    font-size: 13px;
+    position: sticky;
+    top: 0;
+    background: #f9fafb;
+    z-index: 10;
+  }
+  td {
+    padding: 12px;
+    border-bottom: 1px solid #f3f4f6;
+    vertical-align: middle;
+  }
+  tbody tr:hover { background: #f9fafb; }
+  tbody tr:last-child td { border-bottom: none; }
+  
+  .chapter-row {
+    background: #f0f4ff !important;
+    font-weight: 600;
+    color: #4338ca;
+  }
+  .chapter-row td { padding: 10px 12px; }
+  
+  /* Tags */
+  .tag {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+  }
+  .tag-high { background: #fee2e2; color: #dc2626; }
+  .tag-mid { background: #fef3c7; color: #d97706; }
+  .tag-low { background: #d1fae5; color: #059669; }
+  .tag-cold { background: #e5e7eb; color: #6b7280; }
+  .tag-custom { background: #ede9fe; color: #7c3aed; }
+  
+  /* Mastery select */
+  .mastery-select {
+    padding: 6px 10px;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    font-size: 13px;
+    cursor: pointer;
+    outline: none;
+    background: white;
+    transition: border-color 0.2s;
+  }
+  .mastery-select:hover { border-color: #667eea; }
+  .mastery-select:focus { border-color: #667eea; }
+  .mastery-未开始 { color: #ef4444; }
+  .mastery-学习中 { color: #f59e0b; }
+  .mastery-已掌握 { color: #10b981; }
+  
+  /* Review counter */
+  .review-counter {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .review-btn {
+    width: 24px;
+    height: 24px;
+    border: 1px solid #e5e7eb;
+    background: white;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+  }
+  .review-btn:hover { border-color: #667eea; color: #667eea; }
+  .review-count {
+    min-width: 28px;
+    text-align: center;
+    font-weight: 600;
+    font-size: 14px;
+  }
+  
+  /* Note */
+  .note-cell {
+    max-width: 250px;
+  }
+  .note-text {
+    font-size: 13px;
+    color: #6b7280;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: background 0.2s;
+    min-height: 22px;
+  }
+  .note-text:hover { background: #f3f4f6; }
+  .note-text.empty { color: #d1d5db; font-style: italic; }
+  .note-input {
+    width: 100%;
+    padding: 6px 8px;
+    border: 1px solid #667eea;
+    border-radius: 4px;
+    font-size: 13px;
+    outline: none;
+    font-family: inherit;
+    resize: vertical;
+  }
+  
+  /* Save indicator */
+  .save-indicator {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    padding: 10px 18px;
+    background: #10b981;
+    color: white;
+    border-radius: 8px;
+    font-size: 13px;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+    opacity: 0;
+    transform: translateY(20px);
+    transition: all 0.3s;
+    pointer-events: none;
+    z-index: 1000;
+  }
+  .save-indicator.show { opacity: 1; transform: translateY(0); }
+  
+  /* Progress bar */
+  .progress-wrap {
+    background: #e5e7eb;
+    border-radius: 4px;
+    height: 6px;
+    width: 80px;
+    overflow: hidden;
+  }
+  .progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #10b981, #34d399);
+    border-radius: 4px;
+    transition: width 0.3s;
+  }
+  
+  /* Modal */
+  .modal-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.5);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+  }
+  .modal-overlay.show { display: flex; }
+  .modal {
+    background: white;
+    border-radius: 12px;
+    padding: 24px;
+    max-width: 400px;
+    width: 90%;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+  }
+  .modal h3 { font-size: 18px; margin-bottom: 12px; }
+  .modal p { font-size: 14px; color: #6b7280; margin-bottom: 20px; }
+  .modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
+  
+
+
+
+  /* Dark mode */
+  body.dark {
+    background: #0f172a;
+    color: #e2e8f0;
+  }
+  body.dark .header {
+    background: linear-gradient(135deg, #4f46e5 0%, #6d28d9 100%);
+  }
+  body.dark .stat-card { background: #1e293b; }
+  body.dark .stat-card .label { color: #94a3b8; }
+  body.dark .stat-card .value { color: #e2e8f0; }
+  body.dark .stat-card .sub { color: #64748b; }
+  body.dark .toolbar { background: #1e293b; }
+  body.dark .search-box input {
+    background: #334155;
+    border-color: #475569;
+    color: #e2e8f0;
+  }
+  body.dark .search-box input:focus { border-color: #818cf8; }
+  body.dark .filter-btn {
+    background: #334155;
+    border-color: #475569;
+    color: #cbd5e1;
+  }
+  body.dark .filter-btn:hover { border-color: #818cf8; color: #818cf8; }
+  body.dark .filter-btn.active {
+    background: #6366f1;
+    border-color: #6366f1;
+    color: white;
+  }
+  body.dark .tabs { background: #1e293b; }
+  body.dark .tab { color: #94a3b8; }
+  body.dark .tab:hover { color: #e2e8f0; }
+  body.dark .table-container { background: #1e293b; }
+  body.dark thead { background: #334155; border-bottom-color: #475569; }
+  body.dark th { background: #334155; color: #cbd5e1; }
+  body.dark td { border-bottom-color: #334155; }
+  body.dark tbody tr:hover { background: #334155; }
+  body.dark .chapter-row { background: #312e81 !important; color: #a5b4fc; }
+  body.dark .mastery-select {
+    background: #334155;
+    border-color: #475569;
+    color: #e2e8f0;
+  }
+  body.dark .review-btn {
+    background: #334155;
+    border-color: #475569;
+    color: #cbd5e1;
+  }
+  body.dark .review-btn:hover { border-color: #818cf8; color: #818cf8; }
+  body.dark .note-text { color: #94a3b8; }
+  body.dark .note-text:hover { background: #334155; }
+  body.dark .note-text.empty { color: #475569; }
+  body.dark .note-input {
+    background: #334155;
+    color: #e2e8f0;
+  }
+  body.dark .progress-wrap { background: #334155; }
+  body.dark .modal { background: #1e293b; }
+  body.dark .modal h3 { color: #f1f5f9; }
+  body.dark .modal p { color: #94a3b8; }
+  body.dark .form-group label { color: #cbd5e1; }
+  body.dark .form-group input,
+  body.dark .form-group select,
+  body.dark .form-group textarea {
+    background: #334155;
+    border-color: #475569;
+    color: #e2e8f0;
+  }
+  body.dark .form-group input:focus,
+  body.dark .form-group select:focus,
+  body.dark .form-group textarea:focus { border-color: #818cf8; }
+  body.dark .form-group input:disabled {
+    background: #1e293b;
+    color: #64748b;
+  }
+  body.dark .delete-btn {
+    background: #450a0a;
+    border-color: #7f1d1d;
+    color: #fca5a5;
+  }
+  body.dark .delete-btn:hover {
+    background: #7f1d1d;
+    border-color: #b91c1c;
+  }
+  body.dark .custom-badge {
+    background: #4c1d95;
+    color: #c4b5fd;
+  }
+  body.dark .footer { color: #64748b; }
+  body.dark .tag-custom { background: #4c1d95; color: #c4b5fd; }
+  
+
+
+  /* Heatmap tab */
+  .heatmap-container {
+    background: white;
+    border-radius: 10px;
+    padding: 24px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    margin-bottom: 16px;
+  }
+  body.dark .heatmap-container { background: #1e293b; }
+  
+  .heatmap-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+  }
+  .heatmap-title { font-size: 16px; font-weight: 600; }
+  .heatmap-subtitle { font-size: 13px; color: #6b7280; margin-top: 4px; }
+  body.dark .heatmap-subtitle { color: #94a3b8; }
+  
+  .heatmap-grid {
+    display: flex;
+    gap: 3px;
+    overflow-x: auto;
+    padding-bottom: 8px;
+  }
+  .heatmap-week {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+  .heatmap-day {
+    width: 14px;
+    height: 14px;
+    border-radius: 3px;
+    background: #ebedf0;
+    transition: all 0.2s;
+    cursor: pointer;
+    position: relative;
+  }
+  body.dark .heatmap-day { background: #2d3748; }
+  .heatmap-day:hover { transform: scale(1.3); z-index: 10; }
+  .heatmap-day.level-1 { background: #9be9a8; }
+  .heatmap-day.level-2 { background: #40c463; }
+  .heatmap-day.level-3 { background: #30a14e; }
+  .heatmap-day.level-4 { background: #216e39; }
+  body.dark .heatmap-day.level-1 { background: #065f46; }
+  body.dark .heatmap-day.level-2 { background: #047857; }
+  body.dark .heatmap-day.level-3 { background: #10b981; }
+  body.dark .heatmap-day.level-4 { background: #34d399; }
+  
+  .heatmap-day .tooltip {
+    position: absolute;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #1f2937;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+    z-index: 100;
+  }
+  .heatmap-day:hover .tooltip { opacity: 1; }
+  
+  .heatmap-legend {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: #6b7280;
+    margin-top: 12px;
+    justify-content: flex-end;
+  }
+  body.dark .heatmap-legend { color: #94a3b8; }
+  .heatmap-legend .heatmap-day { width: 12px; height: 12px; cursor: default; }
+  .heatmap-legend .heatmap-day:hover { transform: none; }
+  
+  /* Timeline */
+  .timeline-container {
+    background: white;
+    border-radius: 10px;
+    padding: 24px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    margin-bottom: 16px;
+    max-height: 500px;
+    overflow-y: auto;
+  }
+  body.dark .timeline-container { background: #1e293b; }
+  
+  .timeline-item {
+    display: flex;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid #f3f4f6;
+    position: relative;
+  }
+  body.dark .timeline-item { border-bottom-color: #334155; }
+  .timeline-item:last-child { border-bottom: none; }
+  
+  .timeline-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin-top: 6px;
+    flex-shrink: 0;
+  }
+  .timeline-dot.mastered { background: #10b981; }
+  .timeline-dot.learning { background: #f59e0b; }
+  .timeline-dot.review { background: #6366f1; }
+  .timeline-dot.add { background: #8b5cf6; }
+  
+  .timeline-content { flex: 1; }
+  .timeline-action { font-size: 14px; font-weight: 500; }
+  .timeline-point { font-size: 13px; color: #6b7280; margin-top: 2px; }
+  body.dark .timeline-point { color: #94a3b8; }
+  .timeline-time { font-size: 12px; color: #9ca3af; margin-top: 4px; }
+  body.dark .timeline-time { color: #64748b; }
+  
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .stats-mini-card {
+    background: #f9fafb;
+    border-radius: 8px;
+    padding: 12px;
+    text-align: center;
+  }
+  body.dark .stats-mini-card { background: #334155; }
+  .stats-mini-card .num { font-size: 20px; font-weight: 700; color: #1f2937; }
+  body.dark .stats-mini-card .num { color: #e2e8f0; }
+  .stats-mini-card .label { font-size: 12px; color: #6b7280; margin-top: 2px; }
+  body.dark .stats-mini-card .label { color: #94a3b8; }
+
+  /* Today review badge on tab */
+  .tab .review-badge {
+    display: inline-block;
+    background: #ef4444;
+    color: white;
+    padding: 2px 7px;
+    border-radius: 10px;
+    font-size: 11px;
+    margin-left: 6px;
+    font-weight: 600;
+  }
+  
+  /* Review indicator dot */
+  .review-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 6px;
+  }
+  .review-dot.due-today { background: #ef4444; box-shadow: 0 0 0 2px rgba(239,68,68,0.2); }
+  .review-dot.due-soon { background: #f59e0b; }
+  .review-dot.fresh { background: #10b981; }
+  
+  /* Review panel modal */
+  .review-modal .modal { max-width: 560px; max-height: 80vh; overflow-y: auto; }
+  .review-list { margin-top: 12px; }
+  .review-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    margin-bottom: 6px;
+    background: #f9fafb;
+    transition: background 0.2s;
+  }
+  .review-item:hover { background: #f3f4f6; }
+  .review-item .ri-chapter { font-size: 12px; color: #6b7280; }
+  .review-item .ri-point { font-size: 14px; font-weight: 500; margin-top: 2px; }
+  .review-item .ri-meta { font-size: 12px; color: #9ca3af; margin-top: 4px; }
+  .review-item.urgent { border-left: 3px solid #ef4444; }
+  .review-item.soon { border-left: 3px solid #f59e0b; }
+  
+  body.dark .review-item { background: #334155; }
+  body.dark .review-item:hover { background: #475569; }
+  body.dark .review-item .ri-chapter { color: #94a3b8; }
+  body.dark .review-item .ri-point { color: #e2e8f0; }
+  body.dark .review-item .ri-meta { color: #64748b; }
+  
+  .review-summary {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+  .review-summary-card {
+    padding: 12px;
+    border-radius: 8px;
+    text-align: center;
+  }
+  .review-summary-card.urgent { background: #fef2f2; }
+  .review-summary-card.soon { background: #fffbeb; }
+  .review-summary-card.fresh { background: #f0fdf4; }
+  .review-summary-card .num { font-size: 24px; font-weight: 700; }
+  .review-summary-card.urgent .num { color: #dc2626; }
+  .review-summary-card.soon .num { color: #d97706; }
+  .review-summary-card.fresh .num { color: #059669; }
+  .review-summary-card .label { font-size: 12px; color: #6b7280; margin-top: 2px; }
+  
+  body.dark .review-summary-card.urgent { background: #450a0a; }
+  body.dark .review-summary-card.soon { background: #451a03; }
+  body.dark .review-summary-card.fresh { background: #052e16; }
+  body.dark .review-summary-card .label { color: #94a3b8; }
+  
+  /* Stats bar review tab indicator */
+  .stat-card.review-today { cursor: pointer; transition: transform 0.2s; }
+  .stat-card.review-today:hover { transform: translateY(-2px); }
+  .stat-card.review-today .value { color: #ef4444; }
+
+  /* Dark mode toggle button */
+  .theme-toggle {
+    padding: 8px 12px;
+    border: 1px solid #e5e7eb;
+    background: white;
+    border-radius: 6px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .theme-toggle:hover { border-color: #667eea; }
+  body.dark .theme-toggle {
+    background: #334155;
+    border-color: #475569;
+  }
+  
+  /* Chapter collapse */
+  .chapter-toggle {
+    cursor: pointer;
+    user-select: none;
+    display: inline-block;
+    transition: transform 0.2s;
+    margin-right: 6px;
+  }
+  .chapter-toggle.collapsed { transform: rotate(-90deg); }
+  .chapter-hidden { display: none; }
+
+
+
+  /* Point detail modal */
+  .detail-modal .modal { max-width: 560px; max-height: 85vh; overflow-y: auto; }
+  .detail-header {
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #e5e7eb;
+  }
+  body.dark .detail-header { border-bottom-color: #334155; }
+  .detail-chapter { font-size: 13px; color: #6b7280; margin-bottom: 4px; }
+  body.dark .detail-chapter { color: #94a3b8; }
+  .detail-title { font-size: 18px; font-weight: 600; }
+  .detail-meta {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+    flex-wrap: wrap;
+  }
+  
+  .detail-section { margin-bottom: 18px; }
+  .detail-section-title {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: #374151;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  body.dark .detail-section-title { color: #e2e8f0; }
+  
+  .blog-link-row {
+    display: flex;
+    gap: 8px;
+  }
+  .blog-link-row input {
+    flex: 1;
+    padding: 8px 12px;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    font-size: 13px;
+    outline: none;
+  }
+  body.dark .blog-link-row input {
+    background: #334155;
+    border-color: #475569;
+    color: #e2e8f0;
+  }
+  .blog-link-row input:focus { border-color: #667eea; }
+  .blog-link-row button {
+    padding: 8px 14px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  .blog-open-btn { background: #667eea; color: white; }
+  .blog-open-btn:hover { background: #5a67d8; }
+  .blog-save-btn { background: #10b981; color: white; }
+  .blog-save-btn:hover { background: #059669; }
+  
+  /* Todo list */
+  .todo-list { display: flex; flex-direction: column; gap: 8px; }
+  .todo-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    background: #f9fafb;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  body.dark .todo-item { background: #334155; }
+  .todo-item:hover { background: #f3f4f6; }
+  body.dark .todo-item:hover { background: #475569; }
+  .todo-item.done .todo-text {
+    text-decoration: line-through;
+    color: #9ca3af;
+  }
+  .todo-checkbox {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    accent-color: #10b981;
+    flex-shrink: 0;
+  }
+  .todo-text { flex: 1; font-size: 14px; }
+  .todo-date {
+    font-size: 12px;
+    color: #9ca3af;
+    flex-shrink: 0;
+  }
+  
+  .detail-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 16px;
+    justify-content: flex-end;
+  }
+  
+  /* Pomodoro */
+  .pomodoro-modal .modal { max-width: 380px; }
+  .pomodoro-display {
+    text-align: center;
+    padding: 20px 0;
+  }
+  .pomodoro-time {
+    font-size: 56px;
+    font-weight: 700;
+    color: #667eea;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 2px;
+  }
+  body.dark .pomodoro-time { color: #818cf8; }
+  .pomodoro-label {
+    font-size: 14px;
+    color: #6b7280;
+    margin-top: 4px;
+  }
+  body.dark .pomodoro-label { color: #94a3b8; }
+  .pomodoro-controls {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-top: 16px;
+  }
+  .pomodoro-btn {
+    padding: 10px 24px;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .pomodoro-btn.primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+  }
+  .pomodoro-btn.primary:hover { transform: translateY(-1px); }
+  .pomodoro-btn.secondary {
+    background: #f3f4f6;
+    color: #374151;
+  }
+  body.dark .pomodoro-btn.secondary {
+    background: #334155;
+    color: #e2e8f0;
+  }
+  .pomodoro-btn.secondary:hover { background: #e5e7eb; }
+  body.dark .pomodoro-btn.secondary:hover { background: #475569; }
+  
+  .pomodoro-progress {
+    height: 6px;
+    background: #e5e7eb;
+    border-radius: 3px;
+    margin-top: 16px;
+    overflow: hidden;
+  }
+  body.dark .pomodoro-progress { background: #334155; }
+  .pomodoro-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #667eea, #764ba2);
+    border-radius: 3px;
+    transition: width 1s linear;
+  }
+  
+  .pomodoro-info {
+    margin-top: 12px;
+    text-align: center;
+    font-size: 13px;
+    color: #6b7280;
+  }
+  body.dark .pomodoro-info { color: #94a3b8; }
+  
+  /* Point row clickable */
+  .point-name-cell { cursor: pointer; }
+  .point-name-cell:hover .drag-hint { opacity: 1; }
+  .drag-hint {
+    font-size: 11px;
+    color: #9ca3af;
+    margin-left: 6px;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+
+
+  /* Cloud sync */
+  .sync-modal .modal { max-width: 420px; }
+  .sync-status {
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 14px;
+    font-size: 13px;
+    display: none;
+  }
+  .sync-status.show { display: block; }
+  .sync-status.success { background: #d1fae5; color: #065f46; }
+  .sync-status.error { background: #fee2e2; color: #991b1b; }
+  .sync-status.info { background: #dbeafe; color: #1e40af; }
+  body.dark .sync-status.success { background: #064e3b; color: #6ee7b7; }
+  body.dark .sync-status.error { background: #7f1d1d; color: #fca5a5; }
+  body.dark .sync-status.info { background: #1e3a8a; color: #93c5fd; }
+  
+  .sync-btn-group {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-top: 14px;
+  }
+  .sync-btn {
+    padding: 12px;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .sync-btn.pull { background: #dbeafe; color: #1d4ed8; }
+  .sync-btn.pull:hover { background: #bfdbfe; }
+  .sync-btn.push { background: #d1fae5; color: #047857; }
+  .sync-btn.push:hover { background: #a7f3d0; }
+  
+  .sync-info-text {
+    font-size: 12px;
+    color: #6b7280;
+    margin-top: 10px;
+    line-height: 1.6;
+  }
+  body.dark .sync-info-text { color: #94a3b8; }
+  
+  .sync-last-time {
+    font-size: 12px;
+    color: #9ca3af;
+    margin-top: 8px;
+  }
+  body.dark .sync-last-time { color: #64748b; }
+
+  /* Batch mode */
+  .batch-toolbar {
+    background: #fef3c7;
+    padding: 12px 20px;
+    border-radius: 10px;
+    margin-bottom: 12px;
+    display: none;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  body.dark .batch-toolbar { background: #451a03; }
+  .batch-toolbar.active { display: flex; }
+  .batch-toolbar .batch-info { font-size: 14px; font-weight: 500; color: #92400e; }
+  body.dark .batch-toolbar .batch-info { color: #fcd34d; }
+  .batch-actions { display: flex; gap: 8px; margin-left: auto; }
+  .batch-btn {
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 13px;
+    cursor: pointer;
+    border: none;
+    font-weight: 500;
+  }
+  .batch-btn.success { background: #059669; color: white; }
+  .batch-btn.success:hover { background: #047857; }
+  .batch-btn.warning { background: #d97706; color: white; }
+  .batch-btn.warning:hover { background: #b45309; }
+  .batch-btn.cancel { background: white; color: #374151; border: 1px solid #d1d5db; }
+  body.dark .batch-btn.cancel { background: #334155; color: #e2e8f0; border-color: #475569; }
+  
+  /* Checkbox column */
+  .check-col { width: 36px; text-align: center; }
+  .row-checkbox {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+    accent-color: #667eea;
+  }
+  
+  /* Priority sort button */
+  .sort-priority-btn {
+    padding: 8px 14px;
+    border: 1px solid #e5e7eb;
+    background: white;
+    border-radius: 6px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-weight: 500;
+  }
+  .sort-priority-btn:hover { border-color: #f59e0b; color: #f59e0b; }
+  .sort-priority-btn.active {
+    background: #fef3c7;
+    border-color: #f59e0b;
+    color: #92400e;
+  }
+  body.dark .sort-priority-btn {
+    background: #334155;
+    border-color: #475569;
+    color: #cbd5e1;
+  }
+  body.dark .sort-priority-btn:hover { border-color: #f59e0b; color: #f59e0b; }
+  body.dark .sort-priority-btn.active {
+    background: #451a03;
+    border-color: #f59e0b;
+    color: #fcd34d;
+  }
+
+  /* Sort / drag handle */
+  .sort-col {
+    width: 40px;
+    text-align: center;
+    cursor: grab;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  .sort-col:hover { background: #f0f4ff; }
+  .sort-col:active { cursor: grabbing; }
+  .drag-handle {
+    cursor: grab;
+    color: #9ca3af;
+    font-size: 16px;
+    user-select: none;
+    text-align: center;
+    transition: color 0.2s;
+    display: inline-block;
+    padding: 4px 8px;
+  }
+  .sort-col:hover .drag-handle { color: #667eea; }
+  .drag-handle:active { cursor: grabbing; }
+  tr.dragging { opacity: 0.5; background: #e0e7ff !important; }
+  tr.dragging td { background: #e0e7ff !important; }
+  tr.drag-over-top { border-top: 3px solid #667eea !important; }
+  tr.drag-over-bottom { border-bottom: 3px solid #667eea !important; }
+  body.dragging-active { cursor: grabbing !important; }
+  body.dragging-active * { user-select: none !important; -webkit-user-select: none !important; }
+  
+  /* Drag success toast */
+  .drag-toast {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-100px);
+    background: #667eea;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 14px;
+    z-index: 99999;
+    transition: transform 0.3s ease;
+    pointer-events: none;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  }
+  .drag-toast.show {
+    transform: translateX(-50%) translateY(0);
+  }
+  
+  /* Dragging ghost row effect */
+  .drag-ghost {
+    position: fixed;
+    z-index: 9999;
+    pointer-events: none;
+    opacity: 0.8;
+    background: white;
+    border: 2px solid #667eea;
+    border-radius: 4px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    padding: 8px 12px;
+    font-size: 13px;
+    white-space: nowrap;
+  }
+
+  /* Add Point Modal */
+  .add-modal .modal { max-width: 520px; }
+  .form-group { margin-bottom: 14px; }
+  .form-group label {
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+    color: #374151;
+    margin-bottom: 6px;
+  }
+  .form-group input,
+  .form-group select,
+  .form-group textarea {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    font-size: 14px;
+    outline: none;
+    font-family: inherit;
+    transition: border-color 0.2s;
+  }
+  .form-group input:focus,
+  .form-group select:focus,
+  .form-group textarea:focus { border-color: #667eea; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .form-group textarea { resize: vertical; min-height: 60px; }
+  
+  /* Delete button */
+  .delete-btn {
+    padding: 4px 10px;
+    border: 1px solid #fecaca;
+    background: #fef2f2;
+    color: #dc2626;
+    border-radius: 4px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .delete-btn:hover {
+    background: #fee2e2;
+    border-color: #fca5a5;
+  }
+  
+  /* Custom badge */
+  .custom-badge {
+    display: inline-block;
+    padding: 2px 6px;
+    background: #ede9fe;
+    color: #7c3aed;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 500;
+    margin-left: 6px;
+  }
+
+
+  /* PDF Viewer */
+  .pdf-container {
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    overflow: hidden;
+    height: calc(100vh - 380px);
+    min-height: 500px;
+  }
+  .pdf-container embed {
+    width: 100%;
+    height: 100%;
+    border: none;
+  }
+  .pdf-fallback {
+    padding: 40px;
+    text-align: center;
+    color: #6b7280;
+  }
+  .pdf-fallback a {
+    color: #667eea;
+    text-decoration: none;
+    font-weight: 500;
+  }
+  .pdf-fallback a:hover { text-decoration: underline; }
+
+
+
+
+  /* Floating button collapse */
+  .floating-toggle {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    cursor: pointer;
+    font-size: 20px;
+    box-shadow: 0 4px 16px rgba(102, 126, 234, 0.4);
+    z-index: 101;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.3s;
+  }
+  .floating-toggle:hover { transform: scale(1.08); }
+  
+  .floating-actions {
+    position: fixed;
+    bottom: 84px;
+    right: 26px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    z-index: 100;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .floating-actions.collapsed {
+    transform: translateY(20px);
+    opacity: 0;
+    pointer-events: none;
+  }
+  
+  .floating-btn {
+    position: relative !important;
+    top: auto !important;
+    right: auto !important;
+    bottom: auto !important;
+    left: auto !important;
+  }
+  
+  /* Back to top - separate left position */
+  .back-to-top-btn {
+    position: fixed;
+    bottom: 24px;
+    left: 24px;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: white;
+    color: #667eea;
+    border: 1px solid #e5e7eb;
+    cursor: pointer;
+    font-size: 18px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    z-index: 99;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s;
+    opacity: 0;
+    pointer-events: none;
+  }
+  body.dark .back-to-top-btn {
+    background: #1e293b;
+    border-color: #475569;
+    color: #818cf8;
+  }
+  .back-to-top-btn.show {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .back-to-top-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0,0,0,0.15);
+  }
+
+  /* Share poster */
+  .share-modal .modal { max-width: 420px; }
+  .poster-preview {
+    background: white;
+    border-radius: 12px;
+    padding: 24px;
+    text-align: center;
+    margin-bottom: 16px;
+    border: 1px solid #e5e7eb;
+  }
+  body.dark .poster-preview { border-color: #475569; }
+  
+  .poster-canvas-wrap {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 12px;
+  }
+  #poster-canvas {
+    max-width: 100%;
+    border-radius: 8px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+  }
+  
+  .share-btn {
+    width: 100%;
+    padding: 12px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.2s;
+  }
+  .share-btn:hover { transform: translateY(-1px); }
+
+  /* Floating actions */
+  .floating-actions {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    z-index: 100;
+  }
+  .floating-btn {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+    font-size: 18px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .floating-btn:hover {
+    transform: scale(1.08);
+    box-shadow: 0 6px 16px rgba(0,0,0,0.2);
+  }
+  .floating-btn.add-btn {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+  }
+  .floating-btn.reset-btn {
+    background: #fee2e2;
+    color: #dc2626;
+  }
+  .floating-btn.export-btn {
+    background: #d1fae5;
+    color: #059669;
+  }
+  .floating-btn .tooltip {
+    position: absolute;
+    right: 54px;
+    background: #1f2937;
+    color: white;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+  }
+  .floating-btn:hover .tooltip { opacity: 1; }
+
+  /* Footer */
+  .footer {
+    text-align: center;
+    padding: 20px;
+    color: #9ca3af;
+    font-size: 12px;
+  }
+  
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: #f1f1f1; }
+  ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: #a1a1a1; }
+  
+  @media (max-width: 768px) {
+    .stats-bar { grid-template-columns: repeat(2, 1fr); }
+    .header h1 { font-size: 20px; }
+    th, td { padding: 8px 6px; font-size: 12px; }
+    .note-cell { max-width: 120px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header" style="display:flex;justify-content:space-between;align-items:center">
+    <div>
+      <h1>📚 2026考研408考点考频学习管理表</h1>
+      <p>数据结构 · 计算机组成原理 · 操作系统 · 计算机网络 | 数据自动保存至本地</p>
+    </div>
+    <div class="header-right">
+      <div class="header-time" id="header-time"></div>
+      <div class="header-countdown">
+        <span class="countdown-label">距离考研</span>
+        <span class="countdown-days" id="countdown-days">--</span>
+        <span class="countdown-label">天</span>
+        <span style="font-size:18px">🎯</span>
+      </div>
+    </div>
+  </div>
+  
+  <div class="stats-bar">
+    <div class="stat-card total">
+      <div class="label">考点总数</div>
+      <div class="value" id="stat-total">0</div>
+      <div class="sub">四大科目合计</div>
+    </div>
+    <div class="stat-card mastered">
+      <div class="label">已掌握</div>
+      <div class="value" id="stat-mastered">0</div>
+      <div class="sub"><div class="progress-wrap"><div class="progress-bar" id="progress-mastered" style="width:0%"></div></div></div>
+    </div>
+    <div class="stat-card learning">
+      <div class="label">学习中</div>
+      <div class="value" id="stat-learning">0</div>
+      <div class="sub"><div class="progress-wrap"><div class="progress-bar" id="progress-learning" style="width:0%;background:linear-gradient(90deg,#f59e0b,#fbbf24)"></div></div></div>
+    </div>
+    <div class="stat-card review-today" onclick="openReviewModal()">
+      <div class="label">🔔 今日待复习</div>
+      <div class="value" id="stat-review-today">0</div>
+      <div class="sub">点击查看详情</div>
+    </div>
+  </div>
+  
+  <div class="toolbar">
+    <div class="search-box">
+      <input type="text" id="search-input" placeholder="搜索考点、章节...">
+    </div>
+    <div class="filter-group">
+      <button class="filter-btn active" data-filter="all">全部</button>
+      <button class="filter-btn" data-filter="🔥 高频">🔥 高频</button>
+      <button class="filter-btn" data-filter="🟡 中频">🟡 中频</button>
+      <button class="filter-btn" data-filter="🟢 低频">🟢 低频</button>
+      <button class="filter-btn" data-filter="⚪ 冷门">⚪ 冷门</button>
+    </div>
+    <div class="filter-group">
+      <button class="filter-btn" data-mastery="all">全部状态</button>
+      <button class="filter-btn" data-mastery="未开始">未开始</button>
+      <button class="filter-btn" data-mastery="学习中">学习中</button>
+      <button class="filter-btn" data-mastery="已掌握">已掌握</button>
+    </div>
+    <button class="sort-priority-btn" id="sort-priority-btn">⚡ 优先排序</button>
+    <button class="theme-toggle" id="theme-toggle" title="切换主题">🌙</button>
+    <input type="file" id="import-file" accept=".json" style="display:none">
+  </div>
+  
+  <div class="tabs" id="tabs"></div>
+  
+
+  <div class="batch-toolbar" id="batch-toolbar">
+    <span class="batch-info" id="batch-info">已选择 0 个考点</span>
+    <div class="batch-actions">
+      <button class="batch-btn success" onclick="batchMarkMastered()">✓ 标记已掌握</button>
+      <button class="batch-btn warning" onclick="batchMarkLearning()">📖 标记学习中</button>
+      <button class="batch-btn cancel" onclick="exitBatchMode()">取消</button>
+    </div>
+  </div>
+
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr>
+          <th class="check-col" style="width:36px"><input type="checkbox" class="row-checkbox" id="select-all" onclick="toggleSelectAll()"></th>
+          <th class="sort-col" style="width:40px">⋮⋮</th>
+          <th style="width:140px">考纲章节</th>
+          <th>考点</th>
+          <th style="width:90px">09—25考频</th>
+          <th style="width:100px">热度等级</th>
+          <th style="width:100px">掌握程度</th>
+          <th style="width:120px">回顾次数</th>
+          <th style="width:200px">备注</th>
+          <th style="width:60px">操作</th>
+        </tr>
+      </thead>
+      <tbody id="table-body"></tbody>
+    </table>
+  </div>
+  
+
+
+  <div id="stats-view" style="display:none">
+    <div class="heatmap-container">
+      <div class="heatmap-header">
+        <div>
+          <div class="heatmap-title">🔥 学习日历</div>
+          <div class="heatmap-subtitle">过去一年的学习记录</div>
+        </div>
+      </div>
+      <div id="heatmap-grid" class="heatmap-grid"></div>
+      <div class="heatmap-legend">
+        <span>少</span>
+        <div class="heatmap-day"></div>
+        <div class="heatmap-day level-1"></div>
+        <div class="heatmap-day level-2"></div>
+        <div class="heatmap-day level-3"></div>
+        <div class="heatmap-day level-4"></div>
+        <span>多</span>
+      </div>
+    </div>
+    
+    <div class="stats-row">
+      <div class="stats-mini-card">
+        <div class="num" id="s-total-days">0</div>
+        <div class="label">学习天数</div>
+      </div>
+      <div class="stats-mini-card">
+        <div class="num" id="s-total-actions">0</div>
+        <div class="label">总操作次数</div>
+      </div>
+      <div class="stats-mini-card">
+        <div class="num" id="s-streak">0</div>
+        <div class="label">连续学习天数</div>
+      </div>
+      <div class="stats-mini-card">
+        <div class="num" id="s-mastered-rate">0%</div>
+        <div class="label">掌握率</div>
+      </div>
+    </div>
+    
+    <div class="timeline-container">
+      <div class="heatmap-title" style="margin-bottom:12px">📝 学习时间线</div>
+      <div id="timeline-list"></div>
+    </div>
+  </div>
+
+  <div class="pdf-container" id="pdf-container" style="display:none">
+    <embed src="考试大纲.pdf" type="application/pdf" width="100%" height="100%">
+      <div class="pdf-fallback">
+        <p>📄 您的浏览器可能不支持内嵌PDF预览</p>
+        <p style="margin-top:10px"><a href="考试大纲.pdf" target="_blank">点击此处打开考试大纲PDF</a></p>
+      </div>
+    
+  </div>
+
+  
+<button class="floating-toggle" id="float-toggle" title="展开/收起">⚡</button>
+<div class="floating-actions" id="float-actions">
+  <button class="floating-btn" id="float-sync-btn" style="background:linear-gradient(135deg,#06b6d4,#0891b2);color:white" title="云同步">
+    <span class="tooltip">☁️ 云同步</span>
+    ☁️
+  </button>
+  <button class="floating-btn" id="float-pomo-btn" style="background:linear-gradient(135deg,#f97316,#ef4444);color:white" title="番茄钟">
+    <span class="tooltip">🍅 番茄钟</span>
+    🍅
+  </button>
+  <button class="floating-btn add-btn" id="float-add-btn" title="新增考点">
+    <span class="tooltip">➕ 新增考点</span>
+    ➕
+  </button>
+  <button class="floating-btn export-btn" id="float-export-btn" title="导出数据">
+    <span class="tooltip">📤 导出数据</span>
+    📤
+  </button>
+  <button class="floating-btn" id="float-import-btn" style="background:#dbeafe;color:#1d4ed8" title="导入数据">
+    <span class="tooltip">📥 导入数据</span>
+    📥
+  </button>
+  <button class="floating-btn reset-btn" id="float-reset-btn" title="重置数据">
+    <span class="tooltip">🔄 重置数据</span>
+    🔄
+  </button>
+  <button class="floating-btn" id="float-share-btn" style="background:#fce7f3;color:#be185d" title="生成分享海报">
+    <span class="tooltip">📸 分享海报</span>
+    📸
+  </button>
+</div>
+<button class="back-to-top-btn" id="back-to-top" title="回到顶部">⬆️</button>
+
+  <div class="footer">
+    💾 所有修改自动保存到浏览器本地存储 | 数据不会上传到服务器
+  </div>
+</div>
+
+<div class="save-indicator" id="save-indicator">✓ 已保存</div>
+
+
+
+
+
+
+
+<div class="modal-overlay sync-modal" id="sync-modal">
+  <div class="modal">
+    <h3>☁️ 云同步</h3>
+    <p style="font-size:13px;color:#6b7280;margin-bottom:12px">使用 jsonbin.io 多设备同步学习数据</p>
+    
+    <div class="sync-status info" id="sync-status"></div>
+    
+    <div class="form-group">
+      <label>Access Key ID</label>
+      <input type="text" id="sync-key-id" placeholder="输入你的 Access Key ID">
+    </div>
+    <div class="form-group">
+      <label>X-Access-Key</label>
+      <input type="password" id="sync-access-key" placeholder="输入你的 X-Access-Key">
+    </div>
+    <div class="form-group">
+      <label>Bin ID（第一次使用留空，推送后自动创建）</label>
+      <input type="text" id="sync-bin-id" placeholder="已有Bin ID则填入，没有则留空">
+    </div>
+    
+    <div class="sync-btn-group">
+      <button class="sync-btn pull" onclick="syncPull()">⬇️ 从云端拉取</button>
+      <button class="sync-btn push" onclick="syncPush()">⬆️ 推送到云端</button>
+    </div>
+    
+    <div class="sync-last-time" id="sync-last-time"></div>
+    
+    <div class="sync-info-text">
+      💡 第一次使用：填好两个Key，Bin ID留空，点「推送到云端」会自动创建Bin，然后把Bin ID保存下来。<br>
+      其他设备：填入相同的Key和Bin ID，点「从云端拉取」即可同步。
+    </div>
+    
+    <div class="modal-actions" style="margin-top:14px">
+      <button class="action-btn" style="background:#e5e7eb;color:#374151" onclick="closeSyncModal()">关闭</button>
+      <button class="action-btn primary" onclick="saveSyncConfig()">保存配置</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay pomodoro-modal" id="pomodoro-modal">
+  <div class="modal">
+    <h3>🍅 番茄钟 · 45分钟专注</h3>
+    <div class="pomodoro-display">
+      <div class="pomodoro-time" id="pomo-time">45:00</div>
+      <div class="pomodoro-label" id="pomo-label">准备开始</div>
+    </div>
+    <div class="pomodoro-progress">
+      <div class="pomodoro-progress-fill" id="pomo-progress" style="width:100%"></div>
+    </div>
+    <div class="pomodoro-controls">
+      <button class="pomodoro-btn primary" id="pomo-start-btn" onclick="togglePomodoro()">开始</button>
+      <button class="pomodoro-btn secondary" onclick="resetPomodoro()">重置</button>
+    </div>
+    <div class="pomodoro-info" id="pomo-info">专注学习，完成后自动记录学习时间</div>
+  </div>
+</div>
+
+<div class="modal-overlay detail-modal" id="detail-modal">
+  <div class="modal">
+    <div class="detail-header">
+      <div class="detail-chapter" id="detail-chapter"></div>
+      <div class="detail-title" id="detail-title"></div>
+      <div class="detail-meta">
+        <span class="tag" id="detail-heat"></span>
+        <span class="tag tag-custom" id="detail-mastery-tag"></span>
+      </div>
+    </div>
+    
+    <div class="detail-section">
+      <div class="detail-section-title">🔗 我的笔记博客</div>
+      <div class="blog-link-row">
+        <input type="text" id="detail-blog-link" placeholder="粘贴博客文章链接，如 https://myblog.com/post/123">
+        <button class="blog-open-btn" onclick="openBlogLink()">打开</button>
+        <button class="blog-save-btn" onclick="saveBlogLink()">保存</button>
+      </div>
+    </div>
+    
+    <div class="detail-section">
+      <div class="detail-section-title">✅ 学习待办</div>
+      <div class="todo-list" id="detail-todo-list"></div>
+    </div>
+    
+    <div class="detail-actions">
+      <button class="action-btn" style="background:#e5e7eb;color:#374151" onclick="closeDetailModal()">关闭</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay share-modal" id="share-modal">
+  <div class="modal">
+    <h3>📸 生成学习海报</h3>
+    <p style="margin-bottom:12px;font-size:13px;color:#6b7280">生成你的考研408学习进度海报，保存图片分享给朋友吧！</p>
+    <div class="poster-canvas-wrap">
+      <canvas id="poster-canvas" width="360" height="480"></canvas>
+    </div>
+    <div class="modal-actions">
+      <button class="action-btn" style="background:#e5e7eb;color:#374151" onclick="closeShareModal()">关闭</button>
+      <button class="share-btn" onclick="downloadPoster()">💾 保存图片</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay review-modal" id="review-modal">
+  <div class="modal">
+    <h3>🔔 艾宾浩斯复习计划</h3>
+    <p style="margin-bottom:12px;font-size:13px;color:#6b7280">基于艾宾浩斯遗忘曲线，在最佳时间点复习可大幅提升记忆效率</p>
+    <div class="review-summary">
+      <div class="review-summary-card urgent">
+        <div class="num" id="rv-urgent">0</div>
+        <div class="label">今天需复习</div>
+      </div>
+      <div class="review-summary-card soon">
+        <div class="num" id="rv-soon">0</div>
+        <div class="label">明天需复习</div>
+      </div>
+      <div class="review-summary-card fresh">
+        <div class="num" id="rv-fresh">0</div>
+        <div class="label">近期已掌握</div>
+      </div>
+    </div>
+    <div id="review-list" class="review-list"></div>
+    <div class="modal-actions" style="margin-top:16px">
+      <button class="action-btn" style="background:#e5e7eb;color:#374151" onclick="closeReviewModal()">关闭</button>
+      <button class="action-btn primary" onclick="markAllReviewed()">全部标记为已复习</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay add-modal" id="add-modal">
+  <div class="modal">
+    <h3>➕ 新增自定义考点</h3>
+    <p style="margin-bottom:16px">添加你自己的考点到当前科目，数据保存在本地。</p>
+    <div class="form-group">
+      <label>科目</label>
+      <select id="add-subject" onchange="updateChapterOptions()"></select>
+    </div>
+    <div class="form-group">
+      <label>考纲章节 *</label>
+      <select id="add-chapter">
+        <option value="">请选择章节</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>考点名称 *</label>
+      <input type="text" id="add-point" placeholder="请输入考点名称">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>考频</label>
+        <input type="text" value="—" disabled="" style="background:#f3f4f6;color:#9ca3af">
+      </div>
+      <div class="form-group">
+        <label>热度等级</label>
+        <input type="text" value="—" disabled="" style="background:#f3f4f6;color:#9ca3af">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>掌握程度</label>
+        <select id="add-mastery">
+          <option value="未开始" selected="">未开始</option>
+          <option value="学习中">学习中</option>
+          <option value="已掌握">已掌握</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>回顾次数</label>
+        <input type="number" id="add-review" value="0" min="0">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>备注</label>
+      <textarea id="add-note" placeholder="可选：添加备注信息"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="action-btn" style="background:#e5e7eb;color:#374151" onclick="closeAddModal()">取消</button>
+      <button class="action-btn primary" onclick="submitAddPoint()">确认添加</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="reset-modal">
+  <div class="modal">
+    <h3>确认重置数据？</h3>
+    <p>此操作将清除所有学习进度和备注，恢复到初始状态。该操作不可撤销。</p>
+    <div class="modal-actions">
+      <button class="action-btn" style="background:#e5e7eb;color:#374151" onclick="closeModal()">取消</button>
+      <button class="action-btn danger" onclick="confirmReset()">确认重置</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const INITIAL_DATA = {"Sheet1_数据结构": [{"科目": "数据结构", "考纲章节": "基本概念", "考点": "数据结构的基本概念", "09—25考频": "—", "热度等级": "⚪ 冷门", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "数据结构", "考纲章节": "基本概念", "考点": "算法的基本概念", "09—25考频": "8", "热度等级": "🟡 中频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "数据结构", "考纲章节": "基本概念", "考点": "时间复杂度和空间复杂度分析", "09—25考频": "10+", "热度等级": "🔥 高频", "掌握程度": "未开始", "回顾次数": 0, "备注": "综合题41题必考点，需重点掌握代码推导"}, {"科目": "数据结构", "考纲章节": "线性表", "考点": "线性表的基本概念", "09—25考频": "—", "热度等级": "⚪ 冷门", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "数据结构", "考纲章节": "线性表", "考点": "顺序存储", "09—25考频": "1", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "数据结构", "考纲章节": "线性表", "考点": "链式存储", "09—25考频": "5", "热度等级": "🟡 中频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "数据结构", "考纲章节": "线性表", "考点": "线性表的应用", "09—25考频": "13", "热度等级": "🔥 高频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "数据结构", "考纲章节": "栈、队列和数组", "考点": "栈和队列的基本概念", "09—25考频": "11", "热度等级": "🔥 高频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "数据结构", "考纲章节": "栈、队列和数组", "考点": "栈和队列的顺序存储结构", "09—25考频": "2", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "数据结构", "考纲章节": "栈、队列和数组", "考点": "栈和队列的链式存储结构", "09—25考频": "1", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "数据结构", "考纲章节": "栈、队列和数组", "考点": "多维数组的存储", "09—25考频": "1", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "数据结构", "考纲章节": "栈、队列和数组", "考点": "特殊矩阵的压缩存储", "09—25考频": "5", "热度等级": "🟡 中频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "数据结构", "考纲章节": "栈、队列和数组", "考点": "栈、队列和数组的应用", "09—25考频": "7", "热度等级": "🟡 中频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "数据结构", "考纲章节": "树和二叉树", "考点": "树的基本概念", "09—25考频": "4", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "数据结构", "考纲章节": "树和二叉树", "考点": "二叉树的定义及其主要特性", "09—25考频": "9", "热度等级": "🟡 中频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "数据结构", "考纲章节": "树和二叉树", "考点": "二叉树的顺序存储结构和链式存储结构", "09—25考频": "3", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "数据结构", "考纲章节": "树和二叉树", "考点": "二叉树的遍历", "09—25考频": "10", "热度等级": "🔥 高频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "数据结构", "考纲章节": "树和二叉树", "考点": "线索二叉树的基本概念和构造", "09—25考频": "3", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "数据结构", "考纲章节": "树和二叉树", "考点": "树的存储结构", "09—25考频": "—", "热度等级": "⚪ 冷门", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "数据结构", "考纲章节": "树和二叉树", "考点": "森林与二叉树的转换", "09—25考频": "4", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "数据结构", "考纲章节": "树和二叉树", "考点": "树和森林的遍历", "09—25考频": "2", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "数据结构", "考纲章节": "树和二叉树", "考点": "哈夫曼(Huffman) 树和哈夫曼编码", "09—25考频": "8", "热度等级": "🟡 中频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "数据结构", "考纲章节": "树和二叉树", "考点": "并查集及其应用", "09—25考频": "—", "热度等级": "⚪ 冷门", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "数据结构", "考纲章节": "树和二叉树", "考点": "堆及其应用", "09—25考频": "—", "热度等级": "⚪ 冷门", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "数据结构", "考纲章节": "图", "考点": "图的基本概念", "09—25考频": "5", "热度等级": "🟡 中频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "数据结构", "考纲章节": "图", "考点": "邻接矩阵", "09—25考频": "4", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "数据结构", "考纲章节": "图", "考点": "邻接表", "09—25考频": "1", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "数据结构", "考纲章节": "图", "考点": "邻接多重表、十字链表", "09—25考频": "1", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "数据结构", "考纲章节": "图", "考点": "深度优先搜索", "09—25考频": "3", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "数据结构", "考纲章节": "图", "考点": "广度优先搜索", "09—25考频": "4", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "数据结构", "考纲章节": "图", "考点": "最小(代价)生成树", "09—25考频": "1", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "数据结构", "考纲章节": "图", "考点": "最短路径", "09—25考频": "11", "热度等级": "🔥 高频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "数据结构", "考纲章节": "图", "考点": "拓扑排序", "09—25考频": "9", "热度等级": "🟡 中频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "数据结构", "考纲章节": "图", "考点": "关键路径", "09—25考频": "7", "热度等级": "🟡 中频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "数据结构", "考纲章节": "查找", "考点": "查找的基本概念", "09—25考频": "—", "热度等级": "⚪ 冷门", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "数据结构", "考纲章节": "查找", "考点": "顺序查找法", "09—25考频": "—", "热度等级": "⚪ 冷门", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "数据结构", "考纲章节": "查找", "考点": "分块查找法", "09—25考频": "1", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "数据结构", "考纲章节": "查找", "考点": "折半查找法", "09—25考频": "5", "热度等级": "🟡 中频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "数据结构", "考纲章节": "查找", "考点": "二叉搜索树", "09—25考频": "7", "热度等级": "🟡 中频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "数据结构", "考纲章节": "查找", "考点": "平衡二叉树", "09—25考频": "7", "热度等级": "🟡 中频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "数据结构", "考纲章节": "查找", "考点": "红黑树", "09—25考频": "—", "热度等级": "⚪ 冷门", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "数据结构", "考纲章节": "查找", "考点": "B 树及其基本操作、B 树的基本概念", "09—25考频": "12", "热度等级": "🔥 高频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "数据结构", "考纲章节": "查找", "考点": "散列(Hash)表", "09—25考频": "9", "热度等级": "🟡 中频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "数据结构", "考纲章节": "查找", "考点": "字符串模式匹配", "09—25考频": "3", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "数据结构", "考纲章节": "查找", "考点": "查找算法的分析及应用", "09—25考频": "—", "热度等级": "⚪ 冷门", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "数据结构", "考纲章节": "排序", "考点": "排序的基本概念", "09—25考频": "—", "热度等级": "⚪ 冷门", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "数据结构", "考纲章节": "排序", "考点": "直接插入排序", "09—25考频": "—", "热度等级": "⚪ 冷门", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "数据结构", "考纲章节": "排序", "考点": "折半插入排序", "09—25考频": "1", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "数据结构", "考纲章节": "排序", "考点": "起泡排序(Bubble Sort)", "09—25考频": "—", "热度等级": "⚪ 冷门", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "数据结构", "考纲章节": "排序", "考点": "简单选择排序", "09—25考频": "—", "热度等级": "⚪ 冷门", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "数据结构", "考纲章节": "排序", "考点": "希尔排序(Shell Sort)", "09—25考频": "4", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "数据结构", "考纲章节": "排序", "考点": "快速排序", "09—25考频": "6", "热度等级": "🟡 中频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "数据结构", "考纲章节": "排序", "考点": "堆排序", "09—25考频": "8", "热度等级": "🟡 中频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "数据结构", "考纲章节": "排序", "考点": "二路归并排序(Merge Sort)", "09—25考频": "4", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "数据结构", "考纲章节": "排序", "考点": "基数排序", "09—25考频": "2", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "数据结构", "考纲章节": "排序", "考点": "外部排序", "09—25考频": "3", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "数据结构", "考纲章节": "排序", "考点": "排序算法的分析与应用", "09—25考频": "11", "热度等级": "🔥 高频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}], "Sheet2_计算机组成原理": [{"科目": "计算机组成原理", "考纲章节": "计算机系统概述", "考点": "计算机系统的基本组成", "09—25考频": "1", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机组成原理", "考纲章节": "计算机系统概述", "考点": "计算机硬件的基本组成", "09—25考频": "3", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机组成原理", "考纲章节": "计算机系统概述", "考点": "计算机软件和硬件的关系", "09—25考频": "—", "热度等级": "⚪ 冷门", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机组成原理", "考纲章节": "计算机系统概述", "考点": "计算机系统的工作原理：“存储程序”工作方式，高级语言程序与机器语言程序之间的转换，程序和指令的执行过程。", "09—25考频": "4", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机组成原理", "考纲章节": "计算机系统概述", "考点": "吞吐量、响应时间；CPU 时钟周期、主频、CPI、CPU执行时间；MIPS、MFLOPS、GFLOPS、TFLOPS、PFLOPS、EFLOPS、ZFLOPS", "09—25考频": "9", "热度等级": "🟡 中频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机组成原理", "考纲章节": "数据的表示和运算", "考点": "进位计数制及其数据之间的相互转换", "09—25考频": "1", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机组成原理", "考纲章节": "数据的表示和运算", "考点": "定点数的编码表示", "09—25考频": "—", "热度等级": "⚪ 冷门", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机组成原理", "考纲章节": "数据的表示和运算", "考点": "基本运算部件：加法器，算术逻辑部件(ALU)", "09—25考频": "—", "热度等级": "⚪ 冷门", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机组成原理", "考纲章节": "数据的表示和运算", "考点": "加/减运算：补码加/减运算器，标志位的生成", "09—25考频": "8", "热度等级": "🟡 中频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机组成原理", "考纲章节": "数据的表示和运算", "考点": "乘/除运算：乘/除法运算的基本原理，乘法电路和除法电路的基本结构", "09—25考频": "8", "热度等级": "🟡 中频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机组成原理", "考纲章节": "数据的表示和运算", "考点": "无符号整数的表示和运算", "09—25考频": "5", "热度等级": "🟡 中频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机组成原理", "考纲章节": "数据的表示和运算", "考点": "带符号整数的表示和运算", "09—25考频": "19", "热度等级": "🔥 高频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机组成原理", "考纲章节": "数据的表示和运算", "考点": "浮点数的表示：IEEE754 标准", "09—25考频": "14", "热度等级": "🔥 高频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机组成原理", "考纲章节": "数据的表示和运算", "考点": "浮点数的加/减运算", "09—25考频": "3", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机组成原理", "考纲章节": "存储器层次结构", "考点": "存储器的分类", "09—25考频": "1", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机组成原理", "考纲章节": "存储器层次结构", "考点": "层次化存储器的基本结构", "09—25考频": "—", "热度等级": "⚪ 冷门", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机组成原理", "考纲章节": "存储器层次结构", "考点": "SRAM 存储器", "09—25考频": "—", "热度等级": "⚪ 冷门", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机组成原理", "考纲章节": "存储器层次结构", "考点": "DRAM 存储器", "09—25考频": "4", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机组成原理", "考纲章节": "存储器层次结构", "考点": "Flash 存储器", "09—25考频": "1", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机组成原理", "考纲章节": "存储器层次结构", "考点": "DRAM 芯片和内存条", "09—25考频": "6", "热度等级": "🟡 中频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机组成原理", "考纲章节": "存储器层次结构", "考点": "多模块存储器", "09—25考频": "4", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机组成原理", "考纲章节": "存储器层次结构", "考点": "主存和 CPU 之间的连接", "09—25考频": "2", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机组成原理", "考纲章节": "存储器层次结构", "考点": "磁盘存储器", "09—25考频": "6", "热度等级": "🟡 中频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机组成原理", "考纲章节": "存储器层次结构", "考点": "固态硬盘(SSD)", "09—25考频": "—", "热度等级": "⚪ 冷门", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机组成原理", "考纲章节": "存储器层次结构", "考点": "Cache 的基本原理", "09—25考频": "3", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机组成原理", "考纲章节": "存储器层次结构", "考点": "Cache 和主存之间的映射方式", "09—25考频": "17", "热度等级": "🔥 高频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机组成原理", "考纲章节": "存储器层次结构", "考点": "Cache 中主存块的替换算法", "09—25考频": "—", "热度等级": "⚪ 冷门", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机组成原理", "考纲章节": "存储器层次结构", "考点": "Cache 写策略", "09—25考频": "2", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机组成原理", "考纲章节": "存储器层次结构", "考点": "虚拟存储器的基本概念", "09—25考频": "2", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机组成原理", "考纲章节": "存储器层次结构", "考点": "页式虚拟存储器：基本原理，页表，地址转换，TLB(快表)", "09—25考频": "23", "热度等级": "🔥 高频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机组成原理", "考纲章节": "存储器层次结构", "考点": "段式虚拟存储器的基本原理", "09—25考频": "—", "热度等级": "⚪ 冷门", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机组成原理", "考纲章节": "存储器层次结构", "考点": "段页式虚拟存储器的基本原理", "09—25考频": "—", "热度等级": "⚪ 冷门", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机组成原理", "考纲章节": "指令系统", "考点": "指令系统的基本概念", "09—25考频": "4", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机组成原理", "考纲章节": "指令系统", "考点": "指令格式", "09—25考频": "5", "热度等级": "🟡 中频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机组成原理", "考纲章节": "指令系统", "考点": "寻址方式", "09—25考频": "12", "热度等级": "🔥 高频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机组成原理", "考纲章节": "指令系统", "考点": "数据的对齐和大/小端存放方式", "09—25考频": "9", "热度等级": "🟡 中频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机组成原理", "考纲章节": "指令系统", "考点": "CISC 和 RISC 的基本概念", "09—25考频": "4", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机组成原理", "考纲章节": "指令系统", "考点": "编译器、汇编器和链接器的基本概念", "09—25考频": "3", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机组成原理", "考纲章节": "指令系统", "考点": "选择结构语句的机器级表示", "09—25考频": "1", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机组成原理", "考纲章节": "指令系统", "考点": "循环结构语句的机器级表示", "09—25考频": "1", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机组成原理", "考纲章节": "指令系统", "考点": "过程(函数)调用对应的机器级表示", "09—25考频": "1", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机组成原理", "考纲章节": "中央处理器(CPU)", "考点": "CPU 的功能和基本结构", "09—25考频": "1", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机组成原理", "考纲章节": "中央处理器(CPU)", "考点": "指令执行过程", "09—25考频": "13", "热度等级": "🔥 高频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机组成原理", "考纲章节": "中央处理器(CPU)", "考点": "数据通路的功能和基本结构", "09—25考频": "10", "热度等级": "🔥 高频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机组成原理", "考纲章节": "中央处理器(CPU)", "考点": "控制器的功能和工作原理", "09—25考频": "7", "热度等级": "🟡 中频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机组成原理", "考纲章节": "中央处理器(CPU)", "考点": "异常和中断的基本概念", "09—25考频": "1", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机组成原理", "考纲章节": "中央处理器(CPU)", "考点": "异常和中断的分类", "09—25考频": "4", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机组成原理", "考纲章节": "中央处理器(CPU)", "考点": "异常和中断的检测与响应", "09—25考频": "3", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机组成原理", "考纲章节": "中央处理器(CPU)", "考点": "指令流水线的基本概念", "09—25考频": "6", "热度等级": "🟡 中频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机组成原理", "考纲章节": "中央处理器(CPU)", "考点": "指令流水线的基本实现", "09—25考频": "—", "热度等级": "⚪ 冷门", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机组成原理", "考纲章节": "中央处理器(CPU)", "考点": "结构冒险、数据冒险和控制冒险的处理", "09—25考频": "7", "热度等级": "🟡 中频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机组成原理", "考纲章节": "中央处理器(CPU)", "考点": "超标量和动态流水线的基本概念", "09—25考频": "2", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机组成原理", "考纲章节": "中央处理器(CPU)", "考点": "SISD、SIMD、MIMD、向量处理器的基本概念", "09—25考频": "—", "热度等级": "⚪ 冷门", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机组成原理", "考纲章节": "中央处理器(CPU)", "考点": "硬件多线程的基本概念", "09—25考频": "—", "热度等级": "⚪ 冷门", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机组成原理", "考纲章节": "中央处理器(CPU)", "考点": "多核(multi-core)处理器的基本概念", "09—25考频": "—", "热度等级": "⚪ 冷门", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机组成原理", "考纲章节": "中央处理器(CPU)", "考点": "共享内存多处理器(SMP)的基本概念", "09—25考频": "1", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机组成原理", "考纲章节": "总线和输入输出系统", "考点": "总线的基本概念", "09—25考频": "3", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机组成原理", "考纲章节": "总线和输入输出系统", "考点": "总线的组成及性能指标", "09—25考频": "11", "热度等级": "🔥 高频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机组成原理", "考纲章节": "总线和输入输出系统", "考点": "总线事务和定时", "09—25考频": "8", "热度等级": "🟡 中频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机组成原理", "考纲章节": "总线和输入输出系统", "考点": "I/O 接口的功能和基本结构", "09—25考频": "3", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机组成原理", "考纲章节": "总线和输入输出系统", "考点": "I/O 端口及其编址", "09—25考频": "2", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机组成原理", "考纲章节": "总线和输入输出系统", "考点": "程序查询方式", "09—25考频": "2", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机组成原理", "考纲章节": "总线和输入输出系统", "考点": "程序中断方式：中断的基本概念，中断响应过程，中断处理过程，多重中断和中断屏蔽的概念", "09—25考频": "—", "热度等级": "⚪ 冷门", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机组成原理", "考纲章节": "总线和输入输出系统", "考点": "DMA 方式：DMA 控制器的组成，DMA 传送过程。", "09—25考频": "25", "热度等级": "🔥 高频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}], "Sheet3_操作系统": [{"科目": "操作系统", "考纲章节": "操作系统基础", "考点": "操作系统基本概念", "09—25考频": "1", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "操作系统", "考纲章节": "操作系统基础", "考点": "操作系统发展历程", "09—25考频": "2", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "操作系统", "考纲章节": "操作系统基础", "考点": "CPU 运行模式：内核模式与用户模式", "09—25考频": "9", "热度等级": "🟡 中频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "操作系统", "考纲章节": "操作系统基础", "考点": "中断和异常处理机制", "09—25考频": "6", "热度等级": "🟡 中频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "操作系统", "考纲章节": "操作系统基础", "考点": "系统调用过程", "09—25考频": "8", "热度等级": "🟡 中频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "操作系统", "考纲章节": "操作系统基础", "考点": "程序链接与装入机制", "09—25考频": "1", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "操作系统", "考纲章节": "操作系统基础", "考点": "程序运行时内存映像与地址空间", "09—25考频": "1", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "操作系统", "考纲章节": "操作系统基础", "考点": "分层、模块化、宏内核、微内核、外核等结构特点", "09—25考频": "1", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "操作系统", "考纲章节": "操作系统基础", "考点": "操作系统引导", "09—25考频": "—", "热度等级": "⚪ 冷门", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "操作系统", "考纲章节": "操作系统基础", "考点": "虚拟机", "09—25考频": "—", "热度等级": "⚪ 冷门", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "操作系统", "考纲章节": "进程管理", "考点": "进程与线程基本概念", "09—25考频": "10", "热度等级": "🔥 高频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "操作系统", "考纲章节": "进程管理", "考点": "进程/线程状态与转换", "09—25考频": "3", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "操作系统", "考纲章节": "进程管理", "考点": "线程的实现：内核支持的线程，线程库支持的线程", "09—25考频": "—", "热度等级": "⚪ 冷门", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "操作系统", "考纲章节": "进程管理", "考点": "进程与线程组织与控制", "09—25考频": "2", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "操作系统", "考纲章节": "进程管理", "考点": "进程间通信：共享内存，消息传递，管道，信号", "09—25考频": "2", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "操作系统", "考纲章节": "进程管理", "考点": "调度的基本概念", "09—25考频": "3", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "操作系统", "考纲章节": "进程管理", "考点": "调度的目标", "09—25考频": "—", "热度等级": "⚪ 冷门", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "操作系统", "考纲章节": "进程管理", "考点": "调度的实现：调度器/调度程序(scheduler), 调度的时机与调度方式(抢占式/非抢占式),闲逛进程，内核级线程与用户级线程调度", "09—25考频": "6", "热度等级": "🟡 中频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "操作系统", "考纲章节": "进程管理", "考点": "CPU 调度算法", "09—25考频": "13", "热度等级": "🔥 高频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "操作系统", "考纲章节": "进程管理", "考点": "多处理机调度策略", "09—25考频": "—", "热度等级": "⚪ 冷门", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "操作系统", "考纲章节": "进程管理", "考点": "上下文切换机制", "09—25考频": "1", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "操作系统", "考纲章节": "进程管理", "考点": "同步与互斥基本概念", "09—25考频": "8", "热度等级": "🟡 中频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "操作系统", "考纲章节": "进程管理", "考点": "基本的实现方法：软件方法、硬件方法", "09—25考频": "3", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "操作系统", "考纲章节": "进程管理", "考点": "锁", "09—25考频": "—", "热度等级": "⚪ 冷门", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "操作系统", "考纲章节": "进程管理", "考点": "信号量", "09—25考频": "14", "热度等级": "🔥 高频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "操作系统", "考纲章节": "进程管理", "考点": "条件变量", "09—25考频": "1", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "操作系统", "考纲章节": "进程管理", "考点": "经典同步问题：生产者-消费者问题，读者-写者问题，哲学家进餐问题等", "09—25考频": "1", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "操作系统", "考纲章节": "进程管理", "考点": "死锁基本概念", "09—25考频": "2", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "操作系统", "考纲章节": "进程管理", "考点": "死锁预防", "09—25考频": "1", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "操作系统", "考纲章节": "进程管理", "考点": "死锁避免", "09—25考频": "7", "热度等级": "🟡 中频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "操作系统", "考纲章节": "进程管理", "考点": "死锁检测与解除", "09—25考频": "2", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "操作系统", "考纲章节": "内存管理", "考点": "内存管理基本概念：逻辑地址空间与物理地址空间，地址变换，内存共享，内存保护，内存分配与回收", "09—25考频": "4", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "操作系统", "考纲章节": "内存管理", "考点": "连续分配管理方式", "09—25考频": "4", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "操作系统", "考纲章节": "内存管理", "考点": "页式管理", "09—25考频": "11", "热度等级": "🔥 高频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "操作系统", "考纲章节": "内存管理", "考点": "段式管理", "09—25考频": "1", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "操作系统", "考纲章节": "内存管理", "考点": "段页式管理", "09—25考频": "2", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "操作系统", "考纲章节": "内存管理", "考点": "虚拟内存基本概念", "09—25考频": "4", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "操作系统", "考纲章节": "内存管理", "考点": "请求页式管理", "09—25考频": "7", "热度等级": "🟡 中频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "操作系统", "考纲章节": "内存管理", "考点": "页框分配与回收", "09—25考频": "6", "热度等级": "🟡 中频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "操作系统", "考纲章节": "内存管理", "考点": "页置换算法", "09—25考频": "9", "热度等级": "🟡 中频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "操作系统", "考纲章节": "内存管理", "考点": "内存映射文件(Memory-MappedFiles)", "09—25考频": "—", "热度等级": "⚪ 冷门", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "操作系统", "考纲章节": "内存管理", "考点": "虚拟存储器性能影响因素及改进方法", "09—25考频": "2", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "操作系统", "考纲章节": "文件管理", "考点": "文件基本概念", "09—25考频": "—", "热度等级": "⚪ 冷门", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "操作系统", "考纲章节": "文件管理", "考点": "文件元数据和索引节点(inode)", "09—25考频": "—", "热度等级": "⚪ 冷门", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "操作系统", "考纲章节": "文件管理", "考点": "文件的操作：建立，删除，打开，关闭，读，写", "09—25考频": "6", "热度等级": "🟡 中频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "操作系统", "考纲章节": "文件管理", "考点": "文件的保护", "09—25考频": "3", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "操作系统", "考纲章节": "文件管理", "考点": "文件的逻辑结构", "09—25考频": "—", "热度等级": "⚪ 冷门", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "操作系统", "考纲章节": "文件管理", "考点": "文件的物理结构", "09—25考频": "4", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "操作系统", "考纲章节": "文件管理", "考点": "目录的基本概念", "09—25考频": "1", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "操作系统", "考纲章节": "文件管理", "考点": "树形目录", "09—25考频": "1", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "操作系统", "考纲章节": "文件管理", "考点": "目录的操作", "09—25考频": "1", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "操作系统", "考纲章节": "文件管理", "考点": "硬链接和软链接", "09—25考频": "3", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "操作系统", "考纲章节": "文件管理", "考点": "文件系统的全局结构(layout)：文件系统在外存中的结构，文件系统在内存中的结构", "09—25考频": "14", "热度等级": "🔥 高频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "操作系统", "考纲章节": "文件管理", "考点": "外存空闲空间管理方法", "09—25考频": "9", "热度等级": "🟡 中频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "操作系统", "考纲章节": "文件管理", "考点": "虚拟文件系统", "09—25考频": "1", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "操作系统", "考纲章节": "文件管理", "考点": "文件系统挂载(mounting)", "09—25考频": "1", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "操作系统", "考纲章节": "输入/输出(I/O)管理", "考点": "设备：设备的基本概念，设备的分类，I/O 接口，1/O 端口", "09—25考频": "—", "热度等级": "⚪ 冷门", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "操作系统", "考纲章节": "输入/输出(I/O)管理", "考点": "I/O 控制方式：轮询方式，中断方式，DMA 方式", "09—25考频": "4", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "操作系统", "考纲章节": "输入/输出(I/O)管理", "考点": "I/O 软件层次结构：中断处理程序，驱动程序，设备独立软件，用户层 I/O 软件", "09—25考频": "9", "热度等级": "🟡 中频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "操作系统", "考纲章节": "输入/输出(I/O)管理", "考点": "输入/输出应用程序接口：字符设备接口，块设备接口，网络设备接口，阻塞/非阻塞 I/O", "09—25考频": "—", "热度等级": "⚪ 冷门", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "操作系统", "考纲章节": "输入/输出(I/O)管理", "考点": "缓冲区管理", "09—25考频": "4", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "操作系统", "考纲章节": "输入/输出(I/O)管理", "考点": "设备分配与回收", "09—25考频": "1", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "操作系统", "考纲章节": "输入/输出(I/O)管理", "考点": "假脱机技术(SPOOLing)", "09—25考频": "1", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "操作系统", "考纲章节": "输入/输出(I/O)管理", "考点": "设备驱动程序接口", "09—25考频": "1", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "操作系统", "考纲章节": "输入/输出(I/O)管理", "考点": "磁盘：磁盘结构，格式化，分区，磁盘调度方法", "09—25考频": "8", "热度等级": "🟡 中频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "操作系统", "考纲章节": "输入/输出(I/O)管理", "考点": "固态硬盘：写性能特性，磨损均衡", "09—25考频": "2", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}], "Sheet4_计算机网络": [{"科目": "计算机网络", "考纲章节": "计算机网络概述", "考点": "计算机网络定义、组成与功能", "09—25考频": "—", "热度等级": "⚪ 冷门", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机网络", "考纲章节": "计算机网络概述", "考点": "计算机网络分类", "09—25考频": "—", "热度等级": "⚪ 冷门", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机网络", "考纲章节": "计算机网络概述", "考点": "计算机网络性能指标", "09—25考频": "—", "热度等级": "⚪ 冷门", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机网络", "考纲章节": "计算机网络概述", "考点": "计算机网络分层结构", "09—25考频": "—", "热度等级": "⚪ 冷门", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机网络", "考纲章节": "计算机网络概述", "考点": "计算机网络协议、接口、服务概念", "09—25考频": "1", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机网络", "考纲章节": "计算机网络概述", "考点": "ISO/OSI 参考模型和 TCP/IP 参考模型", "09—25考频": "10", "热度等级": "🔥 高频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机网络", "考纲章节": "物理层", "考点": "信道、信号、带宽、码元、波特、速率、信源与信宿等基本概念", "09—25考频": "2", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机网络", "考纲章节": "物理层", "考点": "奈奎斯特定理与香农定理", "09—25考频": "4", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机网络", "考纲章节": "物理层", "考点": "编码与调制", "09—25考频": "6", "热度等级": "🟡 中频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机网络", "考纲章节": "物理层", "考点": "电路交换、报文交换与分组交换", "09—25考频": "4", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机网络", "考纲章节": "物理层", "考点": "数据报与虚电路", "09—25考频": "1", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机网络", "考纲章节": "物理层", "考点": "双绞线、同轴电缆、光纤与无线传输介质", "09—25考频": "—", "热度等级": "⚪ 冷门", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机网络", "考纲章节": "物理层", "考点": "物理层接口的特性", "09—25考频": "1", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机网络", "考纲章节": "物理层", "考点": "中继器", "09—25考频": "—", "热度等级": "⚪ 冷门", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机网络", "考纲章节": "物理层", "考点": "集线器", "09—25考频": "—", "热度等级": "⚪ 冷门", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机网络", "考纲章节": "数据链路层", "考点": "数据链路层的功能", "09—25考频": "—", "热度等级": "⚪ 冷门", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机网络", "考纲章节": "数据链路层", "考点": "组帧", "09—25考频": "—", "热度等级": "⚪ 冷门", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机网络", "考纲章节": "数据链路层", "考点": "检错编码", "09—25考频": "1", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机网络", "考纲章节": "数据链路层", "考点": "纠错编码", "09—25考频": "2", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机网络", "考纲章节": "数据链路层", "考点": "流量控制、可靠传输与滑动窗口机制", "09—25考频": "2", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机网络", "考纲章节": "数据链路层", "考点": "停止-等待协议", "09—25考频": "—", "热度等级": "⚪ 冷门", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机网络", "考纲章节": "数据链路层", "考点": "后退 N 帧协议(GBN)", "09—25考频": "3", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机网络", "考纲章节": "数据链路层", "考点": "选择重传协议(SR)", "09—25考频": "2", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机网络", "考纲章节": "数据链路层", "考点": "信道划分：频分多路复用，时分多路复用，波分多路复用，码分多路复用的概念和基本原理", "09—25考频": "—", "热度等级": "⚪ 冷门", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机网络", "考纲章节": "数据链路层", "考点": "随机访问：ALOHA 协议，CSMA 协议，CSMA/CD 协议，CSMA/CA 协议", "09—25考频": "8", "热度等级": "🟡 中频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机网络", "考纲章节": "数据链路层", "考点": "轮询访问：令牌传递协议", "09—25考频": "1", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机网络", "考纲章节": "数据链路层", "考点": "局域网的基本概念与体系结构", "09—25考频": "—", "热度等级": "⚪ 冷门", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机网络", "考纲章节": "数据链路层", "考点": "以太网与 IEEE802.3", "09—25考频": "9", "热度等级": "🟡 中频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机网络", "考纲章节": "数据链路层", "考点": "IEEE 802.11 无线局域网", "09—25考频": "4", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机网络", "考纲章节": "数据链路层", "考点": "VLAN 基本概念与基本原理", "09—25考频": "1", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机网络", "考纲章节": "数据链路层", "考点": "广域网的基本概念", "09—25考频": "—", "热度等级": "⚪ 冷门", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机网络", "考纲章节": "数据链路层", "考点": "PPP 协议", "09—25考频": "—", "热度等级": "⚪ 冷门", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机网络", "考纲章节": "数据链路层", "考点": "以太网交换机及其工作原理", "09—25考频": "4", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机网络", "考纲章节": "网络层", "考点": "异构网络互连", "09—25考频": "—", "热度等级": "⚪ 冷门", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机网络", "考纲章节": "网络层", "考点": "路由与转发", "09—25考频": "5", "热度等级": "🟡 中频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机网络", "考纲章节": "网络层", "考点": "SDN 基本概念", "09—25考频": "1", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机网络", "考纲章节": "网络层", "考点": "拥塞控制", "09—25考频": "—", "热度等级": "⚪ 冷门", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机网络", "考纲章节": "网络层", "考点": "静态路由与动态路由", "09—25考频": "—", "热度等级": "⚪ 冷门", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机网络", "考纲章节": "网络层", "考点": "距离-向量路由算法", "09—25考频": "—", "热度等级": "⚪ 冷门", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机网络", "考纲章节": "网络层", "考点": "链路状态路由算法", "09—25考频": "—", "热度等级": "⚪ 冷门", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机网络", "考纲章节": "网络层", "考点": "层次路由", "09—25考频": "—", "热度等级": "⚪ 冷门", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机网络", "考纲章节": "网络层", "考点": "IPv4 分组", "09—25考频": "5", "热度等级": "🟡 中频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机网络", "考纲章节": "网络层", "考点": "IPv4 地址与 NAT", "09—25考频": "7", "热度等级": "🟡 中频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机网络", "考纲章节": "网络层", "考点": "子网划分、路由聚集、子网掩码与 CIDR", "09—25考频": "16", "热度等级": "🔥 高频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机网络", "考纲章节": "网络层", "考点": "ARP 协议、DHCP 协议、ICMP 协议", "09—25考频": "10", "热度等级": "🔥 高频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机网络", "考纲章节": "网络层", "考点": "IPv6 的主要特点", "09—25考频": "1", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机网络", "考纲章节": "网络层", "考点": "IPv6 地址", "09—25考频": "—", "热度等级": "⚪ 冷门", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机网络", "考纲章节": "网络层", "考点": "自治系统", "09—25考频": "—", "热度等级": "⚪ 冷门", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机网络", "考纲章节": "网络层", "考点": "域内路由与域间路由", "09—25考频": "—", "热度等级": "⚪ 冷门", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机网络", "考纲章节": "网络层", "考点": "RIP 路由协议", "09—25考频": "3", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机网络", "考纲章节": "网络层", "考点": "OSPF 路由协议", "09—25考频": "1", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机网络", "考纲章节": "网络层", "考点": "BGP 路由协议", "09—25考频": "4", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机网络", "考纲章节": "网络层", "考点": "IP 组播概念", "09—25考频": "—", "热度等级": "⚪ 冷门", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机网络", "考纲章节": "网络层", "考点": "IP 组播地址", "09—25考频": "—", "热度等级": "⚪ 冷门", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机网络", "考纲章节": "网络层", "考点": "移动 IP 的概念", "09—25考频": "—", "热度等级": "⚪ 冷门", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机网络", "考纲章节": "网络层", "考点": "移动 IP 通信过程", "09—25考频": "—", "热度等级": "⚪ 冷门", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机网络", "考纲章节": "网络层", "考点": "路由器的组成和功能", "09—25考频": "4", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机网络", "考纲章节": "网络层", "考点": "路由表与路由转发", "09—25考频": "2", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机网络", "考纲章节": "传输层", "考点": "传输层的功能", "09—25考频": "—", "热度等级": "⚪ 冷门", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机网络", "考纲章节": "传输层", "考点": "传输层寻址与端口", "09—25考频": "—", "热度等级": "⚪ 冷门", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机网络", "考纲章节": "传输层", "考点": "无连接服务与面向连接服务", "09—25考频": "—", "热度等级": "⚪ 冷门", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机网络", "考纲章节": "传输层", "考点": "UDP 数据段", "09—25考频": "2", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机网络", "考纲章节": "传输层", "考点": "UDP 校验", "09—25考频": "2", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机网络", "考纲章节": "传输层", "考点": "TCP 段", "09—25考频": "1", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机网络", "考纲章节": "传输层", "考点": "TCP 连接管理", "09—25考频": "6", "热度等级": "🟡 中频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机网络", "考纲章节": "传输层", "考点": "TCP 可靠传输", "09—25考频": "8", "热度等级": "🟡 中频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机网络", "考纲章节": "传输层", "考点": "TCP 流量控制", "09—25考频": "5", "热度等级": "🟡 中频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机网络", "考纲章节": "传输层", "考点": "TCP 拥塞控制", "09—25考频": "12", "热度等级": "🔥 高频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机网络", "考纲章节": "应用层", "考点": "客户/服务器(C/S) 模型", "09—25考频": "—", "热度等级": "⚪ 冷门", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机网络", "考纲章节": "应用层", "考点": "对等(P2P) 模型 126408 大数据预测冷门考点密押（76 个考点）序号 考点代号及名称", "09—25考频": "—", "热度等级": "⚪ 冷门", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机网络", "考纲章节": "应用层", "考点": "层次域名空间", "09—25考频": "—", "热度等级": "⚪ 冷门", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机网络", "考纲章节": "应用层", "考点": "域名服务器", "09—25考频": "—", "热度等级": "⚪ 冷门", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机网络", "考纲章节": "应用层", "考点": "域名解析过程", "09—25考频": "4", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机网络", "考纲章节": "应用层", "考点": "FTP 协议的工作原理", "09—25考频": "3", "热度等级": "🟢 低频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机网络", "考纲章节": "应用层", "考点": "控制连接与数据连接", "09—25考频": "—", "热度等级": "⚪ 冷门", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机网络", "考纲章节": "应用层", "考点": "电子邮件系统的组成结构", "09—25考频": "—", "热度等级": "⚪ 冷门", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机网络", "考纲章节": "应用层", "考点": "电子邮件格式与 MIME", "09—25考频": "—", "热度等级": "⚪ 冷门", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机网络", "考纲章节": "应用层", "考点": "SMTP 协议与 POP3 协议", "09—25考频": "5", "热度等级": "🟡 中频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机网络", "考纲章节": "应用层", "考点": "WWW 的概念与组成结构", "09—25考频": "—", "热度等级": "⚪ 冷门", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}, {"科目": "计算机网络", "考纲章节": "应用层", "考点": "HTTP 协议", "09—25考频": "7", "热度等级": "🟡 中频", "掌握程度": "未开始", "回顾次数": 0, "备注": ""}]};
+const STORAGE_KEY = 'kaoyan_408_study_data_v1';
+
+let appData = {};
+let currentTab = 'Sheet1_数据结构';
+let currentFilter = 'all';
+let currentMasteryFilter = 'all';
+let searchQuery = '';
+
+// Load data from localStorage
+function loadData() {
+  const saved = localStorage.getItem(STORAGE_KEY);
+  if (saved) {
+    try {
+      appData = JSON.parse(saved);
+      // Validate data structure
+      if (!appData[currentTab]) {
+        appData = JSON.parse(JSON.stringify(INITIAL_DATA));
+      } else {
+        // Data migration: replace old "⚪ 冷门预测" with "⚪ 冷门"
+        let migrated = false;
+        Object.values(appData).forEach(sheet => {
+          sheet.forEach(item => {
+            if (item['热度等级'] === '⚪ 冷门预测') {
+              item['热度等级'] = '⚪ 冷门';
+              migrated = true;
+            }
+          });
+        });
+        if (migrated) saveData();
+      }
+      return;
+    } catch(e) {}
+  }
+  appData = JSON.parse(JSON.stringify(INITIAL_DATA));
+}
+
+// Save data to localStorage
+function saveData() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(appData));
+  showSaveIndicator();
+  updateStats();
+}
+
+function showSaveIndicator() {
+  const el = document.getElementById('save-indicator');
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 1500);
+}
+
+// Get unique key for each item
+function getItemKey(sheet, index) {
+  const item = appData[sheet][index];
+  return sheet + '_' + item['考点'] + '_' + index;
+}
+
+// Render tabs
+function renderTabs() {
+  const tabs = document.getElementById('tabs');
+  const sheetNames = Object.keys(appData);
+  const displayNames = {
+    'Sheet1_数据结构': '数据结构',
+    'Sheet2_计算机组成原理': '组成原理',
+    'Sheet3_操作系统': '操作系统',
+    'Sheet4_计算机网络': '计算机网络'
+  };
+  let html = sheetNames.map(s => {
+    const count = appData[s].length;
+    const active = s === currentTab ? 'active' : '';
+    return `<button class="tab ${active}" data-sheet="${s}">${displayNames[s] || s} <span class="count">${count}</span></button>`;
+  }).join('');
+  // Add syllabus tab
+  const syllabusActive = currentTab === 'syllabus' ? 'active' : '';
+  html += `<button class="tab ${syllabusActive}" data-sheet="syllabus" style="margin-left:8px">📄 考试大纲</button>`;
+  // Add stats tab
+  const statsActive = currentTab === 'stats' ? 'active' : '';
+  html += `<button class="tab ${statsActive}" data-sheet="stats">📊 学习统计</button>`;
+  tabs.innerHTML = html;
+  
+  tabs.querySelectorAll('.tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      currentTab = btn.dataset.sheet;
+      renderTabs();
+      if (currentTab === 'syllabus') {
+        document.querySelector('.table-container').style.display = 'none';
+        document.getElementById('pdf-container').style.display = 'block';
+        document.getElementById('stats-view').style.display = 'none';
+        document.querySelector('.toolbar').style.display = 'none';
+      } else if (currentTab === 'stats') {
+        document.querySelector('.table-container').style.display = 'none';
+        document.getElementById('pdf-container').style.display = 'none';
+        document.getElementById('stats-view').style.display = 'block';
+        document.querySelector('.toolbar').style.display = 'none';
+        renderStatsView();
+      } else {
+        document.querySelector('.table-container').style.display = 'block';
+        document.getElementById('pdf-container').style.display = 'none';
+        document.getElementById('stats-view').style.display = 'none';
+        document.querySelector('.toolbar').style.display = 'flex';
+        renderTable();
+      }
+    });
+  });
+}
+
+// Get tag class
+function getTagClass(level) {
+  if (level === '—') return 'tag-custom';
+  if (level.includes('高频')) return 'tag-high';
+  if (level.includes('中频')) return 'tag-mid';
+  if (level.includes('低频')) return 'tag-low';
+  return 'tag-cold';
+}
+
+
+
+// Dark mode toggle
+function initTheme() {
+  const saved = localStorage.getItem('kaoyan_408_theme');
+  if (saved === 'dark') {
+    document.body.classList.add('dark');
+    document.getElementById('theme-toggle').textContent = '☀️';
+  }
+}
+
+function toggleTheme() {
+  const body = document.body;
+  const btn = document.getElementById('theme-toggle');
+  if (body.classList.contains('dark')) {
+    body.classList.remove('dark');
+    btn.textContent = '🌙';
+    localStorage.setItem('kaoyan_408_theme', 'light');
+  } else {
+    body.classList.add('dark');
+    btn.textContent = '☀️';
+    localStorage.setItem('kaoyan_408_theme', 'dark');
+  }
+}
+
+
+
+
+
+// Cloud sync with jsonbin.io
+const SYNC_CONFIG_KEY = 'kaoyan_408_sync_config';
+let syncConfig = { keyId: '', accessKey: '', binId: '' };
+
+function loadSyncConfig() {
+  const saved = localStorage.getItem(SYNC_CONFIG_KEY);
+  if (saved) {
+    try { syncConfig = JSON.parse(saved); } catch(e) {}
+  }
+}
+
+function saveSyncConfigLocal() {
+  localStorage.setItem(SYNC_CONFIG_KEY, JSON.stringify(syncConfig));
+}
+
+function openSyncModal() {
+  loadSyncConfig();
+  document.getElementById('sync-key-id').value = syncConfig.keyId || '';
+  document.getElementById('sync-access-key').value = syncConfig.accessKey || '';
+  document.getElementById('sync-bin-id').value = syncConfig.binId || '';
+  updateSyncStatus('', '');
+  
+  const lastSync = localStorage.getItem('kaoyan_408_last_sync');
+  document.getElementById('sync-last-time').textContent = lastSync ? ('上次同步: ' + lastSync) : '';
+  
+  document.getElementById('sync-modal').classList.add('show');
+}
+
+function closeSyncModal() {
+  document.getElementById('sync-modal').classList.remove('show');
+}
+
+function saveSyncConfig() {
+  syncConfig.keyId = document.getElementById('sync-key-id').value.trim();
+  syncConfig.accessKey = document.getElementById('sync-access-key').value.trim();
+  syncConfig.binId = document.getElementById('sync-bin-id').value.trim();
+  saveSyncConfigLocal();
+  updateSyncStatus('success', '✓ 配置已保存');
+}
+
+function updateSyncStatus(type, message) {
+  const el = document.getElementById('sync-status');
+  el.className = 'sync-status ' + type;
+  if (message) {
+    el.textContent = message;
+    el.classList.add('show');
+  } else {
+    el.classList.remove('show');
+  }
+}
+
+// Build full data payload for sync
+function buildSyncPayload() {
+  return {
+    appData: appData,
+    activityLog: activityLog,
+    collapsedChapters: collapsedChapters,
+    timestamp: Date.now(),
+    version: 1
+  };
+}
+
+// Parse sync payload
+function applySyncPayload(payload) {
+  if (payload.appData) appData = payload.appData;
+  if (payload.activityLog) activityLog = payload.activityLog;
+  if (payload.collapsedChapters) Object.assign(collapsedChapters, payload.collapsedChapters);
+  saveData();
+  saveActivityLog();
+}
+
+async function syncPush() {
+  saveSyncConfig();
+  
+  if (!syncConfig.keyId || !syncConfig.accessKey) {
+    updateSyncStatus('error', '请先填写 Access Key ID 和 X-Access-Key');
+    return;
+  }
+  
+  updateSyncStatus('info', '正在推送数据到云端...');
+  
+  const payload = buildSyncPayload();
+  
+  try {
+    if (syncConfig.binId) {
+      // Update existing bin
+      const response = await fetch('https://api.jsonbin.io/v3/b/' + syncConfig.binId, {
+        method: 'PUT',
+        headers: {
+          'X-Access-Key': syncConfig.accessKey,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+      
+      if (!response.ok) throw new Error('推送失败: ' + response.status);
+      const result = await response.json();
+      updateSyncStatus('success', '✓ 推送成功！数据已同步到云端');
+      
+    } else {
+      // Create new bin
+      const response = await fetch('https://api.jsonbin.io/v3/b', {
+        method: 'POST',
+        headers: {
+          'X-Access-Key': syncConfig.accessKey,
+          'Content-Type': 'application/json',
+          'X-Bin-Name': 'kaoyan_408_data',
+          'X-Bin-Private': 'true'
+        },
+        body: JSON.stringify(payload)
+      });
+      
+      if (!response.ok) throw new Error('创建失败: ' + response.status);
+      const result = await response.json();
+      syncConfig.binId = result.metadata.id;
+      document.getElementById('sync-bin-id').value = syncConfig.binId;
+      saveSyncConfigLocal();
+      updateSyncStatus('success', '✓ 创建成功！Bin ID: ' + syncConfig.binId + '（请保存好）');
+    }
+    
+    const now = new Date().toLocaleString('zh-CN');
+    localStorage.setItem('kaoyan_408_last_sync', now);
+    document.getElementById('sync-last-time').textContent = '上次同步: ' + now;
+    
+  } catch(e) {
+    console.error('Sync push error:', e);
+    updateSyncStatus('error', '推送失败: ' + e.message);
+  }
+}
+
+async function syncPull() {
+  saveSyncConfig();
+  
+  if (!syncConfig.keyId || !syncConfig.accessKey) {
+    updateSyncStatus('error', '请先填写 Access Key ID 和 X-Access-Key');
+    return;
+  }
+  
+  if (!syncConfig.binId) {
+    updateSyncStatus('error', '请先填写 Bin ID（首次使用请先推送）');
+    return;
+  }
+  
+  updateSyncStatus('info', '正在从云端拉取数据...');
+  
+  try {
+    const response = await fetch('https://api.jsonbin.io/v3/b/' + syncConfig.binId + '/latest', {
+      method: 'GET',
+      headers: {
+        'X-Access-Key': syncConfig.accessKey
+      }
+    });
+    
+    if (!response.ok) throw new Error('拉取失败: ' + response.status);
+    const result = await response.json();
+    
+    if (!result.record) throw new Error('数据格式不正确');
+    
+    if (!confirm('确定要用云端数据覆盖本地数据吗？此操作不可撤销。')) {
+      updateSyncStatus('info', '已取消');
+      return;
+    }
+    
+    applySyncPayload(result.record);
+    renderTabs();
+    renderTable();
+    updateStats();
+    
+    const now = new Date().toLocaleString('zh-CN');
+    localStorage.setItem('kaoyan_408_last_sync', now);
+    document.getElementById('sync-last-time').textContent = '上次同步: ' + now;
+    
+    updateSyncStatus('success', '✓ 拉取成功！数据已更新');
+    
+  } catch(e) {
+    console.error('Sync pull error:', e);
+    updateSyncStatus('error', '拉取失败: ' + e.message);
+  }
+}
+
+// Pomodoro timer (45 minutes)
+const POMODORO_DURATION = 45 * 60; // 45 minutes in seconds
+let pomodoroSeconds = POMODORO_DURATION;
+let pomodoroInterval = null;
+let pomodoroRunning = false;
+
+function openPomodoro() {
+  document.getElementById('pomodoro-modal').classList.add('show');
+  updatePomodoroDisplay();
+}
+
+function closePomodoro() {
+  document.getElementById('pomodoro-modal').classList.remove('show');
+}
+
+function togglePomodoro() {
+  const btn = document.getElementById('pomo-start-btn');
+  if (pomodoroRunning) {
+    // Pause
+    clearInterval(pomodoroInterval);
+    pomodoroRunning = false;
+    btn.textContent = '继续';
+    document.getElementById('pomo-label').textContent = '已暂停';
+  } else {
+    // Start
+    if (pomodoroSeconds <= 0) pomodoroSeconds = POMODORO_DURATION;
+    pomodoroRunning = true;
+    btn.textContent = '暂停';
+    document.getElementById('pomo-label').textContent = '专注中...';
+    pomodoroInterval = setInterval(() => {
+      pomodoroSeconds--;
+      updatePomodoroDisplay();
+      if (pomodoroSeconds <= 0) {
+        finishPomodoro();
+      }
+    }, 1000);
+  }
+}
+
+function resetPomodoro() {
+  clearInterval(pomodoroInterval);
+  pomodoroRunning = false;
+  pomodoroSeconds = POMODORO_DURATION;
+  document.getElementById('pomo-start-btn').textContent = '开始';
+  document.getElementById('pomo-label').textContent = '准备开始';
+  updatePomodoroDisplay();
+}
+
+function updatePomodoroDisplay() {
+  const mins = Math.floor(pomodoroSeconds / 60);
+  const secs = pomodoroSeconds % 60;
+  const timeStr = String(mins).padStart(2, '0') + ':' + String(secs).padStart(2, '0');
+  document.getElementById('pomo-time').textContent = timeStr;
+  
+  const progress = (pomodoroSeconds / POMODORO_DURATION) * 100;
+  document.getElementById('pomo-progress').style.width = progress + '%';
+}
+
+function finishPomodoro() {
+  clearInterval(pomodoroInterval);
+  pomodoroRunning = false;
+  document.getElementById('pomo-start-btn').textContent = '再来一次';
+  document.getElementById('pomo-label').textContent = '🎉 完成啦！';
+  document.getElementById('pomo-info').textContent = '太棒了！完成一个45分钟专注周期';
+  
+  // Play notification sound (simple beep using Web Audio API)
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.frequency.value = 800;
+    gain.gain.setValueAtTime(0.3, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.5);
+  } catch(e) {}
+  
+  // Browser notification
+  if (Notification && Notification.permission === 'granted') {
+    new Notification('番茄钟完成 🍅', { body: '45分钟专注结束，休息一下吧！' });
+  }
+  
+  // Log activity
+  logActivity('pomodoro', '45分钟专注', '番茄钟', 'Sheet1_数据结构');
+}
+
+// Point detail modal
+let currentDetailIdx = -1;
+
+function openDetailModal(idx) {
+  if (typeof idx !== 'number') return;
+  currentDetailIdx = idx;
+  const item = appData[currentTab][idx];
+  
+  document.getElementById('detail-chapter').textContent = item['考纲章节'];
+  document.getElementById('detail-title').textContent = item['考点'];
+  
+  const heatTag = document.getElementById('detail-heat');
+  heatTag.textContent = item['热度等级'];
+  heatTag.className = 'tag ' + getTagClass(item['热度等级']);
+  
+  const masteryTag = document.getElementById('detail-mastery-tag');
+  masteryTag.textContent = item['掌握程度'];
+  
+  // Blog link
+  const blogLink = (item['_blog'] || '').trim();
+  document.getElementById('detail-blog-link').value = blogLink;
+  
+  // Todo list
+  renderTodoList(item);
+  
+  document.getElementById('detail-modal').classList.add('show');
+}
+
+// Close modals when clicking overlay
+document.addEventListener('click', (e) => {
+  if (e.target.classList.contains('modal-overlay')) {
+    e.target.classList.remove('show');
+    if (e.target.id === 'pomodoro-modal') {
+      // Don't pause, just close - timer keeps running
+    }
+  }
+});
+
+function closeDetailModal() {
+  document.getElementById('detail-modal').classList.remove('show');
+  currentDetailIdx = -1;
+}
+
+function openBlogLink() {
+  const link = document.getElementById('detail-blog-link').value.trim();
+  if (!link) {
+    alert('请先保存博客链接');
+    return;
+  }
+  let url = link;
+  if (!url.startsWith('http://') && !url.startsWith('https://')) {
+    url = 'https://' + url;
+  }
+  window.open(url, '_blank');
+}
+
+function saveBlogLink() {
+  if (currentDetailIdx < 0) return;
+  const link = document.getElementById('detail-blog-link').value.trim();
+  appData[currentTab][currentDetailIdx]['_blog'] = link;
+  saveData();
+  // Visual feedback
+  const btn = event.target;
+  const origText = btn.textContent;
+  btn.textContent = '✓ 已保存';
+  setTimeout(() => btn.textContent = origText, 1000);
+}
+
+// Todo items
+const TODO_ITEMS = [
+  { key: '_todo_learn', label: '学完这章内容', type: 'learn' },
+  { key: '_todo_review', label: '完成本轮复习', type: 'review' },
+  { key: '_todo_review2', label: '复盘总结', type: 'review' },
+  { key: '_todo_practice', label: '刷相关题目', type: 'practice' },
+  { key: '_todo_wrong', label: '刷错题巩固', type: 'wrong' },
+];
+
+function renderTodoList(item) {
+  const list = document.getElementById('detail-todo-list');
+  let html = '';
+  
+  TODO_ITEMS.forEach(todo => {
+    const done = !!item[todo.key];
+    const date = item[todo.key + '_date'] || '';
+    html += `
+      <div class="todo-item ${done ? 'done' : ''}" onclick="toggleTodo('${todo.key}')">
+        <input type="checkbox" class="todo-checkbox" ${done ? 'checked' : ''} onclick="event.stopPropagation(); toggleTodo('${todo.key}')">
+        <span class="todo-text">${todo.label}</span>
+        <span class="todo-date">${date || ''}</span>
+      </div>
+    `;
+  });
+  
+  list.innerHTML = html;
+}
+
+function toggleTodo(key) {
+  if (currentDetailIdx < 0) return;
+  const item = appData[currentTab][currentDetailIdx];
+  const isDone = !item[key];
+  item[key] = isDone;
+  item[key + '_date'] = isDone ? getTodayStr() : '';
+  saveData();
+  renderTodoList(item);
+}
+
+// Batch selection mode
+let batchMode = false;
+let selectedRows = new Set();
+let currentChapterList = [];
+let prioritySortActive = false;
+
+function enterBatchMode() {
+  batchMode = true;
+  selectedRows.clear();
+  document.getElementById('batch-toolbar').classList.add('active');
+  renderTable();
+}
+
+function exitBatchMode() {
+  batchMode = false;
+  selectedRows.clear();
+  document.getElementById('batch-toolbar').classList.remove('active');
+  renderTable();
+}
+
+function toggleRowSelect(idx) {
+  const checkbox = event.target;
+  if (checkbox.checked) {
+    selectedRows.add(idx);
+  } else {
+    selectedRows.delete(idx);
+  }
+  updateBatchInfo();
+}
+
+function toggleSelectAll() {
+  const checkAll = document.getElementById('select-all').checked;
+  const data = appData[currentTab];
+  
+  if (checkAll) {
+    // Select all visible rows
+    data.forEach((_, idx) => selectedRows.add(idx));
+  } else {
+    selectedRows.clear();
+  }
+  renderTable();
+  updateBatchInfo();
+}
+
+function updateBatchInfo() {
+  const count = selectedRows.size;
+  document.getElementById('batch-info').textContent = `已选择 ${count} 个考点`;
+  
+  // Show/hide batch toolbar
+  if (count > 0 && !batchMode) {
+    document.getElementById('batch-toolbar').classList.add('active');
+  } else if (count === 0) {
+    document.getElementById('batch-toolbar').classList.remove('active');
+  }
+}
+
+function batchMarkMastered() {
+  if (selectedRows.size === 0) return;
+  if (!confirm(`确定将 ${selectedRows.size} 个考点标记为「已掌握」？`)) return;
+  
+  const data = appData[currentTab];
+  selectedRows.forEach(idx => {
+    data[idx]['掌握程度'] = '已掌握';
+    logActivity('mastered', data[idx]['考点'], data[idx]['考纲章节'], currentTab);
+  });
+  saveData();
+  exitBatchMode();
+  updateStats();
+}
+
+function batchMarkLearning() {
+  if (selectedRows.size === 0) return;
+  if (!confirm(`确定将 ${selectedRows.size} 个考点标记为「学习中」？`)) return;
+  
+  const data = appData[currentTab];
+  selectedRows.forEach(idx => {
+    const old = data[idx]['掌握程度'];
+    data[idx]['掌握程度'] = '学习中';
+    if (old !== '学习中') {
+      logActivity('learning', data[idx]['考点'], data[idx]['考纲章节'], currentTab);
+    }
+  });
+  saveData();
+  exitBatchMode();
+  updateStats();
+}
+
+// Priority sort - sort by heat frequency * (not mastered)
+function getPriorityScore(item) {
+  const heat = item['热度等级'];
+  const mastery = item['掌握程度'];
+  
+  // Heat score
+  let heatScore = 0;
+  if (heat === '🔥 高频') heatScore = 4;
+  else if (heat === '🟡 中频') heatScore = 3;
+  else if (heat === '🟢 低频') heatScore = 2;
+  else if (heat === '⚪ 冷门') heatScore = 1;
+  else heatScore = 0;
+  
+  // Mastery weight: not started = 1.0, learning = 0.7, mastered = 0.1
+  let masteryWeight = 1.0;
+  if (mastery === '学习中') masteryWeight = 0.7;
+  else if (mastery === '已掌握') masteryWeight = 0.1;
+  
+  return heatScore * masteryWeight;
+}
+
+function togglePrioritySort() {
+  prioritySortActive = !prioritySortActive;
+  const btn = document.getElementById('sort-priority-btn');
+  btn.classList.toggle('active', prioritySortActive);
+  btn.textContent = prioritySortActive ? '⚡ 优先排序中' : '⚡ 优先排序';
+  renderTable();
+}
+
+// Modify filtered results to sort by priority when active
+// We need to find the part where filtered is used and add sort
+
+// Chapter collapse state
+let collapsedChapters = {};
+
+function toggleChapter(chapter) {
+  const key = currentTab + '_' + chapter;
+  if (collapsedChapters[key]) {
+    delete collapsedChapters[key];
+  } else {
+    collapsedChapters[key] = true;
+  }
+  saveCollapsedState();
+  renderTable();
+}
+
+function isChapterCollapsed(chapter) {
+  return !!collapsedChapters[currentTab + '_' + chapter];
+}
+
+function saveCollapsedState() {
+  try {
+    localStorage.setItem('kaoyan_408_collapsed', JSON.stringify(collapsedChapters));
+  } catch(e) {}
+}
+
+function loadCollapsedState() {
+  try {
+    const saved = localStorage.getItem('kaoyan_408_collapsed');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      Object.keys(parsed).forEach(k => { collapsedChapters[k] = parsed[k]; });
+    }
+  } catch(e) {}
+}
+
+
+// Ebbinghaus review intervals (in days)
+const REVIEW_INTERVALS = [1, 2, 4, 7, 15, 30];
+
+function getTodayStr() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function daysBetween(date1, date2) {
+  const d1 = new Date(date1);
+  const d2 = new Date(date2);
+  return Math.floor((d2 - d1) / (1000 * 60 * 60 * 24));
+}
+
+// Get review status for an item
+function getReviewStatus(item) {
+  const review = parseInt(item['回顾次数']) || 0;
+  const lastReview = item['_lastReview'];
+  const today = getTodayStr();
+  
+  if (review === 0 || !lastReview) {
+    return { status: 'never', days: -1, nextReview: null };
+  }
+  
+  const daysSince = daysBetween(lastReview, today);
+  const interval = REVIEW_INTERVALS[Math.min(review - 1, REVIEW_INTERVALS.length - 1)];
+  const daysUntil = interval - daysSince;
+  
+  let status;
+  if (daysUntil <= 0) status = 'urgent';
+  else if (daysUntil <= 1) status = 'soon';
+  else status = 'fresh';
+  
+  return { status, daysSince, daysUntil, interval, nextReview: daysUntil };
+}
+
+// Calculate all items due for review
+function getReviewItems() {
+  const urgent = [];
+  const soon = [];
+  const fresh = [];
+  
+  Object.keys(appData).forEach(sheet => {
+    appData[sheet].forEach((item, idx) => {
+      // Only review items that are learning or mastered with at least 1 review
+      const mastery = item['掌握程度'];
+      if (mastery === '未开始') return;
+      
+      const rs = getReviewStatus(item);
+      if (rs.status === 'urgent') {
+        urgent.push({ ...item, _sheet: sheet, _idx: idx, _reviewStatus: rs });
+      } else if (rs.status === 'soon') {
+        soon.push({ ...item, _sheet: sheet, _idx: idx, _reviewStatus: rs });
+      } else if (rs.status === 'fresh') {
+        fresh.push({ ...item, _sheet: sheet, _idx: idx, _reviewStatus: rs });
+      }
+    });
+  });
+  
+  return { urgent, soon, fresh };
+}
+
+function openReviewModal() {
+  const { urgent, soon, fresh } = getReviewItems();
+  document.getElementById('rv-urgent').textContent = urgent.length;
+  document.getElementById('rv-soon').textContent = soon.length;
+  document.getElementById('rv-fresh').textContent = fresh.length;
+  
+  const list = document.getElementById('review-list');
+  const displayNames = {
+    'Sheet1_数据结构': '数据结构',
+    'Sheet2_计算机组成原理': '组成原理',
+    'Sheet3_操作系统': '操作系统',
+    'Sheet4_计算机网络': '计算机网络'
+  };
+  
+  let html = '';
+  
+  if (urgent.length === 0 && soon.length === 0) {
+    html = '<div style="text-align:center;padding:30px;color:#9ca3af">🎉 暂无待复习的考点，继续加油！</div>';
+  } else {
+    const allItems = [...urgent.map(i => ({...i, _type: 'urgent'})), ...soon.map(i => ({...i, _type: 'soon'}))];
+    allItems.sort((a, b) => a._reviewStatus.daysUntil - b._reviewStatus.daysUntil);
+    
+    allItems.forEach(item => {
+      const rs = item._reviewStatus;
+      const timeText = rs.daysUntil <= 0 
+        ? `已逾期 ${Math.abs(rs.daysUntil)} 天` 
+        : `还有 ${rs.daysUntil} 天到期`;
+      const urgencyClass = item._type;
+      html += `
+        <div class="review-item ${urgencyClass}">
+          <div>
+            <div class="ri-chapter">${displayNames[item._sheet] || item._sheet} · ${item['考纲章节']}</div>
+            <div class="ri-point">${item['考点']}</div>
+            <div class="ri-meta">第 ${item['回顾次数']} 轮复习 · ${timeText}</div>
+          </div>
+        </div>
+      `;
+    });
+  }
+  
+  list.innerHTML = html;
+  document.getElementById('review-modal').classList.add('show');
+}
+
+function closeReviewModal() {
+  document.getElementById('review-modal').classList.remove('show');
+}
+
+function markAllReviewed() {
+  const today = getTodayStr();
+  const { urgent, soon } = getReviewItems();
+  const items = [...urgent, ...soon];
+  
+  if (items.length === 0) {
+    alert('没有待复习的考点');
+    return;
+  }
+  
+  if (!confirm(`确定将 ${items.length} 个待复习考点标记为已复习？`)) return;
+  
+  items.forEach(item => {
+    const data = appData[item._sheet];
+    const idx = data.findIndex((d, i) => {
+      // Match by chapter + point name
+      return d['考纲章节'] === item['考纲章节'] && d['考点'] === item['考点'];
+    });
+    if (idx >= 0) {
+      data[idx]['回顾次数'] = (parseInt(data[idx]['回顾次数']) || 0) + 1;
+      data[idx]['_lastReview'] = today;
+    }
+  });
+  
+  saveData();
+  renderTable();
+  updateStats();
+  openReviewModal(); // refresh
+}
+
+// Update review counter to also update lastReview date
+// We'll modify the updateReview function
+
+
+
+// Share poster generation
+function openShareModal() {
+  document.getElementById('share-modal').classList.add('show');
+  generatePoster();
+}
+
+function closeShareModal() {
+  document.getElementById('share-modal').classList.remove('show');
+}
+
+function generatePoster() {
+  const canvas = document.getElementById('poster-canvas');
+  const ctx = canvas.getContext('2d');
+  
+  // Calculate stats
+  let total = 0, mastered = 0, learning = 0, notStarted = 0;
+  const sheetStats = {};
+  const sheetNames = {
+    'Sheet1_数据结构': '数据结构',
+    'Sheet2_计算机组成原理': '组成原理',
+    'Sheet3_操作系统': '操作系统',
+    'Sheet4_计算机网络': '计算机网络'
+  };
+  
+  Object.keys(appData).forEach(sheet => {
+    let sTotal = 0, sMastered = 0;
+    appData[sheet].forEach(item => {
+      sTotal++;
+      total++;
+      const m = item['掌握程度'] || '未开始';
+      if (m === '已掌握') { mastered++; sMastered++; }
+      else if (m === '学习中') learning++;
+      else notStarted++;
+    });
+    sheetStats[sheet] = { total: sTotal, mastered: sMastered, rate: sTotal > 0 ? Math.round(sMastered / sTotal * 100) : 0 };
+  });
+  
+  const overallRate = total > 0 ? Math.round(mastered / total * 100) : 0;
+  
+  // Get streak
+  const counts = getHeatmapData ? getHeatmapData() : {};
+  let streak = 0;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  let checkDate = new Date(today);
+  const todayStr = today.toISOString().slice(0, 10);
+  if (!counts[todayStr]) checkDate.setDate(checkDate.getDate() - 1);
+  while (true) {
+    const ds = checkDate.toISOString().slice(0, 10);
+    if (counts[ds]) { streak++; checkDate.setDate(checkDate.getDate() - 1); }
+    else break;
+    if (streak > 365) break;
+  }
+  
+  // Draw poster background - gradient
+  const grad = ctx.createLinearGradient(0, 0, 0, 480);
+  grad.addColorStop(0, '#667eea');
+  grad.addColorStop(1, '#764ba2');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, 360, 480);
+  
+  // Decorative circles
+  ctx.fillStyle = 'rgba(255,255,255,0.08)';
+  ctx.beginPath();
+  ctx.arc(300, 60, 80, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(40, 420, 100, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // Title
+  ctx.fillStyle = 'white';
+  ctx.font = 'bold 24px -apple-system, "PingFang SC", sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('2026 考研 408', 180, 60);
+  ctx.font = '14px -apple-system, "PingFang SC", sans-serif';
+  ctx.fillStyle = 'rgba(255,255,255,0.85)';
+  ctx.fillText('考点考频学习进度', 180, 84);
+  
+  // Big progress circle
+  const cx = 180, cy = 175, r = 55;
+  // Background ring
+  ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+  ctx.lineWidth = 10;
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.stroke();
+  // Progress ring
+  ctx.strokeStyle = '#4ade80';
+  ctx.lineWidth = 10;
+  ctx.lineCap = 'round';
+  const startAngle = -Math.PI / 2;
+  const endAngle = startAngle + (overallRate / 100) * Math.PI * 2;
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, startAngle, endAngle);
+  ctx.stroke();
+  // Center text
+  ctx.fillStyle = 'white';
+  ctx.font = 'bold 32px -apple-system, "PingFang SC", sans-serif';
+  ctx.fillText(overallRate + '%', cx, cy + 10);
+  ctx.font = '12px -apple-system, "PingFang SC", sans-serif';
+  ctx.fillStyle = 'rgba(255,255,255,0.8)';
+  ctx.fillText('总体掌握率', cx, cy + 32);
+  
+  // Stats row
+  const statsY = 260;
+  const stats = [
+    { num: total, label: '总考点' },
+    { num: mastered, label: '已掌握' },
+    { num: streak, label: '连续天数' }
+  ];
+  const statW = 100;
+  stats.forEach((s, i) => {
+    const x = 40 + i * statW + 10;
+    ctx.fillStyle = 'white';
+    ctx.font = 'bold 22px -apple-system, "PingFang SC", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(s.num, x + statW/2 - 10, statsY);
+    ctx.font = '12px -apple-system, "PingFang SC", sans-serif';
+    ctx.fillStyle = 'rgba(255,255,255,0.75)';
+    ctx.fillText(s.label, x + statW/2 - 10, statsY + 20);
+  });
+  
+  // Per-subject progress bars
+  const barStartY = 310;
+  const barHeight = 18;
+  const barGap = 10;
+  const barX = 40;
+  const barMaxW = 280;
+  
+  const colors = {
+    'Sheet1_数据结构': '#60a5fa',
+    'Sheet2_计算机组成原理': '#f472b6',
+    'Sheet3_操作系统': '#34d399',
+    'Sheet4_计算机网络': '#fbbf24'
+  };
+  
+  Object.keys(sheetStats).forEach((sheet, i) => {
+    const y = barStartY + i * (barHeight + barGap);
+    const s = sheetStats[sheet];
+    
+    // Label
+    ctx.fillStyle = 'rgba(255,255,255,0.9)';
+    ctx.font = '13px -apple-system, "PingFang SC", sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText(sheetNames[sheet], barX, y + 14);
+    
+    // Percentage
+    ctx.textAlign = 'right';
+    ctx.font = 'bold 13px -apple-system, "PingFang SC", sans-serif';
+    ctx.fillText(s.rate + '%', barX + barMaxW, y + 14);
+    
+    // Background bar
+    ctx.fillStyle = 'rgba(255,255,255,0.15)';
+    ctx.fillRect(barX, y + 22, barMaxW, 6);
+    
+    // Progress bar
+    ctx.fillStyle = colors[sheet] || '#667eea';
+    const progressW = (s.rate / 100) * barMaxW;
+    ctx.fillRect(barX, y + 22, progressW, 6);
+  });
+  
+  // Footer
+  ctx.fillStyle = 'rgba(255,255,255,0.6)';
+  ctx.font = '11px -apple-system, "PingFang SC", sans-serif';
+  ctx.textAlign = 'center';
+  const dateStr = new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' });
+  ctx.fillText(dateStr + ' · 坚持就是胜利 💪', 180, 455);
+}
+
+function downloadPoster() {
+  const canvas = document.getElementById('poster-canvas');
+  const link = document.createElement('a');
+  link.download = '考研408学习进度_' + new Date().toISOString().slice(0,10) + '.png';
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+}
+
+// Activity log - track all learning actions
+const ACTIVITY_KEY = 'kaoyan_408_activity_log';
+let activityLog = [];
+
+function loadActivityLog() {
+  const saved = localStorage.getItem(ACTIVITY_KEY);
+  if (saved) {
+    try { activityLog = JSON.parse(saved); } catch(e) { activityLog = []; }
+  }
+}
+
+function saveActivityLog() {
+  localStorage.setItem(ACTIVITY_KEY, JSON.stringify(activityLog));
+}
+
+function logActivity(type, point, chapter, sheet) {
+  const displayNames = {
+    'Sheet1_数据结构': '数据结构',
+    'Sheet2_计算机组成原理': '组成原理',
+    'Sheet3_操作系统': '操作系统',
+    'Sheet4_计算机网络': '计算机网络'
+  };
+  activityLog.unshift({
+    type, // 'mastered', 'learning', 'review', 'add'
+    point,
+    chapter,
+    sheet: displayNames[sheet] || sheet,
+    timestamp: Date.now()
+  });
+  // Keep last 500 entries
+  if (activityLog.length > 500) activityLog = activityLog.slice(0, 500);
+  saveActivityLog();
+}
+
+// (mastery logging integrated into updateMastery)
+
+// (add logging integrated into submitAddPoint)
+
+// (review logging integrated into updateReview)
+
+// Generate heatmap data
+function getHeatmapData() {
+  const counts = {};
+  activityLog.forEach(log => {
+    const date = new Date(log.timestamp).toISOString().slice(0, 10);
+    counts[date] = (counts[date] || 0) + 1;
+  });
+  return counts;
+}
+
+function renderHeatmap() {
+  const grid = document.getElementById('heatmap-grid');
+  const counts = getHeatmapData();
+  
+  // Generate last 52 weeks (364 days)
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  // Start from Monday of the week 51 weeks ago
+  const startDate = new Date(today);
+  startDate.setDate(today.getDate() - 364);
+  // Adjust to Monday
+  const dayOfWeek = startDate.getDay();
+  const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+  startDate.setDate(startDate.getDate() + diff);
+  
+  const weeks = [];
+  const dayLabels = ['', '一', '', '三', '', '五', '日'];
+  
+  let currentDate = new Date(startDate);
+  let weekIdx = 0;
+  
+  while (currentDate <= today) {
+    const week = [];
+    for (let d = 0; d < 7; d++) {
+      if (currentDate > today) break;
+      const dateStr = currentDate.toISOString().slice(0, 10);
+      const count = counts[dateStr] || 0;
+      week.push({ date: dateStr, count, label: dayLabels[d] });
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+    weeks.push(week);
+  }
+  
+  // Find max count for scaling
+  const maxCount = Math.max(...Object.values(counts), 1);
+  
+  let html = '';
+  weeks.forEach(week => {
+    html += '<div class="heatmap-week">';
+    week.forEach(day => {
+      let level = 0;
+      if (day.count > 0) {
+        const ratio = day.count / maxCount;
+        if (ratio <= 0.25) level = 1;
+        else if (ratio <= 0.5) level = 2;
+        else if (ratio <= 0.75) level = 3;
+        else level = 4;
+      }
+      const levelClass = level > 0 ? `level-${level}` : '';
+      const countText = day.count > 0 ? `${day.count} 次操作` : '无记录';
+      html += `<div class="heatmap-day ${levelClass}">
+        <span class="tooltip">${day.date} · ${countText}</span>
+      </div>`;
+    });
+    html += '</div>';
+  });
+  
+  grid.innerHTML = html;
+}
+
+function renderTimeline() {
+  const list = document.getElementById('timeline-list');
+  const recent = activityLog.slice(0, 50);
+  
+  if (recent.length === 0) {
+    list.innerHTML = '<div style="text-align:center;padding:30px;color:#9ca3af">暂无学习记录，开始学习吧！</div>';
+    return;
+  }
+  
+  const typeLabels = {
+    'mastered': { text: '🎉 掌握了', dot: 'mastered' },
+    'learning': { text: '📖 开始学习', dot: 'learning' },
+    'review': { text: '🔄 复习了', dot: 'review' },
+    'add': { text: '➕ 添加了考点', dot: 'add' }
+  };
+  
+  let html = '';
+  recent.forEach(log => {
+    const type = typeLabels[log.type] || { text: log.type, dot: '' };
+    const time = new Date(log.timestamp);
+    const timeStr = time.toLocaleString('zh-CN', { 
+      month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' 
+    });
+    
+    html += `
+      <div class="timeline-item">
+        <div class="timeline-dot ${type.dot}"></div>
+        <div class="timeline-content">
+          <div class="timeline-action">${type.text}</div>
+          <div class="timeline-point">${log.sheet} · ${log.chapter} · ${log.point}</div>
+          <div class="timeline-time">${timeStr}</div>
+        </div>
+      </div>
+    `;
+  });
+  
+  list.innerHTML = html;
+}
+
+function calculateStats() {
+  const counts = getHeatmapData();
+  const daysWithActivity = Object.keys(counts).length;
+  const totalActions = activityLog.length;
+  
+  // Streak calculation
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  let streak = 0;
+  let checkDate = new Date(today);
+  
+  // Check if today has activity, if not start from yesterday
+  const todayStr = today.toISOString().slice(0, 10);
+  if (!counts[todayStr]) {
+    checkDate.setDate(checkDate.getDate() - 1);
+  }
+  
+  while (true) {
+    const dateStr = checkDate.toISOString().slice(0, 10);
+    if (counts[dateStr]) {
+      streak++;
+      checkDate.setDate(checkDate.getDate() - 1);
+    } else {
+      break;
+    }
+    if (streak > 365) break; // safety
+  }
+  
+  // Mastered rate
+  let total = 0, mastered = 0;
+  Object.values(appData).forEach(sheet => {
+    sheet.forEach(item => {
+      total++;
+      if (item['掌握程度'] === '已掌握') mastered++;
+    });
+  });
+  const rate = total > 0 ? Math.round(mastered / total * 100) : 0;
+  
+  document.getElementById('s-total-days').textContent = daysWithActivity;
+  document.getElementById('s-total-actions').textContent = totalActions;
+  document.getElementById('s-streak').textContent = streak;
+  document.getElementById('s-mastered-rate').textContent = rate + '%';
+}
+
+function renderStatsView() {
+  renderHeatmap();
+  renderTimeline();
+  calculateStats();
+}
+
+// Render table
+function renderTable() {
+  const tbody = document.getElementById('table-body');
+  const data = appData[currentTab] || [];
+  const displayNames = {
+    'Sheet1_数据结构': '数据结构',
+    'Sheet2_计算机组成原理': '组成原理',
+    'Sheet3_操作系统': '操作系统',
+    'Sheet4_计算机网络': '计网'
+  };
+  const subjectName = displayNames[currentTab] || currentTab;
+  
+  let filtered = data.map((item, idx) => ({...item, _idx: idx}));
+  
+  // Search filter
+  if (searchQuery) {
+    const q = searchQuery.toLowerCase();
+    filtered = filtered.filter(item => 
+      item['考点'].toLowerCase().includes(q) ||
+      item['考纲章节'].toLowerCase().includes(q) ||
+      (item['备注'] && item['备注'].toLowerCase().includes(q))
+    );
+  }
+  
+  // Heat filter
+  if (currentFilter !== 'all') {
+    filtered = filtered.filter(item => item['热度等级'] === currentFilter);
+  }
+  
+  // Mastery filter
+  if (currentMasteryFilter !== 'all') {
+    filtered = filtered.filter(item => item['掌握程度'] === currentMasteryFilter);
+  }
+  
+  if (filtered.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:40px;color:#9ca3af">暂无匹配的考点</td></tr>';
+    return;
+  }
+  
+  // Sort by priority if active
+  if (prioritySortActive) {
+    filtered.sort((a, b) => getPriorityScore(b) - getPriorityScore(a));
+  }
+  
+  // Group by chapter
+  const chapters = {};
+  filtered.forEach(item => {
+    const ch = item['考纲章节'];
+    if (!chapters[ch]) chapters[ch] = [];
+    chapters[ch].push(item);
+  });
+  
+  // If priority sort is on, sort chapters by average priority too
+  if (prioritySortActive) {
+    const chapterOrder = Object.keys(chapters).sort((a, b) => {
+      const avgA = chapters[a].reduce((s, i) => s + getPriorityScore(i), 0) / chapters[a].length;
+      const avgB = chapters[b].reduce((s, i) => s + getPriorityScore(i), 0) / chapters[b].length;
+      return avgB - avgA;
+    });
+    const sortedChapters = {};
+    chapterOrder.forEach(ch => { sortedChapters[ch] = chapters[ch]; });
+    // Replace chapters reference (but we still iterate with Object.keys below)
+    Object.keys(chapters).forEach(k => delete chapters[k]);
+    chapterOrder.forEach(ch => { chapters[ch] = sortedChapters[ch]; });
+  }
+  
+  let html = '';
+  const chapterList = Object.keys(chapters);
+  currentChapterList = chapterList;
+  chapterList.forEach((chapter, chIdx) => {
+    const arrow = isChapterCollapsed(chapter) ? '▶' : '▼';
+    html += `<tr class="chapter-row" data-chapter-idx="${chIdx}" style="cursor:pointer">
+      <td colspan="10">
+        <span class="chapter-arrow">${arrow}</span>
+        📖 ${chapter} (${chapters[chapter].length}个考点)
+      </td>
+    </tr>`;
+    chapters[chapter].forEach(item => {
+      const idx = item._idx;
+      const note = item['备注'] || '';
+      const mastery = item['掌握程度'] || '未开始';
+      const review = parseInt(item['回顾次数']) || 0;
+      const heatClass = getTagClass(item['热度等级']);
+      
+      html += `
+        <tr data-idx="${idx}" data-chapter="${item['考纲章节']}" class="draggable-row ${isChapterCollapsed(chapter) ? 'chapter-hidden' : ''}">
+          <td class="check-col"><input type="checkbox" class="row-checkbox" data-idx="${idx}" ${selectedRows.has(idx) ? 'checked' : ''} onchange="toggleRowSelect(${idx})"></td>
+          <td class="sort-col" title="拖动排序"><span class="drag-handle">⋮⋮</span></td>
+          <td>${item['考纲章节']}</td>
+          <td style="font-weight:500;cursor:pointer" onclick="openDetailModal(${idx})">
+            ${(() => { const rs = getReviewStatus(item); return rs.status !== 'never' ? `<span class="review-dot ${rs.status}" title="${rs.status === 'urgent' ? '今天需复习' : rs.status === 'soon' ? '明天需复习' : '状态良好'}"></span>` : ''; })()}
+            ${item['考点']}${item._custom ? '<span class="custom-badge">自定义</span>' : ''}
+            <span class="drag-hint">点击查看详情</span>
+          </td>
+          <td>${item['09—25考频']}</td>
+          <td><span class="tag ${heatClass}">${item['热度等级']}</span></td>
+          <td>
+            <select class="mastery-select mastery-${mastery}" onchange="updateMastery(${idx}, this.value)">
+              <option value="未开始" ${mastery === '未开始' ? 'selected' : ''}>未开始</option>
+              <option value="学习中" ${mastery === '学习中' ? 'selected' : ''}>学习中</option>
+              <option value="已掌握" ${mastery === '已掌握' ? 'selected' : ''}>已掌握</option>
+            </select>
+          </td>
+          <td>
+            <div class="review-counter">
+              <button class="review-btn" onclick="updateReview(${idx}, -1)">−</button>
+              <span class="review-count">${review}</span>
+              <button class="review-btn" onclick="updateReview(${idx}, 1)">+</button>
+            </div>
+          </td>
+          <td class="note-cell">
+            <div class="note-text ${note ? '' : 'empty'}" 
+                 onclick="editNote(${idx}, this)"
+                 onblur="saveNote(${idx}, this)"
+                 contenteditable="false">${note || '点击添加备注'}</div>
+          </td>
+          <td>
+            ${item._custom ? `<button class="delete-btn" onclick="deletePoint(${idx})">删除</button>` : ''}
+          </td>
+        </tr>
+      `;
+    });
+  });
+  
+  tbody.innerHTML = html;
+  initDragHandlers();
+}
+
+// Update mastery
+function updateMastery(idx, value) {
+  const item = appData[currentTab][idx];
+  const oldVal = item['掌握程度'];
+  item['掌握程度'] = value;
+  if (value !== oldVal) {
+    if (value === '已掌握') {
+      logActivity('mastered', item['考点'], item['考纲章节'], currentTab);
+    } else if (value === '学习中') {
+      logActivity('learning', item['考点'], item['考纲章节'], currentTab);
+    }
+  }
+  saveData();
+  renderTable();
+  updateStats();
+}
+
+// Update review count
+function updateReview(idx, delta) {
+  const item = appData[currentTab][idx];
+  let count = parseInt(item['回顾次数']) || 0;
+  count = Math.max(0, count + delta);
+  item['回顾次数'] = count;
+  if (delta > 0) {
+    item['_lastReview'] = getTodayStr();
+    logActivity('review', item['考点'], item['考纲章节'], currentTab);
+  }
+  saveData();
+  renderTable();
+  updateStats();
+}
+
+// Edit note
+function editNote(idx, el) {
+  el.contentEditable = 'true';
+  el.classList.remove('empty');
+  if (el.textContent === '点击添加备注') el.textContent = '';
+  el.focus();
+}
+
+// Save note
+function saveNote(idx, el) {
+  el.contentEditable = 'false';
+  const text = el.textContent.trim();
+  appData[currentTab][idx]['备注'] = text;
+  if (!text) {
+    el.textContent = '点击添加备注';
+    el.classList.add('empty');
+  }
+  saveData();
+}
+
+// Update stats
+function updateStats() {
+  let total = 0, mastered = 0, learning = 0, notStarted = 0;
+  Object.values(appData).forEach(sheet => {
+    sheet.forEach(item => {
+      total++;
+      const m = item['掌握程度'] || '未开始';
+      if (m === '已掌握') mastered++;
+      else if (m === '学习中') learning++;
+      else notStarted++;
+    });
+  });
+  
+  const setText = (id, val) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = val;
+  };
+  const setWidth = (id, val) => {
+    const el = document.getElementById(id);
+    if (el) el.style.width = val;
+  };
+  
+  setText('stat-total', total);
+  setText('stat-mastered', mastered);
+  setText('stat-learning', learning);
+  setText('stat-not-started', notStarted);
+  
+  const pct = total > 0 ? (v) => Math.round(v / total * 100) + '%' : '0%';
+  setWidth('progress-mastered', pct(mastered));
+  setWidth('progress-learning', pct(learning));
+  setWidth('progress-not-started', pct(notStarted));
+  
+  // Review today count
+  const { urgent } = getReviewItems();
+  setText('stat-review-today', urgent.length);
+}
+
+// Filter handlers
+
+// Countdown timer to exam date (Dec 19, 2026)
+const EXAM_DATE = new Date('2026-12-19T08:30:00+08:00');
+
+function updateCountdown() {
+  const now = new Date();
+  const diff = EXAM_DATE - now;
+  
+  if (diff <= 0) {
+    document.getElementById('countdown-days').textContent = '加油！';
+    return;
+  }
+  
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+  document.getElementById('countdown-days').textContent = days;
+}
+
+function updateCurrentTime() {
+  const now = new Date();
+  const timeStr = now.toLocaleString('zh-CN', {
+    month: 'long',
+    day: 'numeric',
+    weekday: 'short',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+  const el = document.getElementById('header-time');
+  if (el) el.textContent = timeStr;
+}
+
+function startHeaderClock() {
+  updateCountdown();
+  updateCurrentTime();
+  setInterval(() => {
+    updateCurrentTime();
+    // Update countdown every minute
+    if (new Date().getSeconds() === 0) {
+      updateCountdown();
+    }
+  }, 1000);
+}
+
+// Safe helper to bind event to element by id
+function bindEvent(id, event, handler) {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener(event, handler);
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  try {
+    initTheme();
+    startHeaderClock();
+    loadCollapsedState();
+    loadActivityLog();
+    loadData();
+    renderTabs();
+    renderTable();
+    updateStats();
+  } catch(e) {
+    console.error('Init phase 1 error:', e);
+  }
+  
+  // Theme toggle
+  bindEvent('theme-toggle', 'click', toggleTheme);
+  
+  // Search
+  const searchInput = document.getElementById('search-input');
+  if (searchInput) {
+    searchInput.addEventListener('input', (e) => {
+      searchQuery = e.target.value;
+      renderTable();
+    });
+  }
+  
+  // Heat filter
+  document.querySelectorAll('.filter-btn[data-filter]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.filter-btn[data-filter]').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentFilter = btn.dataset.filter;
+      renderTable();
+    });
+  });
+  
+  // Mastery filter
+  document.querySelectorAll('.filter-btn[data-mastery]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.filter-btn[data-mastery]').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentMasteryFilter = btn.dataset.mastery;
+      renderTable();
+    });
+  });
+  
+  // Priority sort
+  bindEvent('sort-priority-btn', 'click', togglePrioritySort);
+  
+  // Add point
+  bindEvent('add-btn', 'click', openAddModal);
+  bindEvent('float-add-btn', 'click', openAddModal);
+  
+  // Reset
+  bindEvent('float-reset-btn', 'click', () => {
+    const m = document.getElementById('reset-modal');
+    if (m) m.classList.add('show');
+  });
+  
+  // Export
+  const doExport = () => {
+    const dataStr = JSON.stringify(appData, null, 2);
+    const blob = new Blob([dataStr], {type: 'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = '考研408学习进度_' + new Date().toISOString().slice(0,10) + '.json';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+  bindEvent('export-btn', 'click', doExport);
+  bindEvent('float-export-btn', 'click', doExport);
+  
+  // Share poster
+  bindEvent('float-share-btn', 'click', openShareModal);
+  
+  // Cloud sync
+  bindEvent('float-sync-btn', 'click', openSyncModal);
+  
+  // Pomodoro
+  bindEvent('float-pomo-btn', 'click', openPomodoro);
+  
+  // Import
+  const triggerImport = () => {
+    const f = document.getElementById('import-file');
+    if (f) f.click();
+  };
+  bindEvent('import-btn', 'click', triggerImport);
+  bindEvent('float-import-btn', 'click', triggerImport);
+  
+  const importFile = document.getElementById('import-file');
+  if (importFile) {
+    importFile.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        try {
+          const imported = JSON.parse(event.target.result);
+          if (imported && typeof imported === 'object' && Object.keys(imported).length > 0) {
+            appData = imported;
+            saveData();
+            renderTabs();
+            renderTable();
+            updateStats();
+            alert('导入成功！');
+          } else {
+            alert('文件格式不正确');
+          }
+        } catch(err) {
+          alert('文件解析失败');
+        }
+      };
+      reader.readAsText(file);
+      e.target.value = '';
+    });
+  }
+  
+  // Floating button collapse toggle
+  const floatToggle = document.getElementById('float-toggle');
+  const floatActions = document.getElementById('float-actions');
+  if (floatToggle && floatActions) {
+    floatActions.classList.add('collapsed');
+    floatToggle.textContent = '⚡';
+    floatToggle.addEventListener('click', () => {
+      floatActions.classList.toggle('collapsed');
+      floatToggle.textContent = floatActions.classList.contains('collapsed') ? '⚡' : '✕';
+    });
+  }
+  
+  // Separate back-to-top button
+  const backToTop = document.getElementById('back-to-top');
+  if (backToTop) {
+    backToTop.addEventListener('click', () => {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+    window.addEventListener('scroll', () => {
+      if (window.scrollY > 300) {
+        backToTop.classList.add('show');
+      } else {
+        backToTop.classList.remove('show');
+      }
+    });
+  }
+});
+
+function closeModal() {
+  document.getElementById('reset-modal').classList.remove('show');
+}
+
+
+// Add point modal
+function openAddModal() {
+  const subjectSelect = document.getElementById('add-subject');
+  const displayNames = {
+    'Sheet1_数据结构': '数据结构',
+    'Sheet2_计算机组成原理': '计算机组成原理',
+    'Sheet3_操作系统': '操作系统',
+    'Sheet4_计算机网络': '计算机网络'
+  };
+  subjectSelect.innerHTML = Object.keys(appData).map(s => 
+    `<option value="${s}" ${s === currentTab ? 'selected' : ''}>${displayNames[s] || s}</option>`
+  ).join('');
+  updateChapterOptions();
+  document.getElementById('add-point').value = '';
+  document.getElementById('add-mastery').value = '未开始';
+  document.getElementById('add-review').value = '0';
+  document.getElementById('add-note').value = '';
+  document.getElementById('add-modal').classList.add('show');
+}
+
+function updateChapterOptions() {
+  const sheet = document.getElementById('add-subject').value;
+  const chapters = [...new Set(appData[sheet].map(item => item['考纲章节']))];
+  const select = document.getElementById('add-chapter');
+  select.innerHTML = '<option value="">请选择章节</option>' + 
+    chapters.map(ch => `<option value="${ch}">${ch}</option>`).join('');
+}
+
+function closeAddModal() {
+  document.getElementById('add-modal').classList.remove('show');
+}
+
+function submitAddPoint() {
+  const sheet = document.getElementById('add-subject').value;
+  const chapter = document.getElementById('add-chapter').value;
+  const point = document.getElementById('add-point').value.trim();
+  const frequency = '—';
+  const heat = '—';
+  const mastery = document.getElementById('add-mastery').value;
+  const review = parseInt(document.getElementById('add-review').value) || 0;
+  const note = document.getElementById('add-note').value.trim();
+  
+  if (!point) {
+    alert('请输入考点名称');
+    return;
+  }
+  if (!chapter) {
+    alert('请选择考纲章节');
+    return;
+  }
+  
+  const newItem = {
+    '科目': sheet.replace(/^Sheet\d+_/, ''),
+    '考纲章节': chapter,
+    '考点': point,
+    '09—25考频': frequency,
+    '热度等级': heat,
+    '掌握程度': mastery,
+    '回顾次数': review,
+    '备注': note,
+    '_custom': true
+  };
+  
+  appData[sheet].push(newItem);
+  logActivity('add', point, chapter, sheet);
+  saveData();
+  
+  if (currentTab === sheet) {
+    renderTable();
+  }
+  renderTabs();
+  updateStats();
+  closeAddModal();
+}
+
+
+// ===== Drag and Drop (mouse + touch support) =====
+let isDragging = false;
+let dragSrcIdx = -1;
+let dragTab = null;
+let dragStartY = 0;
+let dragStartX = 0;
+let dragHandlersBound = false;
+let dragGhostEl = null;
+let dragOffsetX = 0;
+let dragOffsetY = 0;
+
+function initGlobalDragHandlers() {
+  if (dragHandlersBound) return;
+  
+  // Mouse events
+  document.addEventListener('mousemove', handleDragMove);
+  document.addEventListener('mouseup', handleDragEnd);
+  
+  // Touch events
+  document.addEventListener('touchmove', handleDragTouchMove, { passive: false });
+  document.addEventListener('touchend', handleDragTouchEnd);
+  document.addEventListener('touchcancel', handleDragTouchEnd);
+  
+  dragHandlersBound = true;
+}
+
+function initDragHandlers() {
+  initGlobalDragHandlers();
+  
+  const sortCols = document.querySelectorAll('.sort-col');
+  sortCols.forEach(col => {
+    col.style.cursor = 'grab';
+    col.style.touchAction = 'none';
+    
+    // Mouse
+    col.onmousedown = function(e) {
+      // Don't start drag if clicking on checkbox (first col is checkbox, second is sort-col)
+      e.preventDefault();
+      startDrag(e.clientX, e.clientY, this);
+    };
+    
+    // Touch
+    col.ontouchstart = function(e) {
+      if (e.touches.length !== 1) return;
+      e.preventDefault();
+      const touch = e.touches[0];
+      startDrag(touch.clientX, touch.clientY, this);
+    };
+  });
+  
+  // Chapter collapse
+  const chapterRows = document.querySelectorAll('.chapter-row');
+  chapterRows.forEach(row => {
+    row.onclick = function() {
+      if (isDragging) return; // Ignore clicks during drag
+      const chIdx = parseInt(this.dataset.chapterIdx);
+      const chapterName = currentChapterList[chIdx];
+      if (chapterName) toggleChapter(chapterName);
+    };
+  });
+}
+
+function startDrag(clientX, clientY, handleEl) {
+  const row = handleEl.closest('.draggable-row');
+  if (!row) return;
+  
+  const idx = parseInt(row.dataset.idx);
+  if (isNaN(idx)) return;
+  
+  dragSrcIdx = idx;
+  dragTab = currentTab;
+  dragStartY = clientY;
+  dragStartX = clientX;
+  isDragging = false;
+  
+  // Calculate offset for ghost element
+  const rowRect = row.getBoundingClientRect();
+  dragOffsetX = clientX - rowRect.left;
+  dragOffsetY = clientY - rowRect.top;
+  
+  // Auto-disable priority sort
+  if (prioritySortActive) {
+    prioritySortActive = false;
+    const btn = document.getElementById('sort-priority-btn');
+    if (btn) {
+      btn.classList.remove('active');
+      btn.textContent = '⚡ 优先排序';
+    }
+  }
+}
+
+function handleDragMove(e) {
+  doDragMove(e.clientX, e.clientY);
+}
+
+function handleDragTouchMove(e) {
+  if (dragSrcIdx < 0) return;
+  if (e.touches.length !== 1) return;
+  e.preventDefault();
+  const touch = e.touches[0];
+  doDragMove(touch.clientX, touch.clientY);
+}
+
+function doDragMove(clientX, clientY) {
+  if (dragSrcIdx < 0 || dragTab !== currentTab) return;
+  
+  if (!isDragging) {
+    const dist = Math.sqrt(Math.pow(clientX - dragStartX, 2) + Math.pow(clientY - dragStartY, 2));
+    if (dist > 5) {
+      isDragging = true;
+      showDragVisual();
+    } else {
+      return;
+    }
+  }
+  
+  // Update ghost position
+  updateGhostPosition(clientX, clientY);
+  
+  // Find target row and show indicator
+  const result = findTargetRow(clientY);
+  clearDragIndicators();
+  
+  if (result && result.row.dataset.idx !== String(dragSrcIdx)) {
+    const { row, rect } = result;
+    const midY = rect.top + rect.height / 2;
+    if (clientY < midY) {
+      row.classList.add('drag-over-top');
+    } else {
+      row.classList.add('drag-over-bottom');
+    }
+  }
+}
+
+function handleDragEnd(e) {
+  doDragEnd(e.clientX, e.clientY);
+}
+
+function handleDragTouchEnd(e) {
+  if (dragSrcIdx < 0) return;
+  // For touchend, use changedTouches
+  let clientY = dragStartY;
+  if (e.changedTouches && e.changedTouches.length > 0) {
+    clientY = e.changedTouches[0].clientY;
+  }
+  doDragEnd(dragStartX, clientY);
+}
+
+function doDragEnd(clientX, clientY) {
+  if (dragSrcIdx < 0) return;
+  
+  if (!isDragging) {
+    // Just a tap/click, not a drag
+    dragSrcIdx = -1;
+    dragTab = null;
+    return;
+  }
+  
+  const result = findTargetRow(clientY);
+  const sourceTab = dragTab;
+  const sourceIdx = dragSrcIdx;
+  
+  // Reset state
+  clearDragIndicators();
+  hideDragVisual();
+  isDragging = false;
+  dragSrcIdx = -1;
+  dragTab = null;
+  
+  if (!result || sourceTab !== currentTab) return;
+  
+  const { row, rect } = result;
+  const targetIdx = parseInt(row.dataset.idx);
+  
+  if (isNaN(targetIdx) || sourceIdx === targetIdx || targetIdx < 0) return;
+  
+  const data = appData[sourceTab];
+  if (sourceIdx < 0 || sourceIdx >= data.length || targetIdx >= data.length) return;
+  
+  // Get target item's chapter for cross-chapter drag
+  const targetItem = data[targetIdx];
+  const targetChapter = targetItem['考纲章节'];
+  
+  // Determine insert position (before or after target row)
+  const midY = rect.top + rect.height / 2;
+  const insertAfter = clientY >= midY;
+  
+  // Remove from source position
+  const [movedItem] = data.splice(sourceIdx, 1);
+  
+  // Adjust target index (source was removed)
+  let adjustedIdx = targetIdx;
+  if (sourceIdx < targetIdx) adjustedIdx = targetIdx - 1;
+  
+  let insertIdx = adjustedIdx;
+  if (insertAfter) {
+    insertIdx = adjustedIdx + 1;
+  }
+  
+  insertIdx = Math.max(0, Math.min(insertIdx, data.length));
+  data.splice(insertIdx, 0, movedItem);
+  
+  // Cross-chapter: update the moved item's chapter to match target area
+  if (movedItem['考纲章节'] !== targetChapter) {
+    movedItem['考纲章节'] = targetChapter;
+    showDragToast('已移动到「' + targetChapter + '」章节');
+  } else {
+    showDragToast('排序已更新');
+  }
+  
+  saveData();
+  renderTable();
+}
+
+function showDragVisual() {
+  const rows = document.querySelectorAll('.draggable-row');
+  let srcRow = null;
+  rows.forEach(r => {
+    if (parseInt(r.dataset.idx) === dragSrcIdx) {
+      r.classList.add('dragging');
+      srcRow = r;
+    }
+  });
+  document.body.classList.add('dragging-active');
+  
+  // Create ghost element
+  if (srcRow) {
+    const pointName = srcRow.querySelector('td:nth-child(4)')?.textContent?.trim() || '考点';
+    dragGhostEl = document.createElement('div');
+    dragGhostEl.className = 'drag-ghost';
+    dragGhostEl.textContent = '↕ ' + pointName.substring(0, 30);
+    document.body.appendChild(dragGhostEl);
+    updateGhostPosition(dragStartX, dragStartY);
+  }
+}
+
+function updateGhostPosition(clientX, clientY) {
+  if (!dragGhostEl) return;
+  dragGhostEl.style.left = (clientX - dragOffsetX) + 'px';
+  dragGhostEl.style.top = (clientY - dragOffsetY + 10) + 'px';
+}
+
+function hideDragVisual() {
+  document.querySelectorAll('.draggable-row, .chapter-row').forEach(r => {
+    r.classList.remove('dragging', 'drag-over-top', 'drag-over-bottom');
+  });
+  document.body.classList.remove('dragging-active');
+  
+  // Remove ghost
+  if (dragGhostEl) {
+    dragGhostEl.remove();
+    dragGhostEl = null;
+  }
+}
+
+function showDragToast(message) {
+  let toast = document.getElementById('drag-toast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'drag-toast';
+    toast.className = 'drag-toast';
+    document.body.appendChild(toast);
+  }
+  toast.textContent = message;
+  // Force reflow
+  toast.offsetHeight;
+  toast.classList.add('show');
+  clearTimeout(toast._timer);
+  toast._timer = setTimeout(() => {
+    toast.classList.remove('show');
+  }, 1200);
+}
+
+function clearDragIndicators() {
+  document.querySelectorAll('.draggable-row').forEach(r => {
+    r.classList.remove('drag-over-top', 'drag-over-bottom');
+  });
+}
+
+function findTargetRow(clientY) {
+  const rows = document.querySelectorAll('.draggable-row:not(.chapter-hidden)');
+  if (rows.length === 0) return null;
+  
+  // First try: find row directly under mouse
+  for (let i = 0; i < rows.length; i++) {
+    const rect = rows[i].getBoundingClientRect();
+    if (clientY >= rect.top && clientY <= rect.bottom) {
+      return { row: rows[i], rect: rect };
+    }
+  }
+  
+  // Fallback: find closest row
+  let closest = null;
+  let minDist = Infinity;
+  let closestRect = null;
+  
+  for (let i = 0; i < rows.length; i++) {
+    const rect = rows[i].getBoundingClientRect();
+    const center = rect.top + rect.height / 2;
+    const dist = Math.abs(center - clientY);
+    if (dist < minDist) {
+      minDist = dist;
+      closest = rows[i];
+      closestRect = rect;
+    }
+  }
+  
+  if (closest && minDist < 200) {
+    return { row: closest, rect: closestRect };
+  }
+  
+  return null;
+}
+
+// Delete point
+function deletePoint(idx) {
+  const item = appData[currentTab][idx];
+  if (!item._custom) {
+    alert('系统默认考点不可删除');
+    return;
+  }
+  if (!confirm('确定要删除这个自定义考点吗？')) return;
+  appData[currentTab].splice(idx, 1);
+  saveData();
+  renderTable();
+  renderTabs();
+}
+
+function confirmReset() {
+  appData = JSON.parse(JSON.stringify(INITIAL_DATA));
+  saveData();
+  renderTable();
+  closeModal();
+}
+</script>
+
+
+</body></html>
