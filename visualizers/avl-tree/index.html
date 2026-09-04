@@ -153,6 +153,38 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
 .legend-item { display: flex; align-items: center; gap: 4px; white-space: nowrap; }
 .legend-dot { width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid; flex-shrink: 0; }
 
+/* 画布顶部插入序列指示器 */
+.seq-display {
+  position: absolute;
+  top: 6px;
+  left: 8px;
+  display: none;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.06);
+  font-size: 11px;
+  pointer-events: none;
+  max-width: calc(100% - 200px);
+  z-index: 5;
+}
+.seq-label { font-weight: 700; color: var(--text-2); flex-shrink: 0; }
+.seq-items { display: flex; align-items: center; gap: 2px; overflow-x: auto; scrollbar-width: none; }
+.seq-items::-webkit-scrollbar { display: none; }
+.seq-item { padding: 1px 5px; border-radius: 4px; font-family: monospace; font-weight: 600; font-size: 11px; white-space: nowrap; transition: all 0.2s; }
+.seq-item.done { color: var(--text-2); opacity: 0.4; text-decoration: line-through; }
+.seq-item.done.imbalance-done { color: var(--danger); opacity: 0.55; text-decoration: none; }
+.seq-item.current { background: var(--primary); color: #fff; }
+.seq-item.current.imbalance { background: var(--danger); }
+.seq-item.pending { color: var(--text-2); }
+.seq-arrow { color: var(--text-2); font-size: 9px; }
+@media (max-width: 640px) {
+  .seq-display { max-width: calc(100% - 120px); font-size: 10px; }
+}
+
 /* 画布底部步骤字幕 */
 .step-overlay {
   position: absolute;
@@ -269,6 +301,10 @@ canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
 <div class="main">
   <div class="canvas-wrap">
     <canvas id="canvas"></canvas>
+    <div class="seq-display" id="seqDisplay">
+      <span class="seq-label">插入序列</span>
+      <span class="seq-items" id="seqItems"></span>
+    </div>
     <div class="legend-float">
       <div class="legend-item"><div class="legend-dot" style="border-color:var(--info);background:#e7f5ff;"></div>查找路径</div>
       <div class="legend-item"><div class="legend-dot" style="border-color:var(--success);background:#d3f9d8;"></div>新插入</div>
@@ -375,38 +411,38 @@ function rebuildThree(A, B, C) {
 // 步骤二：从插入结点所在路径从下往上，取与子树根最邻近的三个结点（含根），把这三个结点【摘出来】
 // 步骤三：三个结点按关键字排序，中间值作新根、小的左孩子、大的右孩子；其余子树按二叉树性质连回
 // 步骤四：把重组好的子树【放回】原二叉树原位置
-function genInsertSteps(tree, value, steps) {
+function genInsertSteps(tree, value, steps, insertIdx, totalInserts) {
+  const prog = (insertIdx !== undefined && totalInserts > 1)
+    ? `（第${insertIdx + 1}/${totalInserts}次）` : '';
   const path = [];
   let cur = tree, parent = null, dir = null;
   while (cur) {
     if (value === cur.value) {
-      steps.push({ tree: cloneTree(tree), hl: { [cur.id]: 'path' }, title: '重复关键字',
-        desc: `${value} 已存在于树中，AVL 树不允许重复关键字` });
+      steps.push({ tree: cloneTree(tree), hl: { [cur.id]: 'path' }, insertIdx, title: '重复关键字',
+        desc: `${prog} <code>${value}</code> 已存在于树中，AVL 树不允许重复关键字` });
       return tree;
     }
     dir = value < cur.value ? 'left' : 'right';
-    steps.push({ tree: cloneTree(tree), hl: { [cur.id]: 'path' }, title: '查找插入位置',
-      desc: `<code>${value}</code> ${value < cur.value ? '&lt;' : '&gt;'} <code>${cur.value}</code>，走${dir === 'left' ? '左' : '右'}子树` });
+    steps.push({ tree: cloneTree(tree), hl: { [cur.id]: 'path' }, insertIdx, title: '查找插入位置',
+      desc: `${prog} <code>${value}</code> ${value < cur.value ? '&lt;' : '&gt;'} <code>${cur.value}</code>，走${dir === 'left' ? '左' : '右'}子树` });
     parent = cur; path.push(cur); cur = cur[dir];
   }
   const nn = makeNode(value);
   if (!parent) { tree = nn; }
   else parent[dir] = nn;
   updAll(tree);
-  steps.push({ tree: cloneTree(tree), hl: { [nn.id]: 'insert' }, title: '插入新结点',
-    desc: `<code>${value}</code> 挂到 <code>${parent ? parent.value : ''}</code> ${dir === 'left' ? '左' : '右'}侧` });
+  steps.push({ tree: cloneTree(tree), hl: { [nn.id]: 'insert' }, insertIdx, title: '插入新结点',
+    desc: `${prog} <code>${value}</code> 挂到 <code>${parent ? parent.value : ''}</code> ${dir === 'left' ? '左' : '右'}侧` });
 
-  // 从根到新结点的完整路径
   const fullPath = path.concat([nn]);
 
-  // 从新结点沿路径从下往上，找第一个 |BF|>1 的结点
   let A = null, aIdx = -1;
   for (let i = fullPath.length - 1; i >= 0; i--) {
     if (Math.abs(bf(fullPath[i])) > 1) { A = fullPath[i]; aIdx = i; break; }
   }
   if (!A) {
-    steps.push({ tree: cloneTree(tree), hl: {}, title: '平衡检查通过 ✓',
-      desc: `从 <code>${value}</code> 向上查 BF，各结点 |BF| ≤ 1，<code>无需调整</code>，插入结束` });
+    steps.push({ tree: cloneTree(tree), hl: {}, insertIdx, title: '平衡检查通过 ✓',
+      desc: `${prog} 从 <code>${value}</code> 向上查 BF，各结点 |BF| ≤ 1，<code>无需调整</code>，插入结束` });
     return tree;
   }
 
@@ -414,67 +450,65 @@ function genInsertSteps(tree, value, steps) {
   const C = fullPath[aIdx + 2];
   const bA = bf(A);
   const chainDir = bA > 1 ? '左' : '右';
+  const dirAB = B.value < A.value ? 'L' : 'R';
+  const dirBC = C.value < B.value ? 'L' : 'R';
+  const imbType = dirAB + dirBC;
 
-  // —— 步骤一：找到最小不平衡子树，摘出来 ——
   const hlCheck = {};
   for (let i = fullPath.length - 1; i > aIdx; i--) {
     hlCheck[fullPath[i].id] = (i === fullPath.length - 1) ? 'insert' : 'path';
   }
   hlCheck[A.id] = 'unbalanced';
   steps.push({
-    tree: cloneTree(tree), hl: hlCheck,
+    tree: cloneTree(tree), hl: hlCheck, insertIdx, imbalanceType: imbType,
     focus: subtreeIds(A, []), box: true,
-    title: '步骤一：摘出最小不平衡子树',
-    desc: `从 <code>${value}</code> 向上查 BF：<code>${A.value}</code> 的 BF=${bA}（${chainDir}子树过高）→ <strong>最小不平衡子树根</strong>，整棵子树<strong>摘出</strong>`
+    title: `步骤一：摘出最小不平衡子树（${imbType}型）`,
+    desc: `${prog} 从 <code>${value}</code> 向上查 BF：<code>${A.value}</code> 的 BF=${bA}（${chainDir}子树过高）→ <strong>${imbType}型失衡</strong>，整棵子树<strong>摘出</strong>`
   });
 
-  // —— 步骤二：从新结点沿插入路径向上遍历 ——
   const chain = fullPath.slice(aIdx).map(nd => nd.value).reverse();
   const chainStr = chain.map(v => `<code>${v}</code>`).join(' → ');
   const hlWalk = {};
   for (let i = aIdx; i < fullPath.length; i++) {
-    if (i === fullPath.length - 1) hlWalk[fullPath[i].id] = 'insert';   // 新结点：绿
-    else if (i === aIdx) hlWalk[fullPath[i].id] = 'unbalanced';          // 失衡根：黄
-    else hlWalk[fullPath[i].id] = 'path';                                // 途经结点：蓝
+    if (i === fullPath.length - 1) hlWalk[fullPath[i].id] = 'insert';
+    else if (i === aIdx) hlWalk[fullPath[i].id] = 'unbalanced';
+    else hlWalk[fullPath[i].id] = 'path';
   }
   steps.push({
-    tree: cloneTree(tree), hl: hlWalk,
+    tree: cloneTree(tree), hl: hlWalk, insertIdx, imbalanceType: imbType,
     focus: subtreeIds(A, []), box: true,
     title: '步骤二：从新结点向上遍历',
-    desc: `从新结点 <code>${value}</code> 沿插入路径<strong>从下往上</strong>走：${chainStr}，到失衡根 <code>${A.value}</code> 为止`
+    desc: `${prog} 从新结点 <code>${value}</code> 沿插入路径<strong>从下往上</strong>走：${chainStr}，到失衡根 <code>${A.value}</code> 为止`
   });
 
-  // —— 步骤三：圈出与子树根最邻近的三个结点（含根），摘出 ——
   steps.push({
-    tree: cloneTree(tree),
+    tree: cloneTree(tree), insertIdx, imbalanceType: imbType,
     hl: { [A.id]: 'three', [B.id]: 'three', [C.id]: 'three' },
     focus: [A.id, B.id, C.id], box: true,
     title: '步骤三：圈出三个结点',
-    desc: `与根 <code>${A.value}</code> 最邻近的三个结点（<strong>含根</strong>）：<code>${A.value}</code>、<code>${B.value}</code>、<code>${C.value}</code>，<strong>摘出</strong>，其余搁置`
+    desc: `${prog} 与根 <code>${A.value}</code> 最邻近的三个结点（<strong>含根</strong>）：<code>${A.value}</code>、<code>${B.value}</code>、<code>${C.value}</code>，<strong>摘出</strong>，其余搁置`
   });
 
-  // —— 步骤四：按二叉树性质重组（在真实树上操作）——
   const { newRoot, n1, n2, n3, placement } = rebuildThree(A, B, C);
   const wasRoot = (A === tree);
   if (wasRoot) tree = newRoot;
   else tree = reattach(tree, A, newRoot);
   updAll(tree);
 
-  let rebuildDesc = `排序 <code>${n1.value}</code> &lt; <code>${n2.value}</code> &lt; <code>${n3.value}</code>：<strong><code>${n2.value}</code> 作新根</strong>，<code>${n1.value}</code> 左、<code>${n3.value}</code> 右`;
+  let rebuildDesc = `${prog} 排序 <code>${n1.value}</code> &lt; <code>${n2.value}</code> &lt; <code>${n3.value}</code>：<strong><code>${n2.value}</code> 作新根</strong>，<code>${n1.value}</code> 左、<code>${n3.value}</code> 右`;
   if (placement.length) rebuildDesc += `；连回 ${placement.join('，')}`;
   steps.push({
-    tree: cloneTree(tree),
+    tree: cloneTree(tree), insertIdx, imbalanceType: imbType,
     hl: { [n2.id]: 'pivot', [n1.id]: 'three', [n3.id]: 'three' },
     focus: subtreeIds(newRoot, []), box: true,
     title: '步骤四：排序重组',
     desc: rebuildDesc
   });
 
-  // —— 步骤五：放回原二叉树 ——
   steps.push({
-    tree: cloneTree(tree), hl: {}, focus: null,
-    title: '步骤五：放回原树 ✓',
-    desc: `重组子树<strong>放回</strong>${wasRoot ? '作新根' : ` <code>${A.value}</code> 原位`}，|BF| 全部 ≤ 1`
+    tree: cloneTree(tree), hl: {}, insertIdx, imbalanceType: imbType, focus: null,
+    title: `步骤五：放回原树 ✓（${imbType}型调整完成）`,
+    desc: `${prog} 重组子树<strong>放回</strong>${wasRoot ? '作新根' : ` <code>${A.value}</code> 原位`}，|BF| 全部 ≤ 1`
   });
   return tree;
 }
@@ -497,9 +531,9 @@ const PRESETS = [
   // LR 型（图3镜像）：插55，最小不平衡子树根=60（整棵树），三结点 60/40/50（之字形），重组后 50 为新根
   { name: 'LR 型（插55）',
     initial: [60, [40,[20,N,N],[50,N,N]], [70,N,N]], inserts: [55] },
-  // 综合：从空树连续插入
-  { name: '连续插入（综合练习）',
-    initial: null, inserts: [50,30,70,20,40,60,80,10,5] },
+  // 综合：10步触发全部四种失衡 RR→RL→LL→LR
+  { name: '连续插入（综合）',
+    initial: null, inserts: [5, 11, 13, 10, 9, 2, 3, 16, 4, 6] },
 ];
 
 // ===== 状态 =====
@@ -587,6 +621,25 @@ function applyStep(idx) {
     }
   }
   for (const id in S.display) if (!seen.has(+id)) S.display[id].ta = 0;
+
+  // 更新序列指示器
+  const seqItemsEl2 = $('seqItems');
+  if (seqItemsEl2 && seqItemsEl2.children.length > 0) {
+    const curIns = st.insertIdx !== undefined ? st.insertIdx : -1;
+    const hasImb = !!st.imbalanceType;
+    seqItemsEl2.querySelectorAll('.seq-item').forEach((item, i) => {
+      item.classList.remove('done', 'current', 'pending', 'imbalance', 'imbalance-done');
+      if (curIns === -1 || i < curIns) {
+        item.classList.add(i < curIns ? 'done' : 'pending');
+        if (i < curIns && item.dataset.imbalance) item.classList.add('imbalance-done');
+      } else if (i === curIns) {
+        item.classList.add('current');
+        if (hasImb) item.classList.add('imbalance');
+      } else {
+        item.classList.add('pending');
+      }
+    });
+  }
 }
 
 // ===== 渲染 =====
@@ -757,12 +810,57 @@ function loadPreset(idx) {
   const preset = PRESETS[idx];
   const steps = [];
   let tree = preset.initial ? buildTree(preset.initial) : null;
-  if (!tree) {
-    steps.push({ tree: null, hl: {}, title: '空树开始', desc: '从空树开始，依次插入构建 AVL 树' });
+  const isMulti = preset.inserts.length > 1;
+
+  // 连续插入：显示序列指示器
+  const seqDisp = $('seqDisplay');
+  const seqItemsEl = $('seqItems');
+  if (isMulti && !preset.initial) {
+    seqDisp.style.display = 'flex';
+    seqItemsEl.innerHTML = '';
+    preset.inserts.forEach((v, i) => {
+      if (i > 0) {
+        const arrow = document.createElement('span');
+        arrow.className = 'seq-arrow';
+        arrow.textContent = '\u2192';
+        seqItemsEl.appendChild(arrow);
+      }
+      const item = document.createElement('span');
+      item.className = 'seq-item pending';
+      item.textContent = v;
+      item.dataset.idx = i;
+      seqItemsEl.appendChild(item);
+    });
   } else {
-    steps.push({ tree: cloneTree(tree), hl: {}, title: '初始 AVL 树', desc: `准备插入 <code>${preset.inserts.join('、')}</code>` });
+    seqDisp.style.display = 'none';
   }
-  for (const v of preset.inserts) tree = genInsertSteps(tree, v, steps);
+
+  if (!tree) {
+    const seqStr = preset.inserts.map(v => `<code>${v}</code>`).join(' \u2192 ');
+    steps.push({ tree: null, hl: {}, insertIdx: -1, title: '空树开始',
+      desc: `从空树开始，依次插入：${seqStr}` });
+  } else {
+    steps.push({ tree: cloneTree(tree), hl: {}, insertIdx: -1, title: '初始 AVL 树',
+      desc: `准备插入 <code>${preset.inserts.join('\u3001')}</code>` });
+  }
+  for (let i = 0; i < preset.inserts.length; i++)
+    tree = genInsertSteps(tree, preset.inserts[i], steps, i, preset.inserts.length);
+
+  // 标记序列中哪些插入触发了失衡
+  if (isMulti && !preset.initial) {
+    const imbMap = {};
+    for (const s of steps) {
+      if (s.imbalanceType && s.insertIdx !== undefined)
+        imbMap[s.insertIdx] = s.imbalanceType;
+    }
+    seqItemsEl.querySelectorAll('.seq-item').forEach((item, i) => {
+      if (imbMap[i]) {
+        item.dataset.imbalance = imbMap[i];
+        item.title = `${item.textContent} \u2192 ${imbMap[i]}\u578B\u5931\u8861`;
+      }
+    });
+  }
+
   S.steps = steps;
   S.display = {};
   applyStep(0);
@@ -795,10 +893,11 @@ window.addEventListener('DOMContentLoaded', () => {
 
   // 跟随嵌入方主题
   window.addEventListener('message', e => {
-    if (e.data && e.data.type === 'theme') {
+    if (e.data && e.data.type === 'viz-theme') {
       document.documentElement.classList.toggle('dark', !!e.data.dark);
     }
   });
+  // 初始用系统偏好兜底，VizEmbed 加载后会发消息覆盖
   if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
     document.documentElement.classList.add('dark');
   }

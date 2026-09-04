@@ -452,8 +452,7 @@ const CFG = {
 };
 
 function isDark() {
-  return document.documentElement.classList.contains('dark') ||
-    (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  return document.documentElement.classList.contains('dark');
 }
 
 function getColors() {
@@ -1266,18 +1265,25 @@ function initEvents() {
 }
 
 // ===== Theme Sync with Parent (VitePress) =====
+let themeForcedByParent = false;
 function initThemeSync() {
   // Listen for theme messages from parent VitePress
   window.addEventListener('message', e => {
     if (e.data?.type === 'viz-theme') {
+      themeForcedByParent = true;
       document.documentElement.classList.toggle('dark', e.data.dark);
     }
   });
 
-  // Also sync with system preference as fallback
+  // Initial fallback: system preference (will be overridden by parent message)
+  if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+    document.documentElement.classList.add('dark');
+  }
+
+  // Sync with system preference only until parent forces theme
   if (window.matchMedia) {
     window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
-      if (!document.documentElement.classList.contains('viz-theme-forced')) {
+      if (!themeForcedByParent) {
         document.documentElement.classList.toggle('dark', e.matches);
       }
     });

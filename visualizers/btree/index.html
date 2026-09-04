@@ -24,7 +24,7 @@
     --shadow: 0 2px 8px rgba(0,0,0,0.06);
   }
   @media (prefers-color-scheme: dark) {
-    :root {
+    :root:not(.light-mode) {
       --bg: #1a1a1d;
       --surface: #252529;
       --border: #3a3a3f;
@@ -38,6 +38,20 @@
       --accent-soft: #3b2a6b;
       --shadow: 0 2px 8px rgba(0,0,0,0.3);
     }
+  }
+  html.dark {
+    --bg: #1a1a1d;
+    --surface: #252529;
+    --border: #3a3a3f;
+    --text: #e9ecef;
+    --text-2: #868e96;
+    --primary: #4dabf7;
+    --primary-d: #74c0fc;
+    --primary-soft: #1864ab;
+    --accent: #9775fa;
+    --accent-d: #b197fc;
+    --accent-soft: #3b2a6b;
+    --shadow: 0 2px 8px rgba(0,0,0,0.3);
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body {
@@ -367,7 +381,7 @@
 <div class="app">
   <!-- Top Toolbar -->
   <div class="topbar">
-    <div class="topbar-title">🌳 B 树</div>
+    <div class="topbar-title">B 树</div>
 
     <!-- 阶数切换 -->
     <div class="mode-switch" id="orderSwitch">
@@ -1732,6 +1746,17 @@ function init() {
       render();
     }
   });
+}
+
+// 跟随嵌入方主题
+window.addEventListener('message', e => {
+  if (e.data && e.data.type === 'viz-theme') {
+    document.documentElement.classList.toggle('dark', !!e.data.dark);
+  }
+});
+// 初始用系统偏好兜底，VizEmbed 加载后会发消息覆盖
+if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+  document.documentElement.classList.add('dark');
 }
 
 init();
