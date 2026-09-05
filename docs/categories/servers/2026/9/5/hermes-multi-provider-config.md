@@ -1,5 +1,5 @@
 ---
-title: Hermes Agent 多模型供应商配置实战：限流、brotli 解码与多 Key 轮换
+title: Hermes Agent 多模型供应商配置实战1
 author: LoneMonk
 date: '2026/9/5 12:00'
 description: 记录 Hermes Agent 接入第三方中转模型时遇到的 rate-limiting、brotli 解码错误、reasoning_text 400、多 profile 独立配置与多 Key 凭据池轮换的完整排障过程。
