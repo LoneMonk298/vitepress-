@@ -5,8 +5,15 @@
     <link>https://blog.lonemonk.xyz</link>
     <description>个人技术知识库，记录 &amp; 分享个人碎片化、结构化、体系化的技术知识内容。</description>
     <language>zh-CN</language>
-    <lastBuildDate>Fri, 04 Sep 2026 21:29:13 GMT</lastBuildDate>
+    <lastBuildDate>Sat, 05 Sep 2026 10:30:39 GMT</lastBuildDate>
     <atom:link href="https://blog.lonemonk.xyz/rss.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Hermes Agent 多模型供应商配置实战：限流、brotli 解码与多 Key 轮换</title>
+      <link>https://blog.lonemonk.xyz/categories/servers/2026/9/5/hermes-multi-provider-config</link>
+      <guid isPermaLink="true">https://blog.lonemonk.xyz/categories/servers/2026/9/5/hermes-multi-provider-config</guid>
+      <pubDate>Sat, 05 Sep 2026 12:00:00 GMT</pubDate>
+      <description>记录 Hermes Agent 接入第三方中转模型时遇到的 rate-limiting、brotli 解码错误、reasoning_text 400、多 profile 独立配置与多 Key 凭据池轮换的完整排障过程。</description>
+    </item>
     <item>
       <title>HTML 原型收集</title>
       <link>https://blog.lonemonk.xyz/categories/awesome/2026/8/29/HTML%E5%8E%9F%E5%9E%8B%E6%94%B6%E9%9B%86</link>
