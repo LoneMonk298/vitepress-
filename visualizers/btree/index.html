@@ -23,22 +23,6 @@
     --accent-soft: #e5dbff;
     --shadow: 0 2px 8px rgba(0,0,0,0.06);
   }
-  @media (prefers-color-scheme: dark) {
-    :root:not(.light-mode) {
-      --bg: #1a1a1d;
-      --surface: #252529;
-      --border: #3a3a3f;
-      --text: #e9ecef;
-      --text-2: #868e96;
-      --primary: #4dabf7;
-      --primary-d: #74c0fc;
-      --primary-soft: #1864ab;
-      --accent: #9775fa;
-      --accent-d: #b197fc;
-      --accent-soft: #3b2a6b;
-      --shadow: 0 2px 8px rgba(0,0,0,0.3);
-    }
-  }
   html.dark {
     --bg: #1a1a1d;
     --surface: #252529;
@@ -1737,23 +1721,13 @@ function init() {
 
   // Theme sync
   window.addEventListener('message', e => {
-    if (e.data?.type === 'viz-theme') {
-      if (e.data.dark) {
-        document.documentElement.classList.add('dark');
-      } else {
-        document.documentElement.classList.remove('dark');
-      }
+    if (e.data && e.data.type === 'viz-theme') {
+      document.documentElement.classList.toggle('dark', !!e.data.dark);
       render();
     }
   });
 }
 
-// 跟随嵌入方主题
-window.addEventListener('message', e => {
-  if (e.data && e.data.type === 'viz-theme') {
-    document.documentElement.classList.toggle('dark', !!e.data.dark);
-  }
-});
 // 初始用系统偏好兜底，VizEmbed 加载后会发消息覆盖
 if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
   document.documentElement.classList.add('dark');
