@@ -146,6 +146,38 @@
   .action-btn.danger:hover { background: #fecaca; }
   .action-btn.success { background: #d1fae5; color: #059669; }
   .action-btn.success:hover { background: #a7f3d0; }
+  .action-btn.warn { background: #fef3c7; color: #b45309; }
+  .action-btn.warn:hover { background: #fde68a; }
+  .action-btn.small { padding: 4px 10px; font-size: 12px; border-radius: 6px; }
+
+  /* 卡壳记录浮窗 */
+  .stuck-modal {
+    position: fixed; inset: 0; z-index: 200; display: none;
+    background: rgba(0,0,0,0.45); backdrop-filter: blur(3px);
+    align-items: center; justify-content: center; padding: 16px;
+  }
+  .stuck-modal.show { display: flex; }
+  .stuck-box {
+    background: white; border-radius: 16px; max-width: 520px; width: 100%;
+    padding: 28px 24px; box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+  }
+  body.dark .stuck-box { background: #1e293b; }
+  .stuck-box h3 { font-size: 16px; margin-bottom: 6px; }
+  .stuck-box .stuck-point { font-size: 13px; color: #64748b; margin-bottom: 14px; }
+  .stuck-box textarea {
+    width: 100%; min-height: 120px; font-size: 14px; padding: 12px;
+    border: 1.5px solid #e2e8f0; border-radius: 10px; resize: vertical; outline: none;
+    font-family: inherit; background: transparent; color: inherit; box-sizing: border-box;
+  }
+  .stuck-box textarea:focus { border-color: #667eea; }
+  .stuck-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 14px; }
+
+  /* 卡壳指示器 */
+  .stuck-dot {
+    display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+    background: #f59e0b; margin-left: 6px; vertical-align: middle;
+    box-shadow: 0 0 0 2px rgba(245,158,11,0.2);
+  }
   
   /* Tabs */
   .tabs {
@@ -175,6 +207,8 @@
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
   }
+  .tab-link { text-decoration: none; display: inline-flex; align-items: center; }
+  body.dark .tab-link:hover { color: #e5e7eb; }
   .tab .count {
     display: inline-block;
     background: rgba(255,255,255,0.25);
@@ -816,49 +850,128 @@
     justify-content: flex-end;
   }
   
-  /* Pomodoro */
-  .pomodoro-modal .modal { max-width: 380px; }
-  .pomodoro-display {
-    text-align: center;
-    padding: 20px 0;
+  /* Pomodoro mini floating window */
+  .pomo-window {
+    position: fixed;
+    bottom: 84px;
+    right: 84px;
+    width: 250px;
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.18);
+    z-index: 300;
+    display: none;
+    flex-direction: column;
+    overflow: hidden;
   }
-  .pomodoro-time {
-    font-size: 56px;
-    font-weight: 700;
-    color: #667eea;
-    font-variant-numeric: tabular-nums;
-    letter-spacing: 2px;
+  .pomo-window.show { display: flex; animation: pomoPop 0.25s ease; }
+  @keyframes pomoPop {
+    from { opacity: 0; transform: translateY(14px) scale(0.95); }
+    to { opacity: 1; transform: none; }
   }
-  body.dark .pomodoro-time { color: #818cf8; }
-  .pomodoro-label {
-    font-size: 14px;
-    color: #6b7280;
-    margin-top: 4px;
-  }
-  body.dark .pomodoro-label { color: #94a3b8; }
-  .pomodoro-controls {
+  body.dark .pomo-window { background: #1e293b; border-color: #475569; }
+
+  .pomo-window-header {
     display: flex;
-    gap: 10px;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 12px;
+    background: linear-gradient(135deg, #f97316, #ef4444);
+    color: white;
+    cursor: move;
+    user-select: none;
+    touch-action: none;
+  }
+  .pomo-window-header.break-mode { background: linear-gradient(135deg, #10b981, #059669); }
+  .pomo-window-title { font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pomo-window-actions { display: flex; gap: 6px; }
+  .pomo-icon-btn {
+    width: 22px;
+    height: 22px;
+    border: none;
+    border-radius: 6px;
+    background: rgba(255,255,255,0.22);
+    color: white;
+    cursor: pointer;
+    font-size: 12px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
     justify-content: center;
-    margin-top: 16px;
+    transition: background 0.2s;
+  }
+  .pomo-icon-btn:hover { background: rgba(255,255,255,0.4); }
+
+  .pomo-window-body {
+    padding: 16px 16px 14px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+  }
+
+  /* Circular progress ring */
+  .pomo-ring-wrap { position: relative; width: 132px; height: 132px; }
+  .pomo-ring-wrap svg { transform: rotate(-90deg); display: block; }
+  .pomo-ring-bg { fill: none; stroke: #f3f4f6; stroke-width: 9; }
+  body.dark .pomo-ring-bg { stroke: #334155; }
+  .pomo-ring-fill {
+    fill: none;
+    stroke: url(#pomoGradWork);
+    stroke-width: 9;
+    stroke-linecap: round;
+    transition: stroke-dashoffset 1s linear, stroke 0.3s;
+  }
+  .pomo-ring-center {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+  .pomo-time-lg {
+    font-size: 27px;
+    font-weight: 700;
+    color: #1f2937;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 1px;
+  }
+  body.dark .pomo-time-lg { color: #f1f5f9; }
+  .pomo-state { font-size: 11px; color: #9ca3af; margin-top: 2px; }
+  body.dark .pomo-state { color: #94a3b8; }
+  .pomo-window.running .pomo-time-lg { animation: pomoPulse 2s ease-in-out infinite; }
+  @keyframes pomoPulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.06); } }
+
+  .pomo-window-controls {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    width: 100%;
   }
   .pomodoro-btn {
-    padding: 10px 24px;
+    flex: 1;
+    padding: 9px 12px;
     border: none;
     border-radius: 8px;
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 600;
     cursor: pointer;
     transition: all 0.2s;
   }
   .pomodoro-btn.primary {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #f97316, #ef4444);
     color: white;
   }
-  .pomodoro-btn.primary:hover { transform: translateY(-1px); }
+  .pomodoro-btn.primary:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(239,68,68,0.35); }
+  .pomodoro-btn.primary.break-mode { background: linear-gradient(135deg, #10b981, #059669); }
+  .pomodoro-btn.primary.break-mode:hover { box-shadow: 0 4px 12px rgba(16,185,129,0.35); }
   .pomodoro-btn.secondary {
     background: #f3f4f6;
     color: #374151;
+    flex: 0 0 auto;
+    padding: 9px 16px;
   }
   body.dark .pomodoro-btn.secondary {
     background: #334155;
@@ -866,29 +979,432 @@
   }
   .pomodoro-btn.secondary:hover { background: #e5e7eb; }
   body.dark .pomodoro-btn.secondary:hover { background: #475569; }
-  
-  .pomodoro-progress {
-    height: 6px;
-    background: #e5e7eb;
-    border-radius: 3px;
-    margin-top: 16px;
-    overflow: hidden;
-  }
-  body.dark .pomodoro-progress { background: #334155; }
-  .pomodoro-progress-fill {
-    height: 100%;
-    background: linear-gradient(90deg, #667eea, #764ba2);
-    border-radius: 3px;
-    transition: width 1s linear;
-  }
-  
-  .pomodoro-info {
-    margin-top: 12px;
+
+  .pomo-window-info {
     text-align: center;
-    font-size: 13px;
+    font-size: 12px;
     color: #6b7280;
+    line-height: 1.5;
   }
-  body.dark .pomodoro-info { color: #94a3b8; }
+  body.dark .pomo-window-info { color: #94a3b8; }
+  .pomo-window-stats {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: #b45309;
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+    padding: 5px 12px;
+    border-radius: 20px;
+  }
+  body.dark .pomo-window-stats { background: rgba(245,158,11,0.12); color: #fcd34d; border-color: rgba(252,211,77,0.3); }
+
+  /* Floating button time badge (visible when window hidden & running) */
+  .pomo-badge {
+    position: absolute;
+    top: -7px;
+    right: -10px;
+    background: #ef4444;
+    color: white;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 6px;
+    border-radius: 10px;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    box-shadow: 0 2px 6px rgba(239,68,68,0.45);
+    display: none;
+    pointer-events: none;
+  }
+  .pomo-badge.show { display: block; }
+  .pomo-badge.break { background: #10b981; box-shadow: 0 2px 6px rgba(16,185,129,0.45); }
+
+  /* Pomodoro completion celebration modal */
+  .pomo-done-modal .modal { max-width: 360px; text-align: center; position: relative; overflow: hidden; }
+  .pomo-done-emoji { font-size: 54px; line-height: 1; animation: pomoBounce 0.9s ease-in-out infinite alternate; }
+  @keyframes pomoBounce { from { transform: translateY(0); } to { transform: translateY(-10px); } }
+  .pomo-done-modal h3 { margin-top: 10px; }
+  .pomo-done-stats {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    margin: 18px 0 6px;
+  }
+  .pomo-done-stat {
+    flex: 1;
+    background: #f9fafb;
+    border-radius: 10px;
+    padding: 12px 8px;
+  }
+  body.dark .pomo-done-stat { background: #0f172a; }
+  .pomo-done-stat .num { font-size: 22px; font-weight: 700; color: #ef4444; font-variant-numeric: tabular-nums; }
+  .pomo-done-stat.break .num { color: #10b981; }
+  .pomo-done-stat .lbl { font-size: 12px; color: #6b7280; margin-top: 2px; }
+  body.dark .pomo-done-stat .lbl { color: #94a3b8; }
+  .pomo-done-modal .modal-actions { justify-content: center; margin-top: 16px; flex-wrap: wrap; }
+
+  .pomo-confetti { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+  .pomo-confetti i {
+    position: absolute;
+    top: -14px;
+    width: 8px;
+    height: 13px;
+    border-radius: 2px;
+    opacity: 0.9;
+    animation: confettiFall 2.6s linear infinite;
+  }
+  @keyframes confettiFall {
+    0% { transform: translateY(-16px) rotate(0deg); opacity: 0.9; }
+    85% { opacity: 0.9; }
+    100% { transform: translateY(340px) rotate(340deg); opacity: 0; }
+  }
+
+  @media (max-width: 768px) {
+    .pomo-window { width: calc(100vw - 32px); right: 16px; bottom: 80px; }
+  }
+
+  /* ===== Mobile responsive ===== */
+  @media (max-width: 640px) {
+    .toolbar { padding: 10px 12px; flex-wrap: wrap; gap: 6px; }
+    .toolbar-left, .toolbar-right { gap: 6px; }
+    .tab { padding: 7px 12px; font-size: 13px; }
+    .stat-chip { font-size: 11px; padding: 3px 8px; }
+    th { padding: 8px 6px; font-size: 11px; }
+    td { padding: 8px 6px; font-size: 13px; }
+    .note-cell { max-width: 120px; }
+    .note-text { font-size: 12px; }
+    .action-btn.small { padding: 3px 7px; font-size: 11px; }
+    .schedule-drawer { width: 100vw; }
+    .stat-card { padding: 10px; }
+    .stat-card .stat-num { font-size: 24px; }
+    .stat-card .stat-label { font-size: 11px; }
+    .schedule-btn { padding: 8px 14px; font-size: 12px; }
+    .modal-content { width: 94vw; padding: 16px; }
+    .stuck-box { padding: 18px 14px; }
+    .stuck-box h3 { font-size: 14px; }
+    .drag-hint { display: none; }
+    .tab-link { padding: 6px 10px; font-size: 12px; }
+  }
+
+  /* ===== Sprint schedule drawer ===== */
+  .schedule-overlay {
+    position: fixed; inset: 0;
+    background: rgba(15, 23, 42, 0.45);
+    z-index: 280;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s;
+  }
+  .schedule-overlay.show { opacity: 1; pointer-events: auto; }
+
+  .schedule-drawer {
+    position: fixed;
+    top: 0; right: 0; bottom: 0;
+    width: min(430px, 100vw);
+    background: #f8fafc;
+    z-index: 290;
+    transform: translateX(105%);
+    transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+    display: flex;
+    flex-direction: column;
+    box-shadow: -14px 0 44px rgba(0,0,0,0.18);
+  }
+  .schedule-drawer.show { transform: translateX(0); }
+  body.dark .schedule-drawer { background: #0f172a; }
+
+  .schedule-header {
+    padding: 18px 20px 14px;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    color: white;
+    flex-shrink: 0;
+  }
+  .schedule-header .sch-title-row {
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .schedule-header h2 { margin: 0; font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+  .sch-close-btn {
+    width: 30px; height: 30px;
+    border: none; border-radius: 8px;
+    background: rgba(255,255,255,0.22); color: white;
+    font-size: 14px; cursor: pointer;
+  }
+  .sch-close-btn:hover { background: rgba(255,255,255,0.4); }
+  .sch-hero {
+    display: flex; align-items: baseline; gap: 10px;
+    margin-top: 12px;
+  }
+  .sch-days-num { font-size: 40px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
+  .sch-days-label { font-size: 13px; opacity: 0.9; }
+  .sch-day-index { margin-left: auto; font-size: 12px; background: rgba(255,255,255,0.2); padding: 4px 10px; border-radius: 12px; }
+
+  .schedule-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px 18px 30px;
+    display: flex; flex-direction: column; gap: 18px;
+  }
+
+  .sch-section-title {
+    font-size: 13px; font-weight: 700; color: #475569;
+    display: flex; align-items: center; gap: 6px;
+    margin-bottom: 10px;
+  }
+  body.dark .sch-section-title { color: #94a3b8; }
+
+  /* stage timeline */
+  .sch-stage {
+    position: relative;
+    padding: 12px 14px;
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    margin-bottom: 10px;
+  }
+  body.dark .sch-stage { background: #1e293b; border-color: #334155; }
+  .sch-stage.current {
+    border-color: #6366f1;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+  }
+  .sch-stage.done { opacity: 0.62; }
+  .sch-stage-head { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+  .sch-stage-name { font-weight: 700; font-size: 14px; color: #1e293b; }
+  body.dark .sch-stage-name { color: #f1f5f9; }
+  .sch-stage-dates { margin-left: auto; font-size: 11px; color: #94a3b8; font-variant-numeric: tabular-nums; }
+  .sch-stage-state {
+    font-size: 10px; padding: 2px 8px; border-radius: 10px; font-weight: 600;
+    background: #e0e7ff; color: #4338ca;
+  }
+  .sch-stage.done .sch-stage-state { background: #dcfce7; color: #15803d; }
+  body.dark .sch-stage-state { background: rgba(99,102,241,0.2); color: #a5b4fc; }
+  body.dark .sch-stage.done .sch-stage-state { background: rgba(34,197,94,0.18); color: #4ade80; }
+  .sch-stage-desc { font-size: 12px; color: #64748b; margin-top: 6px; line-height: 1.6; }
+  body.dark .sch-stage-desc { color: #94a3b8; }
+  .sch-stage-progress { height: 4px; background: #e2e8f0; border-radius: 2px; margin-top: 8px; overflow: hidden; }
+  body.dark .sch-stage-progress { background: #334155; }
+  .sch-stage-progress i { display: block; height: 100%; background: linear-gradient(90deg, #6366f1, #8b5cf6); border-radius: 2px; }
+  .sch-stage-tasks { margin-top: 8px; display: none; flex-direction: column; gap: 6px; }
+  .sch-stage.current .sch-stage-tasks { display: flex; }
+  .sch-task {
+    display: flex; align-items: flex-start; gap: 8px;
+    font-size: 12px; color: #475569; cursor: pointer; line-height: 1.5;
+  }
+  body.dark .sch-task { color: #cbd5e1; }
+  .sch-task .box {
+    flex-shrink: 0; width: 15px; height: 15px;
+    border: 1.5px solid #cbd5e1; border-radius: 4px; margin-top: 1px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; color: white; transition: all 0.15s;
+  }
+  .sch-task.done .box { background: #6366f1; border-color: #6366f1; }
+  .sch-task.done .txt { text-decoration: line-through; opacity: 0.55; }
+
+  /* today slots */
+  .sch-slot {
+    display: flex; align-items: center; gap: 10px;
+    background: white; border: 1px solid #e2e8f0;
+    border-radius: 10px; padding: 10px 12px; margin-bottom: 8px;
+  }
+  body.dark .sch-slot { background: #1e293b; border-color: #334155; }
+  .sch-slot.active {
+    border-color: #10b981;
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.12);
+  }
+  .sch-slot.past { opacity: 0.6; }
+  .sch-slot .s-icon { font-size: 18px; flex-shrink: 0; }
+  .sch-slot .s-main { flex: 1; min-width: 0; }
+  .sch-slot .s-title { font-size: 13px; font-weight: 600; color: #1e293b; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  body.dark .sch-slot .s-title { color: #f1f5f9; }
+  .sch-slot .s-time { font-size: 11px; color: #94a3b8; font-variant-numeric: tabular-nums; }
+  .sch-slot .s-detail { font-size: 11px; color: #64748b; margin-top: 2px; line-height: 1.4; }
+  body.dark .sch-slot .s-detail { color: #94a3b8; }
+  .sch-slot .s-now {
+    font-size: 10px; color: #059669; font-weight: 700;
+    animation: schPulse 1.8s ease-in-out infinite;
+  }
+  @keyframes schPulse { 0%,100% { opacity: 1; } 50% { opacity: 0.45; } }
+  .sch-check {
+    flex-shrink: 0; width: 24px; height: 24px;
+    border: 2px solid #cbd5e1; border-radius: 50%;
+    background: transparent; cursor: pointer;
+    font-size: 12px; color: white; line-height: 1;
+    transition: all 0.18s;
+  }
+  .sch-check:hover { border-color: #6366f1; }
+  .sch-slot.checked .sch-check { background: #10b981; border-color: #10b981; }
+  .sch-slot.checked .s-title { text-decoration: line-through; opacity: 0.6; }
+  .sch-slot.checked .s-main { opacity: 0.65; }
+
+  /* subject progress */
+  .sch-subject {
+    display: flex; align-items: center; gap: 10px;
+    background: white; border: 1px solid #e2e8f0;
+    border-radius: 10px; padding: 10px 12px; margin-bottom: 8px;
+    cursor: pointer; transition: border-color 0.2s;
+  }
+  body.dark .sch-subject { background: #1e293b; border-color: #334155; }
+  .sch-subject:hover { border-color: #6366f1; }
+  .sch-subject .sub-name { font-size: 13px; font-weight: 600; color: #1e293b; width: 64px; flex-shrink: 0; }
+  body.dark .sch-subject .sub-name { color: #f1f5f9; }
+  .sch-subject.focus .sub-name::after { content: '🔥'; font-size: 11px; margin-left: 2px; }
+  .sch-subject .sub-bar {
+    flex: 1; height: 8px; background: #e2e8f0; border-radius: 4px;
+    overflow: hidden; display: flex;
+  }
+  body.dark .sch-subject .sub-bar { background: #334155; }
+  .sch-subject .sub-bar i { height: 100%; }
+  .sch-subject .sub-bar i.m { background: #10b981; }
+  .sch-subject .sub-bar i.l { background: #fbbf24; }
+  .sch-subject .sub-num { font-size: 11px; color: #64748b; flex-shrink: 0; font-variant-numeric: tabular-nums; width: 86px; text-align: right; }
+  body.dark .sch-subject .sub-num { color: #94a3b8; }
+
+  /* today goals */
+  .sch-goal {
+    display: flex; align-items: center; gap: 10px;
+    background: white; border: 1px solid #e2e8f0;
+    border-radius: 10px; padding: 10px 12px; margin-bottom: 8px;
+  }
+  body.dark .sch-goal { background: #1e293b; border-color: #334155; }
+  .sch-goal .g-heat { font-size: 11px; flex-shrink: 0; }
+  .sch-goal .g-main { flex: 1; min-width: 0; cursor: pointer; }
+  .sch-goal .g-name { font-size: 13px; color: #1e293b; font-weight: 500; }
+  body.dark .sch-goal .g-name { color: #f1f5f9; }
+  .sch-goal .g-meta { font-size: 10px; color: #94a3b8; margin-top: 2px; }
+  .sch-goal.done .g-name { text-decoration: line-through; opacity: 0.55; }
+  .sch-goal .g-check {
+    flex-shrink: 0; width: 24px; height: 24px;
+    border: 2px solid #cbd5e1; border-radius: 50%;
+    background: transparent; cursor: pointer; font-size: 12px; color: white;
+    transition: all 0.18s;
+  }
+  .sch-goal.done .g-check { background: #6366f1; border-color: #6366f1; }
+  .sch-goal-footer {
+    display: flex; align-items: center; justify-content: space-between;
+    font-size: 11px; color: #94a3b8; margin-top: 2px;
+  }
+  .sch-rotate-btn {
+    border: 1px solid #cbd5e1; background: white; color: #475569;
+    font-size: 11px; padding: 4px 12px; border-radius: 12px; cursor: pointer;
+  }
+  body.dark .sch-rotate-btn { background: #1e293b; color: #cbd5e1; border-color: #475569; }
+  .sch-rotate-btn:hover { border-color: #6366f1; color: #6366f1; }
+
+  /* review flip queue */
+  .rv-due-badge {
+    font-size: 10px; padding: 2px 8px; border-radius: 10px; font-weight: 700;
+    background: #fee2e2; color: #b91c1c;
+  }
+  body.dark .rv-due-badge { background: rgba(239,68,68,0.2); color: #fca5a5; }
+  .rv-hint { margin-left: auto; font-size: 10px; color: #94a3b8; font-weight: 400; }
+  .rv-empty {
+    font-size: 12px; color: #94a3b8; text-align: center; line-height: 1.6;
+    background: white; border: 1px dashed #e2e8f0; border-radius: 10px; padding: 14px;
+  }
+  body.dark .rv-empty { background: #1e293b; border-color: #334155; }
+  .rv-item {
+    background: white; border: 1px solid #e2e8f0; border-left: 3px solid #6366f1;
+    border-radius: 10px; padding: 10px 12px; margin-bottom: 8px;
+  }
+  body.dark .rv-item { background: #1e293b; border-color: #334155; border-left-color: #6366f1; }
+  .rv-item.overdue { border-left-color: #ef4444; }
+  .rv-top { display: flex; align-items: center; gap: 8px; }
+  .rv-src {
+    font-size: 10px; padding: 1px 7px; border-radius: 8px; font-weight: 600;
+    background: #f1f5f9; color: #64748b; flex-shrink: 0;
+  }
+  body.dark .rv-src { background: #334155; color: #94a3b8; }
+  .rv-dots { display: flex; gap: 3px; align-items: center; flex-shrink: 0; }
+  .rv-dots i { width: 6px; height: 6px; border-radius: 50%; background: #e2e8f0; }
+  body.dark .rv-dots i { background: #475569; }
+  .rv-dots i.on { background: #6366f1; }
+  .rv-when { margin-left: auto; font-size: 10px; color: #64748b; font-weight: 700; flex-shrink: 0; }
+  body.dark .rv-when { color: #94a3b8; }
+  .rv-item.overdue .rv-when, body.dark .rv-item.overdue .rv-when { color: #ef4444; }
+  body.dark .rv-item.overdue .rv-when { color: #fca5a5; }
+  .rv-name { font-size: 13px; font-weight: 600; color: #1e293b; margin-top: 5px; }
+  body.dark .rv-name { color: #f1f5f9; }
+  .rv-name.clickable { cursor: pointer; }
+  .rv-name.clickable:hover { color: #6366f1; }
+  .rv-meta { font-size: 10px; color: #94a3b8; margin-top: 2px; }
+  .rv-note {
+    font-size: 11px; color: #b45309; background: #fffbeb; border-radius: 6px;
+    padding: 4px 8px; margin-top: 5px; line-height: 1.5; word-break: break-all;
+  }
+  body.dark .rv-note { color: #fcd34d; background: rgba(245,158,11,0.12); }
+  .rv-actions { display: flex; gap: 6px; margin-top: 8px; align-items: center; }
+  .rv-pass, .rv-fail {
+    font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 8px; cursor: pointer;
+    border: 1px solid transparent; transition: all 0.15s; line-height: 1.4;
+  }
+  .rv-pass { background: #10b981; color: white; }
+  .rv-pass:hover { background: #059669; }
+  .rv-fail { background: #fef3c7; color: #b45309; border-color: #fcd34d; }
+  .rv-fail:hover { background: #fde68a; }
+  body.dark .rv-fail { background: rgba(245,158,11,0.15); color: #fcd34d; border-color: rgba(245,158,11,0.3); }
+  .rv-gap { flex: 1; }
+  .rv-mini {
+    width: 22px; height: 22px; border-radius: 6px; border: 1px solid #e2e8f0;
+    background: transparent; color: #94a3b8; font-size: 11px; cursor: pointer; line-height: 1;
+    display: flex; align-items: center; justify-content: center;
+  }
+  body.dark .rv-mini { border-color: #334155; }
+  .rv-mini:hover { border-color: #6366f1; color: #6366f1; }
+  .rv-upcoming { background: #f8fafc; border-radius: 10px; padding: 8px 12px; margin-bottom: 8px; }
+  body.dark .rv-upcoming { background: rgba(30,41,59,0.6); }
+  .rv-up-title { font-size: 10px; color: #94a3b8; font-weight: 700; margin-bottom: 4px; }
+  .rv-up-row { display: flex; justify-content: space-between; gap: 8px; font-size: 11px; color: #475569; padding: 2px 0; }
+  body.dark .rv-up-row { color: #cbd5e1; }
+  .rv-up-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .rv-up-meta { color: #94a3b8; font-variant-numeric: tabular-nums; flex-shrink: 0; }
+  .rv-footer {
+    display: flex; align-items: center; justify-content: space-between;
+    font-size: 11px; color: #94a3b8;
+  }
+  .rv-form {
+    background: white; border: 1px solid #e2e8f0; border-radius: 10px;
+    padding: 10px 12px; margin-top: 8px; display: flex; flex-direction: column; gap: 8px;
+  }
+  body.dark .rv-form { background: #1e293b; border-color: #334155; }
+  .rv-form-row { display: flex; gap: 8px; align-items: center; }
+  .rv-form input {
+    flex: 1; min-width: 0; font-size: 12px; padding: 6px 10px;
+    border: 1px solid #e2e8f0; border-radius: 8px; outline: none;
+    background: transparent; color: inherit; font-family: inherit;
+  }
+  body.dark .rv-form input { border-color: #334155; color: #f1f5f9; }
+  .rv-form input:focus { border-color: #6366f1; }
+  .rv-form input[type="date"] { flex: 0 0 132px; }
+  .rv-form label { font-size: 11px; color: #94a3b8; flex-shrink: 0; }
+  .rv-form-add {
+    background: #6366f1; color: white; border: none; border-radius: 8px;
+    font-size: 12px; font-weight: 600; padding: 6px 16px; cursor: pointer; margin-left: auto;
+  }
+  .rv-form-add:hover { background: #4f46e5; }
+
+  /* today stats chips */
+  .sch-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+  .sch-chip {
+    font-size: 11px; color: #475569;
+    background: white; border: 1px solid #e2e8f0;
+    padding: 5px 12px; border-radius: 14px;
+  }
+  body.dark .sch-chip { background: #1e293b; color: #cbd5e1; border-color: #334155; }
+  .sch-chip b { color: #6366f1; font-variant-numeric: tabular-nums; }
+  body.dark .sch-chip b { color: #a5b4fc; }
+
+  /* row flash highlight after jump */
+  @keyframes rowFlash {
+    0% { background: rgba(99, 102, 241, 0.28); }
+    100% { background: transparent; }
+  }
+  tr.row-flash { animation: rowFlash 2.2s ease-out; }
+
+  @media (max-width: 768px) {
+    .schedule-drawer { width: 100vw; }
+    .sch-days-num { font-size: 34px; }
+  }
+
+
   
   /* Point row clickable */
   .point-name-cell { cursor: pointer; }
@@ -1360,11 +1876,45 @@
   ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
   ::-webkit-scrollbar-thumb:hover { background: #a1a1a1; }
   
+  /* 移动端表格横向滑动提示 */
+  .table-scroll-hint {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    margin-bottom: 10px;
+    padding: 8px 12px;
+    background: #fff7ed;
+    color: #c2410c;
+    border: 1px dashed #fdba74;
+    border-radius: 8px;
+    font-size: 12px;
+    transition: opacity 0.4s;
+  }
+  body.dark .table-scroll-hint { background: rgba(249,115,22,0.12); color: #fdba74; border-color: rgba(253,186,116,0.35); }
+  .table-scroll-hint.fade-out { opacity: 0; pointer-events: none; }
+  .table-scroll-hint .hint-arrow { animation: hintSlide 1.6s ease-in-out infinite; display: inline-block; }
+  @keyframes hintSlide { 0%,100% { transform: translateX(0); } 50% { transform: translateX(6px); } }
+
   @media (max-width: 768px) {
     .stats-bar { grid-template-columns: repeat(2, 1fr); }
     .header h1 { font-size: 20px; }
     th, td { padding: 8px 6px; font-size: 12px; }
-    .note-cell { max-width: 120px; }
+    .note-cell { max-width: 160px; }
+    .table-container {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior-x: contain;
+    }
+    .table-container table { min-width: 980px; }
+    .table-container th { white-space: nowrap; }
+    .table-container td:nth-child(3),
+    .table-container td:nth-child(5),
+    .table-container td:nth-child(6),
+    .table-container td:nth-child(7),
+    .table-container td:nth-child(8),
+    .table-container td:nth-child(10) { white-space: nowrap; }
+    .table-scroll-hint { display: flex; }
   }
 </style>
 </head>
@@ -1443,20 +1993,26 @@
     </div>
   </div>
 
+  <div class="table-scroll-hint" id="table-scroll-hint">
+    <span>👈👉</span>
+    <span>表格可左右滑动，查看完整考点信息</span>
+    <span class="hint-arrow">👉</span>
+  </div>
+
   <div class="table-container">
     <table>
       <thead>
         <tr>
           <th class="check-col" style="width:36px"><input type="checkbox" class="row-checkbox" id="select-all" onclick="toggleSelectAll()"></th>
-          <th class="sort-col" style="width:40px">⋮⋮</th>
-          <th style="width:140px">考纲章节</th>
+          <th class="sort-col" style="width:32px">⋮</th>
+          <th style="width:120px;white-space:nowrap">考纲章节</th>
           <th>考点</th>
-          <th style="width:90px">09—25考频</th>
-          <th style="width:100px">热度等级</th>
-          <th style="width:100px">掌握程度</th>
-          <th style="width:120px">回顾次数</th>
-          <th style="width:200px">备注</th>
-          <th style="width:60px">操作</th>
+          <th style="width:72px;white-space:nowrap">考频</th>
+          <th style="width:90px">热度</th>
+          <th style="width:90px">掌握</th>
+          <th style="width:80px;white-space:nowrap">回顾</th>
+          <th style="width:180px">备注</th>
+          <th style="width:110px;white-space:nowrap">操作</th>
         </tr>
       </thead>
       <tbody id="table-body"></tbody>
@@ -1511,10 +2067,10 @@
   </div>
 
   <div class="pdf-container" id="pdf-container" style="display:none">
-    <embed src="考试大纲.pdf" type="application/pdf" width="100%" height="100%">
+    <embed src="review/考试大纲.pdf" type="application/pdf" width="100%" height="100%">
       <div class="pdf-fallback">
         <p>📄 您的浏览器可能不支持内嵌PDF预览</p>
-        <p style="margin-top:10px"><a href="考试大纲.pdf" target="_blank">点击此处打开考试大纲PDF</a></p>
+        <p style="margin-top:10px"><a href="review/考试大纲.pdf" target="_blank">点击此处打开考试大纲PDF</a></p>
       </div>
     
   </div>
@@ -1522,6 +2078,10 @@
   
 <button class="floating-toggle" id="float-toggle" title="展开/收起">⚡</button>
 <div class="floating-actions" id="float-actions">
+  <button class="floating-btn" id="float-schedule-btn" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:white" title="冲刺日程">
+    <span class="tooltip">📅 冲刺日程</span>
+    📅
+  </button>
   <button class="floating-btn" id="float-sync-btn" style="background:linear-gradient(135deg,#06b6d4,#0891b2);color:white" title="云同步">
     <span class="tooltip">☁️ 云同步</span>
     ☁️
@@ -1529,6 +2089,7 @@
   <button class="floating-btn" id="float-pomo-btn" style="background:linear-gradient(135deg,#f97316,#ef4444);color:white" title="番茄钟">
     <span class="tooltip">🍅 番茄钟</span>
     🍅
+    <span class="pomo-badge" id="pomo-badge">45:00</span>
   </button>
   <button class="floating-btn add-btn" id="float-add-btn" title="新增考点">
     <span class="tooltip">➕ 新增考点</span>
@@ -1605,21 +2166,94 @@
   </div>
 </div>
 
-<div class="modal-overlay pomodoro-modal" id="pomodoro-modal">
-  <div class="modal">
-    <h3>🍅 番茄钟 · 45分钟专注</h3>
-    <div class="pomodoro-display">
-      <div class="pomodoro-time" id="pomo-time">45:00</div>
-      <div class="pomodoro-label" id="pomo-label">准备开始</div>
+<div class="pomo-window" id="pomodoro-window">
+  <div class="pomo-window-header" id="pomo-window-header">
+    <span class="pomo-window-title" id="pomo-window-title">🍅 番茄钟 · 专注 45 分钟</span>
+    <div class="pomo-window-actions">
+      <button class="pomo-icon-btn" onclick="minimizePomodoro()" title="最小化（计时继续）">—</button>
+      <button class="pomo-icon-btn" onclick="closePomodoro()" title="关闭">✕</button>
     </div>
-    <div class="pomodoro-progress">
-      <div class="pomodoro-progress-fill" id="pomo-progress" style="width:100%"></div>
+  </div>
+  <div class="pomo-window-body">
+    <div class="pomo-ring-wrap">
+      <svg width="132" height="132" viewBox="0 0 132 132">
+        <defs>
+          <linearGradient id="pomoGradWork" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#f97316"></stop>
+            <stop offset="100%" stop-color="#ef4444"></stop>
+          </linearGradient>
+          <linearGradient id="pomoGradBreak" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#34d399"></stop>
+            <stop offset="100%" stop-color="#059669"></stop>
+          </linearGradient>
+        </defs>
+        <circle class="pomo-ring-bg" cx="66" cy="66" r="54"></circle>
+        <circle class="pomo-ring-fill" id="pomo-ring" cx="66" cy="66" r="54"></circle>
+      </svg>
+      <div class="pomo-ring-center">
+        <div class="pomo-time-lg" id="pomo-time-lg">45:00</div>
+        <div class="pomo-state" id="pomo-state">准备开始</div>
+      </div>
     </div>
-    <div class="pomodoro-controls">
+    <div class="pomo-window-controls">
       <button class="pomodoro-btn primary" id="pomo-start-btn" onclick="togglePomodoro()">开始</button>
       <button class="pomodoro-btn secondary" onclick="resetPomodoro()">重置</button>
     </div>
-    <div class="pomodoro-info" id="pomo-info">专注学习，完成后自动记录学习时间</div>
+    <div class="pomo-window-info" id="pomo-info">专注学习，完成后自动记录学习时间</div>
+    <div class="pomo-window-stats" id="pomo-stats">🍅 今日已完成 0 个番茄</div>
+  </div>
+</div>
+
+<div class="schedule-overlay" id="schedule-overlay"></div>
+<aside class="schedule-drawer" id="schedule-drawer" aria-label="冲刺日程看板">
+  <div class="schedule-header">
+    <div class="sch-title-row">
+      <h2>📅 100 天冲刺日程</h2>
+      <button class="sch-close-btn" onclick="closeSchedule()">✕</button>
+    </div>
+    <div class="sch-hero">
+      <span class="sch-days-num" id="sch-days">--</span>
+      <span class="sch-days-label">天后考研</span>
+      <span class="sch-day-index" id="sch-day-index">Day --</span>
+    </div>
+  </div>
+  <div class="schedule-body" id="schedule-body"></div>
+</aside>
+
+<div class="modal-overlay pomo-done-modal" id="pomodoro-done-modal">
+  <div class="modal">
+    <div class="pomo-confetti" id="pomo-confetti"></div>
+    <div class="pomo-done-emoji" id="pomo-done-emoji">🍅</div>
+    <h3 id="pomo-done-title">太棒了！完成一个番茄钟</h3>
+    <p id="pomo-done-desc">45 分钟专注结束，休息一下吧！</p>
+    <div class="pomo-done-stats">
+      <div class="pomo-done-stat">
+        <div class="num" id="pomo-done-count">0</div>
+        <div class="lbl">今日番茄</div>
+      </div>
+      <div class="pomo-done-stat break">
+        <div class="num" id="pomo-done-minutes">0</div>
+        <div class="lbl">今日专注(分钟)</div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="pomodoro-btn primary break-mode" style="flex:1" id="pomo-done-primary" onclick="pomoDonePrimary()">☕ 休息 5 分钟</button>
+      <button class="pomodoro-btn secondary" onclick="startNextPomo()">再来一轮</button>
+      <button class="pomodoro-btn secondary" onclick="closePomoDone()">关闭</button>
+    </div>
+  </div>
+</div>
+
+<!-- Stuck Point Modal -->
+<div class="stuck-modal" id="stuck-modal">
+  <div class="stuck-box">
+    <h3>📌 记录卡壳点</h3>
+    <div class="stuck-point" id="stuck-point-label"></div>
+    <textarea id="stuck-input" placeholder="哪里卡住了？具体到知识点。比如：Cache 直接映射的地址计算搞混了。&#10;&#10;晚上费曼复盘时会汇总这些卡壳点，发给 AI 老师帮你分析。"></textarea>
+    <div class="stuck-actions">
+      <button class="action-btn" style="background:#e5e7eb;color:#374151" onclick="closeStuckModal()">取消</button>
+      <button class="action-btn warn" onclick="saveStuckPoint()">记录</button>
+    </div>
   </div>
 </div>
 
@@ -1836,9 +2470,12 @@ function renderTabs() {
   // Add stats tab
   const statsActive = currentTab === 'stats' ? 'active' : '';
   html += `<button class="tab ${statsActive}" data-sheet="stats">📊 学习统计</button>`;
+  // External link tabs (no data-sheet → plain navigation)
+  html += `<a class="tab tab-link" href="review/" target="_blank" rel="noopener">📚 复习资料</a>`;
+  html += `<a class="tab tab-link" href="每日规划.html" target="_self">📅 每日规划</a>`;
   tabs.innerHTML = html;
-  
-  tabs.querySelectorAll('.tab').forEach(btn => {
+
+  tabs.querySelectorAll('.tab[data-sheet]').forEach(btn => {
     btn.addEventListener('click', () => {
       currentTab = btn.dataset.sheet;
       renderTabs();
@@ -2082,35 +2719,79 @@ async function syncPull() {
   }
 }
 
-// Pomodoro timer (45 minutes)
-const POMODORO_DURATION = 45 * 60; // 45 minutes in seconds
-let pomodoroSeconds = POMODORO_DURATION;
+// Pomodoro timer (mini floating window, work 45min / break 5min)
+const POMODORO_WORK = 45 * 60;
+const POMODORO_BREAK = 5 * 60;
+const POMO_RING_R = 54;
+const POMO_CIRC = 2 * Math.PI * POMO_RING_R;
+let pomoMode = 'work';
+let pomoTotal = POMODORO_WORK;
+let pomodoroSeconds = POMODORO_WORK;
 let pomodoroInterval = null;
 let pomodoroRunning = false;
+let pomoDonePrimaryMode = 'break';
+const baseDocTitle = document.title;
+
+function getPomoStats() {
+  const today = new Date().toISOString().slice(0, 10);
+  try {
+    const raw = JSON.parse(localStorage.getItem('kaoyan_pomo_stats') || '{}');
+    if (raw && raw.date === today && typeof raw.count === 'number') return raw;
+  } catch (e) {}
+  return { date: today, count: 0 };
+}
+
+function updatePomoStatsDisplay() {
+  const stats = getPomoStats();
+  const el = document.getElementById('pomo-stats');
+  if (el) el.textContent = '🍅 今日已完成 ' + stats.count + ' 个番茄 · 专注 ' + stats.count * 45 + ' 分钟';
+}
 
 function openPomodoro() {
-  document.getElementById('pomodoro-modal').classList.add('show');
+  document.getElementById('pomodoro-window').classList.add('show');
   updatePomodoroDisplay();
 }
 
 function closePomodoro() {
-  document.getElementById('pomodoro-modal').classList.remove('show');
+  document.getElementById('pomodoro-window').classList.remove('show');
+  updatePomoBadge();
+}
+
+function minimizePomodoro() {
+  closePomodoro();
+}
+
+function setPomoMode(mode, resetSeconds) {
+  pomoMode = mode;
+  pomoTotal = mode === 'break' ? POMODORO_BREAK : POMODORO_WORK;
+  if (resetSeconds) pomodoroSeconds = pomoTotal;
+  document.getElementById('pomo-window-header').classList.toggle('break-mode', mode === 'break');
+  document.getElementById('pomo-window-title').textContent = mode === 'break' ? '☕ 休息中 · 5 分钟' : '🍅 番茄钟 · 专注 45 分钟';
+  document.getElementById('pomo-start-btn').classList.toggle('break-mode', mode === 'break');
+  document.getElementById('pomo-ring').setAttribute('stroke', mode === 'break' ? 'url(#pomoGradBreak)' : 'url(#pomoGradWork)');
+  document.getElementById('pomo-badge').classList.toggle('break', mode === 'break');
+  document.getElementById('pomo-info').textContent = mode === 'break'
+    ? '起身活动一下，喝口水，看看远处放松眼睛'
+    : '专注学习，完成后自动记录学习时间';
 }
 
 function togglePomodoro() {
   const btn = document.getElementById('pomo-start-btn');
+  const stateEl = document.getElementById('pomo-state');
+  const win = document.getElementById('pomodoro-window');
   if (pomodoroRunning) {
-    // Pause
     clearInterval(pomodoroInterval);
     pomodoroRunning = false;
     btn.textContent = '继续';
-    document.getElementById('pomo-label').textContent = '已暂停';
+    stateEl.textContent = '已暂停';
+    win.classList.remove('running');
+    restorePomoTitle();
   } else {
-    // Start
-    if (pomodoroSeconds <= 0) pomodoroSeconds = POMODORO_DURATION;
+    if (pomodoroSeconds <= 0) pomodoroSeconds = pomoTotal;
     pomodoroRunning = true;
     btn.textContent = '暂停';
-    document.getElementById('pomo-label').textContent = '专注中...';
+    stateEl.textContent = pomoMode === 'break' ? '休息中...' : '专注中...';
+    win.classList.add('running');
     pomodoroInterval = setInterval(() => {
       pomodoroSeconds--;
       updatePomodoroDisplay();
@@ -2124,9 +2805,11 @@ function togglePomodoro() {
 function resetPomodoro() {
   clearInterval(pomodoroInterval);
   pomodoroRunning = false;
-  pomodoroSeconds = POMODORO_DURATION;
+  pomodoroSeconds = pomoTotal;
   document.getElementById('pomo-start-btn').textContent = '开始';
-  document.getElementById('pomo-label').textContent = '准备开始';
+  document.getElementById('pomo-state').textContent = '准备开始';
+  document.getElementById('pomodoro-window').classList.remove('running');
+  restorePomoTitle();
   updatePomodoroDisplay();
 }
 
@@ -2134,41 +2817,809 @@ function updatePomodoroDisplay() {
   const mins = Math.floor(pomodoroSeconds / 60);
   const secs = pomodoroSeconds % 60;
   const timeStr = String(mins).padStart(2, '0') + ':' + String(secs).padStart(2, '0');
-  document.getElementById('pomo-time').textContent = timeStr;
-  
-  const progress = (pomodoroSeconds / POMODORO_DURATION) * 100;
-  document.getElementById('pomo-progress').style.width = progress + '%';
+  document.getElementById('pomo-time-lg').textContent = timeStr;
+
+  const ring = document.getElementById('pomo-ring');
+  ring.style.strokeDasharray = POMO_CIRC;
+  ring.style.strokeDashoffset = POMO_CIRC * (1 - pomodoroSeconds / pomoTotal);
+
+  updatePomoBadge();
+  if (pomodoroRunning) {
+    document.title = (pomoMode === 'break' ? '☕ ' : '🍅 ') + timeStr + ' | ' + baseDocTitle;
+  }
+}
+
+function updatePomoBadge() {
+  const badge = document.getElementById('pomo-badge');
+  const win = document.getElementById('pomodoro-window');
+  if (pomodoroRunning && !win.classList.contains('show')) {
+    const mins = Math.floor(pomodoroSeconds / 60);
+    const secs = pomodoroSeconds % 60;
+    badge.textContent = String(mins).padStart(2, '0') + ':' + String(secs).padStart(2, '0');
+    badge.classList.add('show');
+  } else {
+    badge.classList.remove('show');
+  }
+}
+
+function restorePomoTitle() {
+  document.title = baseDocTitle;
+}
+
+function spawnConfetti() {
+  const colors = ['#f97316', '#ef4444', '#fbbf24', '#10b981', '#667eea', '#ec4899'];
+  const box = document.getElementById('pomo-confetti');
+  let html = '';
+  for (let i = 0; i < 26; i++) {
+    const left = Math.random() * 100;
+    const delay = (Math.random() * 2.2).toFixed(2);
+    const dur = (2 + Math.random() * 1.4).toFixed(2);
+    const color = colors[i % colors.length];
+    const w = (6 + Math.random() * 5).toFixed(1);
+    html += '<i style="left:' + left + '%;background:' + color + ';width:' + w + 'px;animation-delay:' + delay + 's;animation-duration:' + dur + 's"></i>';
+  }
+  box.innerHTML = html;
+}
+
+function playPomoSound(isBreak) {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const notes = isBreak ? [523, 659, 784] : [784, 988, 1175];
+    notes.forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.frequency.value = freq;
+      const t0 = ctx.currentTime + i * 0.18;
+      gain.gain.setValueAtTime(0.25, t0);
+      gain.gain.exponentialRampToValueAtTime(0.01, t0 + 0.45);
+      osc.start(t0);
+      osc.stop(t0 + 0.45);
+    });
+  } catch (e) {}
+}
+
+function showPomoDoneModal(emoji, title, desc, primaryMode) {
+  const stats = getPomoStats();
+  document.getElementById('pomo-done-emoji').textContent = emoji;
+  document.getElementById('pomo-done-title').textContent = title;
+  document.getElementById('pomo-done-desc').textContent = desc;
+  document.getElementById('pomo-done-count').textContent = stats.count;
+  document.getElementById('pomo-done-minutes').textContent = stats.count * 45;
+  pomoDonePrimaryMode = primaryMode === 'work' ? 'work' : 'break';
+  const primaryBtn = document.getElementById('pomo-done-primary');
+  if (pomoDonePrimaryMode === 'work') {
+    primaryBtn.textContent = '🍅 开始专注';
+    primaryBtn.classList.remove('break-mode');
+  } else {
+    primaryBtn.textContent = '☕ 休息 5 分钟';
+    primaryBtn.classList.add('break-mode');
+  }
+  spawnConfetti();
+  document.getElementById('pomodoro-done-modal').classList.add('show');
+}
+
+function pomoDonePrimary() {
+  if (pomoDonePrimaryMode === 'work') {
+    startNextPomo();
+  } else {
+    startPomoBreak();
+  }
 }
 
 function finishPomodoro() {
   clearInterval(pomodoroInterval);
   pomodoroRunning = false;
-  document.getElementById('pomo-start-btn').textContent = '再来一次';
-  document.getElementById('pomo-label').textContent = '🎉 完成啦！';
-  document.getElementById('pomo-info').textContent = '太棒了！完成一个45分钟专注周期';
-  
-  // Play notification sound (simple beep using Web Audio API)
-  try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.frequency.value = 800;
-    gain.gain.setValueAtTime(0.3, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
-    osc.start();
-    osc.stop(ctx.currentTime + 0.5);
-  } catch(e) {}
-  
-  // Browser notification
-  if (Notification && Notification.permission === 'granted') {
-    new Notification('番茄钟完成 🍅', { body: '45分钟专注结束，休息一下吧！' });
+  restorePomoTitle();
+  document.getElementById('pomodoro-window').classList.remove('running');
+  document.getElementById('pomo-start-btn').textContent = '开始';
+  pomodoroSeconds = pomoTotal;
+
+  if (pomoMode === 'work') {
+    const stats = getPomoStats();
+    stats.count += 1;
+    localStorage.setItem('kaoyan_pomo_stats', JSON.stringify(stats));
+    updatePomoStatsDisplay();
+    logActivity('pomodoro', '45分钟专注', '番茄钟', 'Sheet1_数据结构');
+    playPomoSound(false);
+    if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+      new Notification('番茄钟完成 🍅', { body: '45分钟专注结束，休息一下吧！' });
+    }
+    showPomoDoneModal('🍅', '太棒了！完成一个番茄钟', '45 分钟专注结束，休息一下吧！', 'break');
+  } else {
+    playPomoSound(true);
+    if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+      new Notification('休息结束 ☕', { body: '精神满满，开始新一轮专注吧！' });
+    }
+    setPomoMode('work', true);
+    document.getElementById('pomo-state').textContent = '休息结束';
+    showPomoDoneModal('☕', '休息结束', '精神满满，开始新一轮专注吧！', 'work');
   }
-  
-  // Log activity
-  logActivity('pomodoro', '45分钟专注', '番茄钟', 'Sheet1_数据结构');
+  updatePomodoroDisplay();
 }
+
+function startPomoBreak() {
+  closePomoDone();
+  setPomoMode('break', true);
+  openPomodoro();
+  togglePomodoro();
+}
+
+function startNextPomo() {
+  closePomoDone();
+  setPomoMode('work', true);
+  openPomodoro();
+  togglePomodoro();
+}
+
+function closePomoDone() {
+  document.getElementById('pomodoro-done-modal').classList.remove('show');
+  document.getElementById('pomo-confetti').innerHTML = '';
+}
+
+// Draggable mini window (mouse + touch)
+(function initPomoDrag() {
+  const win = document.getElementById('pomodoro-window');
+  const header = document.getElementById('pomo-window-header');
+  if (!win || !header) return;
+  let dragging = false, startX = 0, startY = 0, startLeft = 0, startTop = 0;
+
+  function toAbsolute() {
+    if (win.style.left) return;
+    const rect = win.getBoundingClientRect();
+    win.style.left = rect.left + 'px';
+    win.style.top = rect.top + 'px';
+    win.style.right = 'auto';
+    win.style.bottom = 'auto';
+  }
+
+  function onMove(x, y) {
+    if (!dragging) return;
+    const w = win.offsetWidth, h = win.offsetHeight;
+    let left = startLeft + (x - startX);
+    let top = startTop + (y - startY);
+    left = Math.max(4, Math.min(left, window.innerWidth - w - 4));
+    top = Math.max(4, Math.min(top, window.innerHeight - h - 4));
+    win.style.left = left + 'px';
+    win.style.top = top + 'px';
+  }
+
+  header.addEventListener('mousedown', (e) => {
+    if (e.target.closest('.pomo-icon-btn')) return;
+    toAbsolute();
+    const rect = win.getBoundingClientRect();
+    startX = e.clientX; startY = e.clientY;
+    startLeft = rect.left; startTop = rect.top;
+    dragging = true;
+    e.preventDefault();
+  });
+  document.addEventListener('mousemove', (e) => onMove(e.clientX, e.clientY));
+  document.addEventListener('mouseup', () => dragging = false);
+
+  header.addEventListener('touchstart', (e) => {
+    if (e.target.closest('.pomo-icon-btn')) return;
+    toAbsolute();
+    const rect = win.getBoundingClientRect();
+    const t = e.touches[0];
+    startX = t.clientX; startY = t.clientY;
+    startLeft = rect.left; startTop = rect.top;
+    dragging = true;
+  }, { passive: true });
+  document.addEventListener('touchmove', (e) => {
+    if (!dragging) return;
+    const t = e.touches[0];
+    onMove(t.clientX, t.clientY);
+    e.preventDefault();
+  }, { passive: false });
+  document.addEventListener('touchend', () => dragging = false);
+})();
+
+updatePomoStatsDisplay();
+
+// ================= Sprint schedule dashboard =================
+const SCHEDULE_KEY = 'kaoyan_schedule_v1';
+const SPRINT_START = '2026-09-09';
+const HEAT_WEIGHT = { '🔥 高频': 3, '🟡 中频': 2, '🟢 低频': 1, '⚪ 冷门': 0 };
+const SHEET_DISPLAY = {
+  'Sheet1_数据结构': '数据结构',
+  'Sheet2_计算机组成原理': '组成原理',
+  'Sheet3_操作系统': '操作系统',
+  'Sheet4_计算机网络': '计算机网络'
+};
+
+const SCHEDULE_STAGES = [
+  {
+    id: 's1', name: '极速清尾', icon: '🚀', range: ['2026-09-09', '2026-09-30'],
+    desc: '单核硬推清尾：数学速通积分学与线代；408 扫平计组、速推 OS 与计网。内容极度功利化，放弃抽象证明与硬件微操作推导。',
+    tasks: [
+      '数学：21 天速通积分学（定积分 / 二重积分计算）',
+      '数学：速通线性代数（矩阵 / 特征值）',
+      '408：扫平计组剩余四章（抓数据通路与 Cache）',
+      '408：速推 OS（抓进程调度与内存分页）',
+      '408：速推计网（抓 TCP/IP 交互，其余纯背）',
+      '英语：每天 1 篇真题阅读精刷'
+    ]
+  },
+  {
+    id: 's2', name: '真题拉练', icon: '💪', range: ['2026-10-01', '2026-10-31'],
+    desc: '政治入局；数学与 408 开启「两天一卷」：第一天严格限时模考，第二天 3 小时 AI 深度复盘。',
+    tasks: [
+      '政治：每天 1.5h 专攻选择题，不看主观题大部头',
+      '数学：两天一卷（Day1 限时模考 / Day2 3h 复盘）',
+      '408：两天一卷（同上节奏）',
+      '英语：持续真题阅读单点精刷'
+    ]
+  },
+  {
+    id: 's3', name: '弱点爆破', icon: '🎯', range: ['2026-11-01', '2026-11-30'],
+    desc: '针对「必拿分」模块集中特训，核心公式脱稿默写，作文模板强行落地。',
+    tasks: [
+      '数学：选填题 + 二重积分等必拿分模块特训',
+      '408：每天脱稿默写核心抢分公式（特殊矩阵 / OS 调度 / 计网报文头）',
+      '英语：作文模板背诵 + 答题卡强行套写',
+      '政治：选择题持续盲刷'
+    ]
+  },
+  {
+    id: 's4', name: '终极保底', icon: '🛡️', range: ['2026-12-01', '2026-12-18'],
+    desc: '全面停止做新题。死磕肖四主观题形成肌肉记忆，错题本反复扫视保持题感。',
+    tasks: [
+      '政治：每天 3h 死磕肖四主观题',
+      '数学：错题本反复扫视 + 半套选填保题感',
+      '408：错题本反复扫视 + 半套选填保题感',
+      '考前：调整生物钟，12.18 早睡'
+    ]
+  }
+];
+
+// 时间轴（分钟计）。18:30 时段 10 月起自动切换为政治。
+const TIME_SLOTS = [
+  { start: 480, end: 750, icon: '📐', title: '数学大核', detail: '1h 新知突击 + 2.5h 暴力计算 + 1h 错题复盘' },
+  { start: 750, end: 840, icon: '🍰', title: '午休 · 英语', detail: '30min 午休 + 1 篇真题阅读精刷' },
+  { start: 840, end: 1110, icon: '💻', title: '408 大核', detail: '极速推基础 + 单数选择题，不碰大题' },
+  { start: 1110, end: 1230, icon: '🍚', title: '晚饭 · 缓冲', detail: '物理缓冲期', political: true },
+  { start: 1230, end: 1380, icon: '🧠', title: 'AI 费曼复盘', detail: '口述数学 / 408 错题核心逻辑，诊断卡壳点' },
+  { start: 1380, end: 1440, icon: '⚡', title: '快闪抗遗忘', detail: 'AI 随机抽查前序章节基础概念' }
+];
+
+function loadScheduleData() {
+  try { return JSON.parse(localStorage.getItem(SCHEDULE_KEY)) || {}; } catch (e) { return {}; }
+}
+function saveScheduleData(d) { localStorage.setItem(SCHEDULE_KEY, JSON.stringify(d)); }
+
+function getTodayCheckin() {
+  const d = loadScheduleData();
+  if (!d.checkins) d.checkins = {};
+  const today = getTodayStr();
+  if (!d.checkins[today]) d.checkins[today] = { slots: [], goals: {}, offset: 0 };
+  const c = d.checkins[today];
+  if (!Array.isArray(c.slots) || c.slots.length !== TIME_SLOTS.length) {
+    c.slots = TIME_SLOTS.map(() => 0);
+  }
+  if (!c.goals) c.goals = {};
+  if (typeof c.offset !== 'number') c.offset = 0;
+  return { d, c };
+}
+
+function getCurrentStage() {
+  const today = getTodayStr();
+  for (const s of SCHEDULE_STAGES) {
+    if (today >= s.range[0] && today <= s.range[1]) return s;
+  }
+  return today < SCHEDULE_STAGES[0].range[0] ? SCHEDULE_STAGES[0] : SCHEDULE_STAGES[SCHEDULE_STAGES.length - 1];
+}
+
+// 阶段决定主攻科目：第一阶段数据结构已过完，主攻计组/OS/计网
+function getFocusSheets() {
+  const stage = getCurrentStage();
+  if (stage.id === 's1') {
+    return ['Sheet2_计算机组成原理', 'Sheet3_操作系统', 'Sheet4_计算机网络'];
+  }
+  return Object.keys(SHEET_DISPLAY);
+}
+
+function getSheetProgress(sheetKey) {
+  const items = appData[sheetKey] || [];
+  let mastered = 0, learning = 0;
+  items.forEach(it => {
+    const m = it['掌握程度'] || '未开始';
+    if (m === '已掌握') mastered++;
+    else if (m === '学习中') learning++;
+  });
+  return { total: items.length, mastered, learning };
+}
+
+// 未掌握考点按热度降序 + 各科轮转，保证科目均衡且高频优先
+function getGoalCandidates() {
+  const queues = getFocusSheets().map(sheet =>
+    (appData[sheet] || [])
+      .map((item, idx) => ({ item, idx, sheet }))
+      .filter(e => (e.item['掌握程度'] || '未开始') !== '已掌握')
+      .sort((a, b) => (HEAT_WEIGHT[b.item['热度等级']] || 0) - (HEAT_WEIGHT[a.item['热度等级']] || 0))
+  );
+  const out = [];
+  let more = true;
+  while (more) {
+    more = false;
+    for (const q of queues) {
+      if (q.length) { out.push(q.shift()); more = true; }
+    }
+  }
+  return out;
+}
+
+function goalKey(sheet, name) { return sheet + '|' + name; }
+
+function getTodayGoals() {
+  const { c } = getTodayCheckin();
+  const all = getGoalCandidates();
+  const N = 5;
+  const pages = Math.max(1, Math.ceil(all.length / N));
+  const start = (c.offset % pages) * N;
+  return all.slice(start, start + N);
+}
+
+function escapeHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+}
+
+// 转义后可安全嵌入 onclick="fn('...')"：HTML 实体由属性解码还原，单引号经 JS 层转义保护
+function attrJsStr(s) {
+  return String(s ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/\\/g, '\\\\')
+    .replace(/'/g, "\\'");
+}
+
+function openSchedule() {
+  document.getElementById('schedule-overlay').classList.add('show');
+  document.getElementById('schedule-drawer').classList.add('show');
+  renderSchedulePanel();
+}
+
+function closeSchedule() {
+  document.getElementById('schedule-overlay').classList.remove('show');
+  document.getElementById('schedule-drawer').classList.remove('show');
+}
+
+function toggleSlot(i) {
+  const { d, c } = getTodayCheckin();
+  c.slots[i] = c.slots[i] ? 0 : 1;
+  saveScheduleData(d);
+  renderSchedulePanel();
+}
+
+function toggleStageTask(stageId, i) {
+  const d = loadScheduleData();
+  if (!d.stageTasks) d.stageTasks = {};
+  if (!d.stageTasks[stageId]) d.stageTasks[stageId] = [];
+  d.stageTasks[stageId][i] = d.stageTasks[stageId][i] ? 0 : 1;
+  saveScheduleData(d);
+  renderSchedulePanel();
+}
+
+function toggleGoal(sheet, name) {
+  const { d, c } = getTodayCheckin();
+  const key = goalKey(sheet, name);
+  if (c.goals[key]) return;
+  const idx = (appData[sheet] || []).findIndex(it => it['考点'] === name);
+  if (idx < 0) return;
+  const item = appData[sheet][idx];
+  item['掌握程度'] = '已掌握';
+  logActivity('mastered', item['考点'], item['考纲章节'], sheet);
+  c.goals[key] = 1;
+  saveScheduleData(d);
+  saveData();
+  renderTable();
+  renderSchedulePanel();
+}
+
+function rotateGoals() {
+  const { d, c } = getTodayCheckin();
+  const all = getGoalCandidates();
+  const pages = Math.max(1, Math.ceil(all.length / 5));
+  c.offset = (c.offset + 1) % pages;
+  saveScheduleData(d);
+  renderSchedulePanel();
+}
+
+// ===== 翻盘复盘队列：标记「学习中」自动排期，按 1/2/4/7/15/30 天间隔递进翻盘 =====
+function addDays(dateStr, n) {
+  const dt = new Date(dateStr + 'T00:00:00');
+  dt.setDate(dt.getDate() + n);
+  const pad = v => String(v).padStart(2, '0');
+  return dt.getFullYear() + '-' + pad(dt.getMonth() + 1) + '-' + pad(dt.getDate());
+}
+
+function getReviewMap(d) {
+  if (!d.reviews || typeof d.reviews !== 'object' || Array.isArray(d.reviews)) d.reviews = {};
+  return d.reviews;
+}
+
+function enqueueReview(sheet, item) {
+  if (!item || !item['考点']) return;
+  const d = loadScheduleData();
+  const map = getReviewMap(d);
+  const key = goalKey(sheet, item['考点']);
+  if (map[key] && !map[key].done) { saveScheduleData(d); return; }
+  map[key] = {
+    sheet: sheet, name: item['考点'], note: item['备注'] || '',
+    learnedAt: getTodayStr(), stage: 0,
+    nextDate: addDays(getTodayStr(), REVIEW_INTERVALS[0]), done: false
+  };
+  saveScheduleData(d);
+}
+
+function dequeueReview(sheet, name) {
+  const d = loadScheduleData();
+  const map = getReviewMap(d);
+  const key = goalKey(sheet, name);
+  if (map[key]) { delete map[key]; saveScheduleData(d); }
+}
+
+function getReviewList() {
+  const map = getReviewMap(loadScheduleData());
+  const today = getTodayStr();
+  return Object.keys(map).map(key => {
+    const e = map[key];
+    return { key: key, sheet: e.sheet, name: e.name, subj: e.subj || '', note: e.note || '',
+      learnedAt: e.learnedAt, stage: e.stage || 0, nextDate: e.nextDate, done: !!e.done,
+      dueDays: e.done || !e.nextDate ? null : daysBetween(e.nextDate, today) };
+  });
+}
+
+// 表内考点复盘一次：同步「回顾次数 / 上次回顾」，保持表格徽章一致
+function touchTableReview(e, today) {
+  if (!e.sheet || !appData[e.sheet]) return;
+  const item = appData[e.sheet].find(it => it['考点'] === e.name);
+  if (!item) return;
+  item['回顾次数'] = (parseInt(item['回顾次数']) || 0) + 1;
+  item['_lastReview'] = today;
+  logActivity('review', e.name, item['考纲章节'], e.sheet);
+  saveData();
+  if (currentTab === e.sheet) renderTable();
+}
+
+function passReview(key) {
+  const d = loadScheduleData();
+  const map = getReviewMap(d);
+  const e = map[key];
+  if (!e || e.done) return;
+  const today = getTodayStr();
+  e.stage = (e.stage || 0) + 1;
+  if (e.stage >= REVIEW_INTERVALS.length) {
+    e.done = true;
+    e.nextDate = null;
+    if (e.sheet && appData[e.sheet]) {
+      const item = appData[e.sheet].find(it => it['考点'] === e.name);
+      if (item && (item['掌握程度'] || '未开始') !== '已掌握') {
+        item['掌握程度'] = '已掌握';
+        logActivity('mastered', e.name, item['考纲章节'], e.sheet);
+        saveData();
+        if (currentTab === e.sheet) renderTable();
+      }
+    }
+  } else {
+    e.nextDate = addDays(today, REVIEW_INTERVALS[e.stage]);
+    touchTableReview(e, today);
+  }
+  saveScheduleData(d);
+  renderSchedulePanel();
+}
+
+function failReview(key) {
+  const d = loadScheduleData();
+  const map = getReviewMap(d);
+  const e = map[key];
+  if (!e || e.done) return;
+  const today = getTodayStr();
+  e.stage = 0;
+  e.nextDate = addDays(today, REVIEW_INTERVALS[0]);
+  touchTableReview(e, today);
+  saveScheduleData(d);
+  renderSchedulePanel();
+}
+
+function removeReview(key) {
+  const d = loadScheduleData();
+  const map = getReviewMap(d);
+  delete map[key];
+  saveScheduleData(d);
+  renderSchedulePanel();
+}
+
+function editReviewNote(key) {
+  const d = loadScheduleData();
+  const map = getReviewMap(d);
+  const e = map[key];
+  if (!e) return;
+  const v = prompt('复盘要点（这轮翻盘要过什么）：', e.note || '');
+  if (v === null) return;
+  e.note = v.trim();
+  saveScheduleData(d);
+  renderSchedulePanel();
+}
+
+let reviewFormOpen = false;
+function toggleReviewForm(force) {
+  reviewFormOpen = typeof force === 'boolean' ? force : !reviewFormOpen;
+  renderSchedulePanel();
+}
+
+function addCustomReview() {
+  const name = document.getElementById('rv-form-name').value.trim();
+  if (!name) { alert('请输入复盘内容名称'); return; }
+  const subj = document.getElementById('rv-form-subj').value.trim() || '自定义';
+  const note = document.getElementById('rv-form-note').value.trim();
+  let first = document.getElementById('rv-form-date').value;
+  const today = getTodayStr();
+  if (!first || first <= today) first = addDays(today, REVIEW_INTERVALS[0]);
+  const d = loadScheduleData();
+  const map = getReviewMap(d);
+  map['custom|' + Date.now()] = {
+    sheet: '', name: name, subj: subj, note: note,
+    learnedAt: today, stage: 0, nextDate: first, done: false
+  };
+  saveScheduleData(d);
+  reviewFormOpen = false;
+  renderSchedulePanel();
+}
+
+function fmtMd(dateStr) {
+  const diff = daysBetween(getTodayStr(), dateStr);
+  if (diff === 1) return '明天';
+  if (diff === 2) return '后天';
+  const p = dateStr.split('-');
+  return Number(p[1]) + '.' + Number(p[2]);
+}
+
+function jumpToSheet(sheet) {
+  closeSchedule();
+  currentTab = sheet;
+  renderTabs();
+  renderTable();
+  document.querySelector('.table-container').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function jumpToGoal(sheet, name) {
+  jumpToSheet(sheet);
+  setTimeout(() => {
+    const rows = document.querySelectorAll('#table-body tr');
+    for (const tr of rows) {
+      if (tr.textContent.includes(name)) {
+        tr.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        tr.classList.add('row-flash');
+        setTimeout(() => tr.classList.remove('row-flash'), 2300);
+        break;
+      }
+    }
+  }, 120);
+}
+
+function fmtRange(r) {
+  return r[0].slice(5).replace('-', '.') + ' - ' + r[1].slice(5).replace('-', '.');
+}
+
+function renderSchedulePanel() {
+  const body = document.getElementById('schedule-body');
+  if (!body) return;
+
+  const today = getTodayStr();
+  const now = new Date();
+  const nowMin = now.getHours() * 60 + now.getMinutes();
+  const stage = getCurrentStage();
+  const { c } = getTodayCheckin();
+  const pomo = getPomoStats();
+  const politicalOn = today >= '2026-10-01';
+
+  // Countdown hero
+  const diff = EXAM_DATE - now;
+  const daysLeft = diff > 0 ? Math.ceil(diff / 86400000) : 0;
+  document.getElementById('sch-days').textContent = daysLeft > 0 ? daysLeft : '加油！';
+  const totalDays = daysBetween(SPRINT_START, '2026-12-19') + 1;
+  const dayIdx = Math.min(totalDays, Math.max(1, daysBetween(SPRINT_START, today) + 1));
+  document.getElementById('sch-day-index').textContent = 'Day ' + dayIdx + ' / ' + totalDays + ' · ' + stage.icon + ' ' + stage.name;
+
+  let html = '';
+
+  // Today chips
+  const slotDone = c.slots.filter(Boolean).length;
+  const goalDone = Object.keys(c.goals).length;
+  const rvList = getReviewList();
+  const rvDueCnt = rvList.filter(e => !e.done && e.dueDays !== null && e.dueDays >= 0).length;
+  html += '<div class="sch-chips">'
+    + '<span class="sch-chip">🍅 今日番茄 <b>' + pomo.count + '</b></span>'
+    + '<span class="sch-chip">⏱ 时段打卡 <b>' + slotDone + '/' + TIME_SLOTS.length + '</b></span>'
+    + '<span class="sch-chip">🔁 复盘到期 <b>' + rvDueCnt + '</b></span>'
+    + '<span class="sch-chip">✅ 考点推进 <b>' + goalDone + '</b></span>'
+    + '</div>';
+
+  // Stage timeline
+  html += '<div><div class="sch-section-title">🧭 四阶段路标</div>';
+  const d = loadScheduleData();
+  const stageTasks = d.stageTasks || {};
+  SCHEDULE_STAGES.forEach(s => {
+    const isCurrent = s.id === stage.id;
+    const isDone = today > s.range[1];
+    const tasks = stageTasks[s.id] || [];
+    const doneCnt = s.tasks.filter((_, i) => tasks[i]).length;
+    let stagePct = 0;
+    if (isDone) stagePct = 100;
+    else if (isCurrent) {
+      const span = daysBetween(s.range[0], s.range[1]) + 1;
+      stagePct = Math.min(100, Math.round((daysBetween(s.range[0], today) + 1) / span * 100));
+    }
+    html += '<div class="sch-stage' + (isCurrent ? ' current' : '') + (isDone ? ' done' : '') + '">'
+      + '<div class="sch-stage-head" onclick="toggleStageExpand(event)">'
+      + '<span>' + s.icon + '</span>'
+      + '<span class="sch-stage-name">' + s.name + '</span>'
+      + '<span class="sch-stage-state">' + (isCurrent ? '进行中 ' + stagePct + '%' : (isDone ? '已完成' : '待开启')) + '</span>'
+      + '<span class="sch-stage-dates">' + fmtRange(s.range) + ' · 任务 ' + doneCnt + '/' + s.tasks.length + '</span>'
+      + '</div>'
+      + '<div class="sch-stage-desc">' + s.desc + '</div>'
+      + '<div class="sch-stage-progress"><i style="width:' + stagePct + '%"></i></div>'
+      + '<div class="sch-stage-tasks">'
+      + s.tasks.map((t, i) =>
+        '<div class="sch-task' + (tasks[i] ? ' done' : '') + '" onclick="toggleStageTask(\'' + s.id + '\',' + i + ')">'
+        + '<span class="box">' + (tasks[i] ? '✓' : '') + '</span><span class="txt">' + t + '</span></div>'
+      ).join('')
+      + '</div></div>';
+  });
+  html += '</div>';
+
+  // Today time slots
+  html += '<div><div class="sch-section-title">⏰ 今日时间轴（08:00 - 24:00）</div>';
+  TIME_SLOTS.forEach((slot, i) => {
+    const isNow = nowMin >= slot.start && nowMin < slot.end;
+    const isPast = nowMin >= slot.end;
+    const checked = !!c.slots[i];
+    const title = slot.political && politicalOn ? '晚饭 · 政治' : slot.title;
+    const detail = slot.political && politicalOn ? '晚饭缓冲 + 1.5h 政治核心课 / 1000 题选择题' : slot.detail;
+    const fmt = m => String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0');
+    html += '<div class="sch-slot' + (isNow ? ' active' : '') + (isPast ? ' past' : '') + (checked ? ' checked' : '') + '">'
+      + '<span class="s-icon">' + slot.icon + '</span>'
+      + '<div class="s-main">'
+      + '<div class="s-title">' + title
+      + (isNow ? ' <span class="s-now">● 进行中</span>' : '')
+      + ' <span class="s-time">' + fmt(slot.start) + '-' + fmt(slot.end) + '</span></div>'
+      + '<div class="s-detail">' + detail + '</div>'
+      + '</div>'
+      + '<button class="sch-check" onclick="toggleSlot(' + i + ')" title="打卡">' + (checked ? '✓' : '') + '</button>'
+      + '</div>';
+  });
+  html += '</div>';
+
+  // Review flip queue
+  const rActive = rvList.filter(e => !e.done);
+  const rDue = rActive.filter(e => e.dueDays !== null && e.dueDays >= 0)
+    .sort((a, b) => (b.dueDays - a.dueDays) || a.nextDate.localeCompare(b.nextDate));
+  const rUp = rActive.filter(e => e.dueDays !== null && e.dueDays < 0)
+    .sort((a, b) => a.nextDate.localeCompare(b.nextDate)).slice(0, 6);
+  const rDone = rvList.length - rActive.length;
+  html += '<div><div class="sch-section-title">🔁 翻盘复盘队列'
+    + (rDue.length ? '<span class="rv-due-badge">' + rDue.length + ' 项到期</span>' : '')
+    + '<span class="rv-hint">每晚 20:30 费曼时段清空</span></div>';
+
+  if (rDue.length === 0) {
+    html += '<div class="rv-empty">' + (rActive.length
+      ? '🎉 今日无到期复盘，还有 ' + rActive.length + ' 项在途中'
+      : '暂无复盘任务：表格中标记「学习中」的考点会自动进入队列，次日首次翻盘') + '</div>';
+  } else {
+    rDue.forEach(e => {
+      const isOver = e.dueDays > 0;
+      const srcName = e.sheet ? SHEET_DISPLAY[e.sheet] : (e.subj || '自定义');
+      const dots = REVIEW_INTERVALS.map((_, i) => '<i class="' + (i < e.stage ? 'on' : '') + '"></i>').join('');
+      const safeKey = attrJsStr(e.key);
+      const learnedDays = daysBetween(e.learnedAt, today) + 1;
+      html += '<div class="rv-item' + (isOver ? ' overdue' : '') + '">'
+        + '<div class="rv-top"><span class="rv-src">' + escapeHtml(srcName) + '</span>'
+        + '<span class="rv-dots" title="翻盘进度 ' + e.stage + '/' + REVIEW_INTERVALS.length + '">' + dots + '</span>'
+        + '<span class="rv-when">' + (isOver ? '⚠ 超期 ' + e.dueDays + ' 天' : '今日到期') + '</span></div>'
+        + '<div class="rv-name' + (e.sheet ? ' clickable" onclick="jumpToGoal(\'' + attrJsStr(e.sheet) + '\',\'' + attrJsStr(e.name) + '\')" title="点击跳转到考点表格' : '') + '">' + escapeHtml(e.name) + '</div>'
+        + '<div class="rv-meta">第 ' + (e.stage + 1) + ' 轮翻盘 · 学了 ' + learnedDays + ' 天' + (e.sheet ? ' · 点击名称跳转表格' : '') + '</div>'
+        + (e.note ? '<div class="rv-note">📝 ' + escapeHtml(e.note) + '</div>' : '')
+        + '<div class="rv-actions">'
+        + '<button class="rv-pass" onclick="passReview(\'' + safeKey + '\')">✓ 记住了</button>'
+        + '<button class="rv-fail" onclick="failReview(\'' + safeKey + '\')">✗ 还模糊</button>'
+        + '<span class="rv-gap"></span>'
+        + '<button class="rv-mini" onclick="editReviewNote(\'' + safeKey + '\')" title="编辑复盘要点">✎</button>'
+        + '<button class="rv-mini" onclick="removeReview(\'' + safeKey + '\')" title="移出队列">✕</button>'
+        + '</div></div>';
+    });
+  }
+
+  if (rUp.length) {
+    html += '<div class="rv-upcoming"><div class="rv-up-title">📅 近期翻盘安排</div>'
+      + rUp.map(e => {
+        const srcName = e.sheet ? SHEET_DISPLAY[e.sheet] : (e.subj || '自定义');
+        return '<div class="rv-up-row"><span class="rv-up-name">' + escapeHtml(srcName + ' · ' + e.name) + '</span>'
+          + '<span class="rv-up-meta">' + fmtMd(e.nextDate) + ' · 第' + (e.stage + 1) + '轮</span></div>';
+      }).join('')
+      + '</div>';
+  }
+
+  html += '<div class="rv-footer"><span>🎓 已固化 ' + rDone + ' 项' + (rActive.length ? ' · 在途 ' + rActive.length + ' 项' : '') + '</span>'
+    + '<button class="sch-rotate-btn" onclick="toggleReviewForm()">' + (reviewFormOpen ? '收起表单' : '＋ 自定义复盘') + '</button></div>';
+
+  if (reviewFormOpen) {
+    html += '<div class="rv-form">'
+      + '<div class="rv-form-row">'
+      + '<input id="rv-form-subj" placeholder="科目，如：计组" maxlength="12">'
+      + '<input id="rv-form-name" placeholder="内容，如：Flash 存储器" maxlength="40">'
+      + '</div>'
+      + '<input id="rv-form-note" placeholder="复盘要点（可选）：如 NOR/NAND 区别、擦写原理" maxlength="120">'
+      + '<div class="rv-form-row"><label>首次翻盘</label>'
+      + '<input type="date" id="rv-form-date" value="' + addDays(today, REVIEW_INTERVALS[0]) + '">'
+      + '<button class="rv-form-add" onclick="addCustomReview()">添加</button></div>'
+      + '</div>';
+  }
+  html += '</div>';
+
+  // Subject progress
+  html += '<div><div class="sch-section-title">📈 考点推进（点击科目跳转）</div>';
+  const focusSheets = getFocusSheets();
+  Object.keys(SHEET_DISPLAY).forEach(sheet => {
+    const p = getSheetProgress(sheet);
+    const mPct = p.total ? Math.round(p.mastered / p.total * 100) : 0;
+    const lPct = p.total ? Math.round(p.learning / p.total * 100) : 0;
+    html += '<div class="sch-subject' + (focusSheets.includes(sheet) ? ' focus' : '') + '" onclick="jumpToSheet(\'' + sheet + '\')" title="跳转到 ' + SHEET_DISPLAY[sheet] + '">'
+      + '<span class="sub-name">' + SHEET_DISPLAY[sheet] + '</span>'
+      + '<div class="sub-bar"><i class="m" style="width:' + mPct + '%"></i><i class="l" style="width:' + lPct + '%"></i></div>'
+      + '<span class="sub-num">' + p.mastered + ' 掌握 / ' + p.total + '</span>'
+      + '</div>';
+  });
+  html += '</div>';
+
+  // Today goals
+  const goals = getTodayGoals();
+  html += '<div><div class="sch-section-title">🎯 今日考点目标（主攻科 · 高频优先）</div>';
+  if (goals.length === 0) {
+    html += '<div class="sch-goal"><div class="g-main"><div class="g-name">🎉 主攻科目考点已全部掌握！</div>'
+      + '<div class="g-meta">可切换科目或进入真题拉练阶段</div></div></div>';
+  } else {
+    goals.forEach(g => {
+      const key = goalKey(g.sheet, g.item['考点']);
+      const done = !!c.goals[key];
+      const safeName = attrJsStr(g.item['考点']);
+      html += '<div class="sch-goal' + (done ? ' done' : '') + '">'
+        + '<span class="g-heat">' + (g.item['热度等级'] || '') + '</span>'
+        + '<div class="g-main" onclick="jumpToGoal(\'' + g.sheet + '\',\'' + safeName + '\')">'
+        + '<div class="g-name">' + escapeHtml(g.item['考点']) + '</div>'
+        + '<div class="g-meta">' + SHEET_DISPLAY[g.sheet] + ' · ' + escapeHtml(g.item['考纲章节'] || '') + ' · 考频 ' + escapeHtml(g.item['09—25考频'] || '—') + '</div>'
+        + '</div>'
+        + '<button class="g-check" onclick="toggleGoal(\'' + g.sheet + '\',\'' + safeName + '\')" title="标记已掌握">' + (done ? '✓' : '') + '</button>'
+        + '</div>';
+    });
+    html += '<div class="sch-goal-footer">'
+      + '<span>✅ 打勾即写入考点表「已掌握」</span>'
+      + '<button class="sch-rotate-btn" onclick="rotateGoals()">🔄 换一批</button>'
+      + '</div>';
+  }
+  html += '</div>';
+
+  body.innerHTML = html;
+}
+
+function toggleStageExpand(ev) {
+  const el = ev.currentTarget.closest('.sch-stage');
+  const tasks = el.querySelector('.sch-stage-tasks');
+  if (tasks) {
+    const shown = tasks.style.display === 'flex' || (tasks.style.display === '' && el.classList.contains('current'));
+    tasks.style.display = shown ? 'none' : 'flex';
+  }
+}
+
+// Bind floating button + overlay + periodic refresh
+bindEvent('float-schedule-btn', 'click', openSchedule);
+bindEvent('schedule-overlay', 'click', closeSchedule);
+setInterval(() => {
+  const drawer = document.getElementById('schedule-drawer');
+  if (drawer && drawer.classList.contains('show')) renderSchedulePanel();
+}, 60000);
 
 // Point detail modal
 let currentDetailIdx = -1;
@@ -2202,8 +3653,8 @@ function openDetailModal(idx) {
 document.addEventListener('click', (e) => {
   if (e.target.classList.contains('modal-overlay')) {
     e.target.classList.remove('show');
-    if (e.target.id === 'pomodoro-modal') {
-      // Don't pause, just close - timer keeps running
+    if (e.target.id === 'pomodoro-done-modal') {
+      document.getElementById('pomo-confetti').innerHTML = '';
     }
   }
 });
@@ -2340,6 +3791,7 @@ function batchMarkMastered() {
   selectedRows.forEach(idx => {
     data[idx]['掌握程度'] = '已掌握';
     logActivity('mastered', data[idx]['考点'], data[idx]['考纲章节'], currentTab);
+    dequeueReview(currentTab, data[idx]['考点']);
   });
   saveData();
   exitBatchMode();
@@ -2356,6 +3808,7 @@ function batchMarkLearning() {
     data[idx]['掌握程度'] = '学习中';
     if (old !== '学习中') {
       logActivity('learning', data[idx]['考点'], data[idx]['考纲章节'], currentTab);
+      enqueueReview(currentTab, data[idx]);
     }
   });
   saveData();
@@ -2790,6 +4243,85 @@ function logActivity(type, point, chapter, sheet) {
 
 // (add logging integrated into submitAddPoint)
 
+// ===== 卡壳点记录系统 =====
+const STUCK_KEY = 'kaoyan_408_stuck_points';
+let stuckPoints = [];
+
+function loadStuckPoints() {
+  try { stuckPoints = JSON.parse(localStorage.getItem(STUCK_KEY)) || []; } catch(e) { stuckPoints = []; }
+}
+function saveStuckPoints() {
+  localStorage.setItem(STUCK_KEY, JSON.stringify(stuckPoints));
+}
+
+function getStuckPoint(idx) {
+  const item = appData[currentTab][idx];
+  if (!item) return null;
+  const today = new Date();
+  const todayStr = today.getFullYear() + '-' + String(today.getMonth()+1).padStart(2,'0') + '-' + String(today.getDate()).padStart(2,'0');
+  return stuckPoints.find(s => s.sheet === currentTab && s.point === item['考点'] && s.date === todayStr) || null;
+}
+
+let currentStuckIdx = -1;
+
+function openStuckModal(idx) {
+  currentStuckIdx = idx;
+  const item = appData[currentTab][idx];
+  const displayNames = {
+    'Sheet1_数据结构': '数据结构',
+    'Sheet2_计算机组成原理': '组成原理',
+    'Sheet3_操作系统': '操作系统',
+    'Sheet4_计算机网络': '计算机网络'
+  };
+  document.getElementById('stuck-point-label').textContent =
+    (displayNames[currentTab] || currentTab) + ' · ' + item['考纲章节'] + ' · ' + item['考点'];
+  const existing = getStuckPoint(idx);
+  document.getElementById('stuck-input').value = existing ? existing.note : '';
+  document.getElementById('stuck-modal').classList.add('show');
+  setTimeout(() => document.getElementById('stuck-input').focus(), 100);
+}
+
+function closeStuckModal() {
+  document.getElementById('stuck-modal').classList.remove('show');
+  currentStuckIdx = -1;
+}
+
+function saveStuckPoint() {
+  if (currentStuckIdx < 0) return;
+  const item = appData[currentTab][currentStuckIdx];
+  if (!item) return;
+  const note = document.getElementById('stuck-input').value.trim();
+  const today = new Date();
+  const todayStr = today.getFullYear() + '-' + String(today.getMonth()+1).padStart(2,'0') + '-' + String(today.getDate()).padStart(2,'0');
+  const existingIdx = stuckPoints.findIndex(s => s.sheet === currentTab && s.point === item['考点'] && s.date === todayStr);
+  if (note) {
+    if (existingIdx >= 0) {
+      stuckPoints[existingIdx].note = note;
+    } else {
+      stuckPoints.push({
+        sheet: currentTab,
+        point: item['考点'],
+        chapter: item['考纲章节'],
+        date: todayStr,
+        note: note,
+        timestamp: Date.now()
+      });
+    }
+  } else {
+    if (existingIdx >= 0) stuckPoints.splice(existingIdx, 1);
+  }
+  saveStuckPoints();
+  closeStuckModal();
+  renderTable();
+}
+
+// 获取今天的卡壳点列表（供每日规划页导出用）
+function getTodayStuckPoints() {
+  const today = new Date();
+  const todayStr = today.getFullYear() + '-' + String(today.getMonth()+1).padStart(2,'0') + '-' + String(today.getDate()).padStart(2,'0');
+  return stuckPoints.filter(s => s.date === todayStr);
+}
+
 // (review logging integrated into updateReview)
 
 // Generate heatmap data
@@ -3044,10 +4576,11 @@ function renderTable() {
           <td style="font-weight:500;cursor:pointer" onclick="openDetailModal(${idx})">
             ${(() => { const rs = getReviewStatus(item); return rs.status !== 'never' ? `<span class="review-dot ${rs.status}" title="${rs.status === 'urgent' ? '今天需复习' : rs.status === 'soon' ? '明天需复习' : '状态良好'}"></span>` : ''; })()}
             ${item['考点']}${item._custom ? '<span class="custom-badge">自定义</span>' : ''}
+            ${getStuckPoint(idx) ? '<span class="stuck-dot" title="有卡壳记录"></span>' : ''}
             <span class="drag-hint">点击查看详情</span>
           </td>
-          <td>${item['09—25考频']}</td>
-          <td><span class="tag ${heatClass}">${item['热度等级']}</span></td>
+          <td style="white-space:nowrap;text-align:center">${item['09—25考频']}</td>
+          <td><span class="tag ${heatClass}">${item['热度等级'].replace(/\s/g,'')}</span></td>
           <td>
             <select class="mastery-select mastery-${mastery}" onchange="updateMastery(${idx}, this.value)">
               <option value="未开始" ${mastery === '未开始' ? 'selected' : ''}>未开始</option>
@@ -3069,7 +4602,8 @@ function renderTable() {
                  contenteditable="false">${note || '点击添加备注'}</div>
           </td>
           <td>
-            ${item._custom ? `<button class="delete-btn" onclick="deletePoint(${idx})">删除</button>` : ''}
+            <button class="action-btn warn small" onclick="openStuckModal(${idx})" title="记录卡壳点">📌</button>
+            ${item._custom ? `<button class="delete-btn" onclick="deletePoint(${idx})" style="margin-left:4px">删除</button>` : ''}
           </td>
         </tr>
       `;
@@ -3224,6 +4758,7 @@ document.addEventListener('DOMContentLoaded', () => {
     startHeaderClock();
     loadCollapsedState();
     loadActivityLog();
+    loadStuckPoints();
     loadData();
     renderTabs();
     renderTable();
@@ -3297,8 +4832,15 @@ document.addEventListener('DOMContentLoaded', () => {
   // Cloud sync
   bindEvent('float-sync-btn', 'click', openSyncModal);
   
-  // Pomodoro
-  bindEvent('float-pomo-btn', 'click', openPomodoro);
+  // Pomodoro: floating button toggles mini window (timer keeps running when hidden)
+  bindEvent('float-pomo-btn', 'click', () => {
+    const win = document.getElementById('pomodoro-window');
+    if (win.classList.contains('show')) {
+      closePomodoro();
+    } else {
+      openPomodoro();
+    }
+  });
   
   // Import
   const triggerImport = () => {
@@ -3361,6 +4903,18 @@ document.addEventListener('DOMContentLoaded', () => {
         backToTop.classList.remove('show');
       }
     });
+  }
+
+  // Mobile table scroll hint: fade out after first horizontal swipe
+  const tableContainer = document.querySelector('.table-container');
+  const scrollHint = document.getElementById('table-scroll-hint');
+  if (tableContainer && scrollHint) {
+    const hideHint = () => {
+      scrollHint.classList.add('fade-out');
+      setTimeout(() => scrollHint.remove(), 500);
+      tableContainer.removeEventListener('scroll', hideHint);
+    };
+    tableContainer.addEventListener('scroll', hideHint, { once: true });
   }
 });
 
@@ -3434,6 +4988,7 @@ function submitAddPoint() {
   
   appData[sheet].push(newItem);
   logActivity('add', point, chapter, sheet);
+  if (mastery === '学习中') enqueueReview(sheet, newItem);
   saveData();
   
   if (currentTab === sheet) {
@@ -3768,6 +5323,7 @@ function deletePoint(idx) {
   }
   if (!confirm('确定要删除这个自定义考点吗？')) return;
   appData[currentTab].splice(idx, 1);
+  dequeueReview(currentTab, item['考点']);
   saveData();
   renderTable();
   renderTabs();

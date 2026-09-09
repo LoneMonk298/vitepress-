@@ -44,6 +44,30 @@
         </template>
         共 {{ articleData.length }} 篇，未完待续······
       </a-tag>
+
+      <!-- 排序方式切换 -->
+      <div class="sort-bar">
+        <span class="sort-label">排序</span>
+        <select class="sort-select" v-model="sortBy" @change="initTimeline">
+          <option value="top">置顶优先</option>
+          <option value="new">最新发布</option>
+          <option value="old">最早发布</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- 置顶文章（仅置顶优先模式展示） -->
+    <div class="pinned-section" v-if="sortBy === 'top' && pinnedArticles.length > 0">
+      <div class="pinned-title">
+        <svg class="pin-icon" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M16 9V4h1c.55 0 1-.45 1-1s-.45-1-1-1H7c-.55 0-1 .45-1 1s.45 1 1 1h1v5c0 1.66-1.34 3-3 3v2h5.97v7l1 1 1-1v-7H19v-2c-1.66 0-3-1.34-3-3z"></path></svg>
+        <span>置顶推荐</span>
+      </div>
+      <div class="pinned-articles">
+        <span v-for="article in pinnedArticles" :key="article.path" class="article">
+          <a :href="article.path" class="title" target="_blank">{{ article.title }}</a>
+          <ArticleMetadata :article="article" />
+        </span>
+      </div>
     </div>
 
     <!-- 时间轴主体 -->
@@ -66,6 +90,9 @@
               <svg v-else-if="article.categories.includes('方案春秋志')" @click="goToLink('/archives', 'category', article.categories[0])" role="img" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" class="arco-icon arco-icon-code" stroke-width="4" stroke-linecap="butt" stroke-linejoin="miter" style="color: #165dff;"><title>方案春秋志</title><path d="M16.734 12.686 5.42 24l11.314 11.314m14.521-22.628L42.57 24 31.255 35.314M27.2 6.28l-6.251 35.453"></path></svg>
               
               <svg v-else @click="goToLink('/archives', 'category', article.categories[0])" role="img" viewBox="0 0 48 48" fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg" class="arco-icon arco-icon-bookmark" stroke-width="4" stroke-linecap="butt" stroke-linejoin="miter" style="color: #00b42a;"><path d="M16 16h16M16 24h8"></path><path d="M24 41H8V6h32v17"></path><path d="M30 29h11v13l-5.5-3.5L30 42V29Z"></path></svg>
+              <span v-if="article.isTop" class="pin-mark" title="置顶文章">
+                <svg class="pin-icon-sm" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><path d="M16 9V4h1c.55 0 1-.45 1-1s-.45-1-1-1H7c-.55 0-1 .45-1 1s.45 1 1 1h1v5c0 1.66-1.34 3-3 3v2h5.97v7l1 1 1-1v-7H19v-2c-1.66 0-3-1.34-3-3z"></path></svg>
+              </span>
               <a :href="article.path" class="title" target="_blank">{{ article.title }}</a>
               <br>
               <ArticleMetadata :article="article" />
@@ -79,12 +106,19 @@
 </template>
 
 <script lang="ts" setup>
+  import { ref } from 'vue';
   import { getQueryParam, goToLink, getChineseZodiac, getChineseZodiacAlias } from '../utils.ts';
   import { data as articleData } from '../../../../article.data.js';
 
-  // 文章原始数据和归档数据
-  let $articleData;
-  let archiveData;
+  // 排序方式: top-置顶优先(默认) new-最新发布 old-最早发布
+  const sortBy = ref('top');
+
+  // 归档数据与置顶文章
+  const archiveData = ref<any>({});
+  const pinnedArticles = ref<any[]>([]);
+
+  // 当前筛选出的文章数据
+  let $articleData: any[] = [];
 
   // 要筛选的分类、标签、年份
   let $category;
@@ -92,11 +126,27 @@
   let $year;
 
   /**
+   * 按当前排序方式对文章列表排序
+   */
+  function sortArticles(list: any[]): any[] {
+    const byDateDesc = (a: any, b: any) => String(b.date || '').localeCompare(String(a.date || ''));
+    if (sortBy.value === 'new') {
+      return [...list].sort(byDateDesc);
+    }
+    if (sortBy.value === 'old') {
+      return [...list].sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')));
+    }
+    // 置顶优先: 置顶文章在前(按时间倒序), 其余文章在后(按时间倒序)
+    const pinned = list.filter((a) => a.isTop === true).sort(byDateDesc);
+    const normal = list.filter((a) => a.isTop !== true).sort(byDateDesc);
+    return [...pinned, ...normal];
+  }
+
+  /**
    * 初始化时间轴
    */
   function initTimeline() {
     $articleData = [];
-    archiveData = {};
 
     // 如果URL路径有category或tag或year参数, 默认筛选出指定category或tag或year的文章数据
     // 例如: /archives?category=Bug万象集
@@ -130,24 +180,30 @@
       $articleData.push(...articleData);
     }
 
-    // 文章数据归档处理
-    // 1.对文章数据进行降序排序
-    $articleData.sort((a, b) => b.date.localeCompare(a.date));
-    // 2.按年、月进行归档
-    for (let i = 0; i < $articleData.length; i++) {
-      const article = $articleData[i];
+    // 按当前排序方式排序
+    const sorted = sortArticles($articleData);
+
+    // 置顶优先模式下, 置顶文章单独展示在顶部区域
+    pinnedArticles.value = sortBy.value === 'top' ? sorted.filter((a) => a.isTop === true) : [];
+
+    // 文章数据归档处理: 按年、月进行归档
+    const archive: Record<string, Record<string, any[]>> = {};
+    const timelineList = sortBy.value === 'top' ? sorted.filter((a) => a.isTop !== true) : sorted;
+    for (let i = 0; i < timelineList.length; i++) {
+      const article = timelineList[i];
       let year = (new Date(article.date).getFullYear()) + '年';
       let month = (new Date(article.date).getMonth() + 1) + '月';
 
-      if (!archiveData[year]) {
-        archiveData[year] = {};
+      if (!archive[year]) {
+        archive[year] = {};
       }
-      if (!(archiveData[year][month])) {
-        archiveData[year][month] = [];
+      if (!(archive[year][month])) {
+        archive[year][month] = [];
       }
 
-      archiveData[year][month].push(article);
+      archive[year][month].push(article);
     }
+    archiveData.value = archive;
   }
   initTimeline();
 </script>
@@ -233,7 +289,7 @@
   line-height: 1.5;
 }
 
-.timeline-wrap .timeline-item .articles svg {
+.timeline-wrap .timeline-item .articles .article > svg {
   position: absolute;
   left: -27.5px;
   top: 3.5px;
@@ -255,5 +311,82 @@
 .vp-doc a:hover {
   color: var(--vp-c-brand-1);
   text-decoration: underline;
+}
+
+/* 排序方式切换 */
+.timeline-wrap .sort-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+.timeline-wrap .sort-bar .sort-label {
+  font-size: 13px;
+  color: var(--vp-c-text-2);
+}
+.timeline-wrap .sort-bar .sort-select {
+  padding: 4px 10px;
+  border: 1px solid var(--vp-c-border);
+  border-radius: 6px;
+  background: var(--vp-c-bg);
+  color: var(--vp-c-text-1);
+  font-size: 13px;
+  line-height: 1.6;
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.25s;
+}
+.timeline-wrap .sort-bar .sort-select:hover,
+.timeline-wrap .sort-bar .sort-select:focus {
+  border-color: var(--vp-c-brand-1);
+}
+
+/* 置顶文章区 */
+.timeline-wrap .pinned-section {
+  padding: 14px 18px;
+  margin-bottom: 24px;
+  border: 1px dashed var(--vp-c-brand-1);
+  border-radius: 8px;
+  background: var(--vp-c-bg);
+}
+.timeline-wrap .pinned-section .pinned-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--vp-c-text-1);
+  margin-bottom: 12px;
+}
+.timeline-wrap .pinned-section .pinned-title .pin-icon {
+  width: 17px;
+  height: 17px;
+  color: var(--vp-c-brand-1);
+}
+.timeline-wrap .pinned-section .pinned-articles {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.timeline-wrap .pinned-section .pinned-articles .article {
+  display: block;
+  line-height: 1.5;
+}
+.timeline-wrap .pinned-section .pinned-articles .article .title {
+  font-weight: 600;
+}
+
+/* 时间轴内置顶标记 */
+.timeline-wrap .timeline-item .articles .article .pin-mark {
+  display: inline-flex;
+  align-items: center;
+  margin-right: 4px;
+  vertical-align: -2px;
+  color: var(--vp-c-brand-1);
+  cursor: default;
+}
+.timeline-wrap .timeline-item .articles .article .pin-mark .pin-icon-sm {
+  width: 14px;
+  height: 14px;
 }
 </style>

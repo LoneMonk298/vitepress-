@@ -34,7 +34,8 @@
           <path d="M512 64C264.6 64 64 264.6 64 512s200.6 448 448 448 448-200.6 448-448S759.4 64 512 64z m0 820c-205.4 0-372-166.6-372-372s166.6-372 372-372 372 166.6 372 372-166.6 372-372 372z"></path><path d="M686.7 638.6L544.1 535.5V288c0-4.4-3.6-8-8-8H488c-4.4 0-8 3.6-8 8v275.4c0 2.6 1.2 5 3.3 6.5l165.4 120.6c3.6 2.6 8.6 1.8 11.2-1.7l28.6-39c2.6-3.7 1.8-8.7-1.8-11.2z"></path>
         </svg>
       </span>
-      <time class="meta-content" :datetime="date.toISOString()" :title="dayjs().to(dayjs(date))">{{ date.toLocaleString('zh', {year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric'}) }}</time>
+      <time v-if="isDateValid" class="meta-content" :datetime="date.toISOString()" :title="dayjs().to(dayjs(date))">{{ date.toLocaleString('zh', {year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric'}) }}</time>
+      <span v-else class="meta-content" title="日期缺失或格式无法识别">未知时间</span>
     </div>
     <div class="meta-item" v-if="showViewCount">
       <span class="meta-icon pv">
@@ -92,18 +93,20 @@
   const { theme, page } = useData();
   const categoryValues = Array.isArray(props.article?.categories) ? props.article.categories : props.article?.categories ? [props.article.categories] : [];
   const tagValues = Array.isArray(props.article?.tags) ? props.article.tags : props.article?.tags ? [props.article.tags] : [];
+  const parsedDate = new Date(props.article?.date);
   const data = reactive({
     isOriginal: props.article?.isOriginal ?? true,
     author: props.article?.author ?? theme.value.articleMetadataConfig.author,
     authorLink: props.article?.authorLink ?? theme.value.articleMetadataConfig.authorLink,
     showViewCount: theme.value.articleMetadataConfig?.showViewCount ?? false,
     viewCount: 0,
-    date: new Date(props.article.date),
+    date: parsedDate,
+    isDateValid: !isNaN(parsedDate.getTime()),
     categories: categoryValues.map((value) => theme.value.categoryRegistry?.find((category) => category.id === value || category.name === value)?.name || value),
     tags: [...new Set(tagValues.map((value) => theme.value.tagAliases?.[String(value).trim().toLocaleLowerCase('en-US')] || String(value).trim()).filter(Boolean))],
     showCategory: props.showCategory
   });
-  const { isOriginal, author, authorLink, showViewCount, viewCount, date, toDate, categories, tags, showCategory } = toRefs(data);
+  const { isOriginal, author, authorLink, showViewCount, viewCount, date, toDate, isDateValid, categories, tags, showCategory } = toRefs(data);
 
   if (data.showViewCount) {
     // 记录并获取文章阅读数（使用文章标题 + 发布时间生成 MD5 值，作为文章的唯一标识）

@@ -1,0 +1,1552 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<title>每日规划 · 考研 100 天冲刺</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --bg: #f1f5f9; --card: #ffffff; --border: #e2e8f0;
+    --text: #1e293b; --text2: #64748b; --text3: #94a3b8;
+    --brand: #667eea; --brand2: #764ba2; --brand-soft: #eef2ff;
+    --ok: #10b981; --warn: #f59e0b; --danger: #ef4444;
+  }
+  body.dark {
+    --bg: #0f172a; --card: #1e293b; --border: #334155;
+    --text: #f1f5f9; --text2: #cbd5e1; --text3: #94a3b8;
+    --brand-soft: rgba(102,126,234,0.14);
+  }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: var(--bg); color: var(--text); min-height: 100vh;
+    padding-bottom: 40px; transition: background 0.3s, color 0.3s;
+  }
+  .wrap { max-width: 960px; margin: 0 auto; padding: 0 16px; }
+
+  /* ===== header ===== */
+  .hero {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white; padding: 26px 0 22px; position: relative; overflow: hidden;
+  }
+  .hero::after {
+    content: ''; position: absolute; right: -60px; top: -60px; width: 220px; height: 220px;
+    border-radius: 50%; background: rgba(255,255,255,0.08);
+  }
+  .hero-row { display: flex; align-items: center; justify-content: space-between; }
+  .hero h1 { font-size: 22px; font-weight: 800; letter-spacing: 0.5px; }
+  .hero-date { font-size: 13px; opacity: 0.9; margin-top: 4px; }
+  .theme-btn {
+    background: rgba(255,255,255,0.18); border: none; color: white; width: 36px; height: 36px;
+    border-radius: 10px; font-size: 16px; cursor: pointer; transition: background 0.2s; z-index: 1;
+  }
+  .theme-btn:hover { background: rgba(255,255,255,0.3); }
+  .hero-stats { display: flex; gap: 12px; margin-top: 18px; flex-wrap: wrap; }
+  .hero-chip {
+    background: rgba(255,255,255,0.15); backdrop-filter: blur(4px);
+    border-radius: 12px; padding: 10px 16px; min-width: 110px;
+  }
+  .hero-chip .num { font-size: 24px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .hero-chip .lbl { font-size: 11px; opacity: 0.85; margin-top: 2px; }
+  .stage-chip { margin-top: 14px; background: rgba(255,255,255,0.15); border-radius: 12px; padding: 10px 16px; }
+  .stage-chip .s-name { font-size: 14px; font-weight: 700; }
+  .stage-chip .s-range { font-size: 11px; opacity: 0.85; margin-top: 2px; }
+  .stage-bar { height: 5px; background: rgba(255,255,255,0.25); border-radius: 3px; margin-top: 8px; overflow: hidden; }
+  .stage-bar i { display: block; height: 100%; background: #fbbf24; border-radius: 3px; transition: width 0.5s; }
+
+  /* ===== progress cards ===== */
+  .sec { margin-top: 26px; }
+  .sec-title { font-size: 15px; font-weight: 700; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+  .sec-title small { font-weight: 400; color: var(--text3); font-size: 12px; }
+  .subj-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+  .subj-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; }
+  .subj-head { display: flex; justify-content: space-between; align-items: baseline; }
+  .subj-name { font-size: 14px; font-weight: 700; }
+  .subj-pct { font-size: 18px; font-weight: 800; color: var(--brand); font-variant-numeric: tabular-nums; }
+  .subj-bar { height: 6px; background: var(--border); border-radius: 3px; margin-top: 10px; overflow: hidden; }
+  .subj-bar i { display: block; height: 100%; width: 0; border-radius: 3px; background: linear-gradient(90deg, #667eea, #10b981); transition: width 0.6s; }
+  .subj-meta { font-size: 11px; color: var(--text3); margin-top: 8px; }
+  .subj-meta b { color: var(--text2); }
+
+  /* ===== plan blocks ===== */
+  .block {
+    background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+    margin-bottom: 14px; overflow: hidden; transition: border-color 0.3s, box-shadow 0.3s;
+  }
+  .block.now { border-color: var(--brand); box-shadow: 0 0 0 3px rgba(102,126,234,0.15); }
+  .block-head {
+    display: flex; align-items: center; gap: 10px; padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+  }
+  .block-icon { font-size: 20px; }
+  .block-tt { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+  .block-tt b { font-size: 15px; }
+  .block-tt span { font-size: 11px; color: var(--text3); font-variant-numeric: tabular-nums; }
+  .blk-detail { font-style: normal; opacity: 0.8; }
+  .now-tag {
+    font-size: 10px; font-weight: 700; color: var(--brand); background: var(--brand-soft);
+    padding: 2px 8px; border-radius: 8px;
+  }
+  .block-check {
+    margin-left: auto; width: 26px; height: 26px; border-radius: 8px; flex-shrink: 0;
+    border: 1.5px solid var(--border); background: transparent; color: var(--text3);
+    font-size: 13px; cursor: pointer; transition: all 0.15s; line-height: 1;
+  }
+  .block-check.on { background: var(--ok); border-color: var(--ok); color: white; }
+  .block-body { padding: 14px 18px; }
+
+  .topic-line {
+    background: var(--brand-soft); border-radius: 10px; padding: 10px 14px;
+    font-size: 13px; line-height: 1.6; color: var(--text); margin-bottom: 12px;
+  }
+  .topic-line b { color: var(--brand); }
+
+  .todo { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px dashed var(--border); }
+  .todo:last-child { border-bottom: none; }
+  .todo-cb {
+    width: 20px; height: 20px; border-radius: 6px; border: 1.5px solid var(--border);
+    flex-shrink: 0; cursor: pointer; display: flex; align-items: center; justify-content: center;
+    font-size: 12px; color: transparent; transition: all 0.15s; background: transparent;
+  }
+  .todo-cb.on { background: var(--ok); border-color: var(--ok); color: white; }
+  .todo-main { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 2px; }
+  .todo-name { font-size: 13.5px; font-weight: 500; }
+  .todo-cb.on + .todo-main .todo-name { text-decoration: line-through; color: var(--text3); }
+  .todo-meta { font-size: 11px; color: var(--text3); }
+  .heat { font-size: 10px; font-weight: 700; padding: 1px 7px; border-radius: 7px; flex-shrink: 0; }
+  .heat.h3 { background: #fee2e2; color: #b91c1c; }
+  .heat.h2 { background: #fef3c7; color: #b45309; }
+  .heat.h1 { background: #dcfce7; color: #15803d; }
+  .heat.h0 { background: #f1f5f9; color: #64748b; }
+  body.dark .heat.h3 { background: rgba(239,68,68,0.18); color: #fca5a5; }
+  body.dark .heat.h2 { background: rgba(245,158,11,0.18); color: #fcd34d; }
+  body.dark .heat.h1 { background: rgba(16,185,129,0.18); color: #6ee7b7; }
+  body.dark .heat.h0 { background: rgba(100,116,139,0.2); color: #cbd5e1; }
+
+  /* pills */
+  .pills { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+  .pill {
+    font-size: 12px; font-weight: 600; padding: 5px 13px; border-radius: 16px;
+    border: 1px solid var(--border); background: transparent; color: var(--text2); cursor: pointer;
+    transition: all 0.15s; font-family: inherit;
+  }
+  .pill:hover { border-color: var(--brand); color: var(--brand); }
+  .pill.on { background: linear-gradient(135deg, #667eea, #764ba2); color: white; border-color: transparent; }
+  .pill small { font-weight: 400; opacity: 0.85; }
+  .tool-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+  .stepper { display: flex; align-items: center; gap: 6px; }
+  .stepper button {
+    width: 24px; height: 24px; border-radius: 7px; border: 1px solid var(--border);
+    background: transparent; color: var(--text2); cursor: pointer; font-size: 14px; line-height: 1;
+  }
+  .stepper button:hover { border-color: var(--brand); color: var(--brand); }
+  .stepper span { font-size: 12px; color: var(--text2); font-variant-numeric: tabular-nums; }
+  .regen-btn {
+    margin-left: auto; font-size: 12px; font-weight: 600; padding: 5px 13px; border-radius: 8px;
+    border: 1px solid var(--border); background: transparent; color: var(--text2); cursor: pointer;
+    transition: all 0.15s; font-family: inherit;
+  }
+  .regen-btn:hover { border-color: var(--brand); color: var(--brand); }
+
+  /* review items */
+  .rv-item {
+    border: 1px solid var(--border); border-left: 3px solid var(--brand);
+    border-radius: 10px; padding: 10px 12px; margin-bottom: 8px;
+  }
+  .rv-item.overdue { border-left-color: var(--danger); }
+  .rv-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .rv-src { font-size: 10px; padding: 1px 7px; border-radius: 7px; background: var(--bg); color: var(--text2); font-weight: 600; }
+  .rv-when { margin-left: auto; font-size: 10px; font-weight: 700; color: var(--text3); }
+  .rv-item.overdue .rv-when { color: var(--danger); }
+  .rv-name { font-size: 13px; font-weight: 600; margin-top: 5px; }
+  .rv-note { font-size: 11px; color: var(--warn); margin-top: 3px; line-height: 1.5; }
+  .rv-btns { display: flex; gap: 8px; margin-top: 8px; }
+  .rv-btns button {
+    font-size: 12px; font-weight: 600; padding: 5px 14px; border-radius: 8px; cursor: pointer;
+    border: 1px solid transparent; font-family: inherit; transition: all 0.15s;
+  }
+  .btn-pass { background: var(--ok); color: white; }
+  .btn-pass:hover { filter: brightness(1.1); }
+  .btn-fail { background: transparent; border-color: var(--warn) !important; color: var(--warn); }
+  .btn-fail:hover { background: rgba(245,158,11,0.12); }
+
+  /* flash cards */
+  .flash-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
+  .flash {
+    background: var(--bg); border: 1.5px solid var(--border); border-radius: 12px;
+    padding: 14px 12px; min-height: 108px; cursor: pointer; user-select: none;
+    display: flex; flex-direction: column; gap: 6px; transition: all 0.2s; text-align: center;
+    justify-content: center;
+  }
+  .flash:hover { border-color: var(--brand); transform: translateY(-2px); }
+  .flash .f-subj { font-size: 10px; color: var(--text3); font-weight: 700; }
+  .flash .f-front { font-size: 14px; font-weight: 700; line-height: 1.4; }
+  .flash .f-back { font-size: 12px; color: var(--text2); line-height: 1.5; }
+  .flash.flipped { border-color: var(--brand); background: var(--brand-soft); }
+
+  .empty {
+    font-size: 13px; color: var(--text3); text-align: center; padding: 18px;
+    border: 1px dashed var(--border); border-radius: 10px; line-height: 1.7;
+  }
+  .empty a { color: var(--brand); }
+
+  /* footer */
+  .foot { margin-top: 30px; text-align: center; font-size: 12px; color: var(--text3); line-height: 2; }
+  .foot a { color: var(--brand); text-decoration: none; font-weight: 600; }
+  .foot a:hover { text-decoration: underline; }
+
+  /* Hermes AI 汇报 */
+  .hermes-bar {
+    display: flex; align-items: center; gap: 12px; margin-top: 20px; flex-wrap: wrap;
+    background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 14px 18px;
+  }
+  .hermes-bar .hb-label { font-size: 13px; font-weight: 700; color: var(--text); flex-shrink: 0; }
+  .hermes-bar .hb-desc { font-size: 11px; color: var(--text3); flex: 1; min-width: 100px; }
+  .hermes-btn {
+    font-size: 13px; font-weight: 600; padding: 8px 18px; border-radius: 10px; cursor: pointer;
+    border: none; color: white; background: linear-gradient(135deg, #667eea, #764ba2); transition: filter 0.15s;
+    font-family: inherit; flex-shrink: 0;
+  }
+  .hermes-btn:hover { filter: brightness(1.12); }
+  .hermes-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .hermes-btn.secondary { background: transparent; border: 1px solid var(--border); color: var(--text2); }
+  .hermes-btn.secondary:hover { border-color: var(--brand); color: var(--brand); }
+  body.dark .hermes-btn.secondary { border-color: var(--border); }
+  .hermes-config-btn {
+    width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--border);
+    background: transparent; color: var(--text2); cursor: pointer; font-size: 14px; flex-shrink: 0;
+  }
+  .hermes-config-btn:hover { border-color: var(--brand); color: var(--brand); }
+
+  .hermes-modal {
+    position: fixed; inset: 0; z-index: 200; display: none;
+    background: rgba(0,0,0,0.45); backdrop-filter: blur(3px);
+    align-items: center; justify-content: center; padding: 16px;
+  }
+  .hermes-modal.show { display: flex; }
+  .hermes-modal-box {
+    background: var(--card); border: 1px solid var(--border); border-radius: 16px;
+    padding: 28px 24px; max-width: 560px; width: 100%; max-height: 85vh; overflow-y: auto;
+  }
+  .hermes-modal-box h3 { font-size: 16px; margin-bottom: 16px; }
+  .hermes-modal-box label { display: block; font-size: 12px; color: var(--text2); margin-bottom: 4px; font-weight: 600; }
+  .hermes-modal-box input {
+    width: 100%; font-size: 13px; padding: 8px 12px; border: 1px solid var(--border);
+    border-radius: 8px; outline: none; background: transparent; color: inherit; font-family: inherit;
+    margin-bottom: 14px; box-sizing: border-box;
+  }
+  .hermes-modal-box input:focus { border-color: var(--brand); }
+  .hermes-modal-box .hint { font-size: 11px; color: var(--text3); margin: -10px 0 14px; line-height: 1.5; }
+
+  /* 预设快捷按钮 */
+  .preset-row { display: flex; gap: 8px; margin-bottom: 18px; flex-wrap: wrap; }
+  .preset-btn {
+    font-size: 12px; font-weight: 600; padding: 7px 14px; border-radius: 10px; cursor: pointer;
+    border: 1.5px solid var(--border); background: transparent; color: var(--text2); font-family: inherit;
+    transition: all 0.15s; display: inline-flex; align-items: center; gap: 5px;
+  }
+  .preset-btn:hover { border-color: var(--brand); color: var(--brand); }
+  .preset-btn.on { background: linear-gradient(135deg, #667eea, #764ba2); color: white; border-color: transparent; }
+  .preset-btn small { font-weight: 400; opacity: 0.8; font-size: 10px; }
+  .preset-divider { font-size: 11px; color: var(--text3); margin: 14px 0 8px; font-weight: 600; }
+  .hermes-modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
+
+  .hermes-response {
+    position: fixed; inset: 0; z-index: 200; display: none;
+    background: rgba(0,0,0,0.45); backdrop-filter: blur(3px);
+    align-items: center; justify-content: center; padding: 16px;
+  }
+  .hermes-response.show { display: flex; }
+  .hermes-resp-box {
+    background: var(--card); border: 1px solid var(--border); border-radius: 16px;
+    max-width: 680px; width: 100%; max-height: 85vh; display: flex; flex-direction: column; overflow: hidden;
+  }
+  .hermes-resp-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 20px; border-bottom: 1px solid var(--border);
+  }
+  .hermes-resp-head h3 { font-size: 15px; }
+  .hermes-resp-body { padding: 16px 20px; overflow-y: auto; flex: 1; }
+  .hermes-stream {
+    font-size: 14px; line-height: 1.8; color: var(--text); white-space: pre-wrap; word-break: break-word;
+    min-height: 60px;
+  }
+  .hermes-stream .typing::after {
+    content: '▌'; animation: blink 0.8s steps(1) infinite; color: var(--brand);
+  }
+  @keyframes blink { 50% { opacity: 0; } }
+  .hermes-plan-preview {
+    margin-top: 16px; background: var(--brand-soft); border: 1px solid var(--border);
+    border-radius: 12px; padding: 14px 16px; display: none;
+  }
+  .hermes-plan-preview.show { display: block; }
+  .hermes-plan-preview h4 { font-size: 13px; margin-bottom: 8px; color: var(--brand); }
+  .hermes-plan-row { font-size: 13px; line-height: 1.8; color: var(--text); }
+  .hermes-plan-row b { color: var(--text); }
+  .hermes-resp-actions { padding: 12px 20px; border-top: 1px solid var(--border); display: flex; gap: 10px; }
+
+  /* 剪贴板桥接 */
+  .clip-modal {
+    position: fixed; inset: 0; z-index: 200; display: none;
+    background: rgba(0,0,0,0.45); backdrop-filter: blur(3px);
+    align-items: center; justify-content: center; padding: 16px;
+  }
+  .clip-modal.show { display: flex; }
+  .clip-box {
+    background: var(--card); border: 1px solid var(--border); border-radius: 16px;
+    max-width: 620px; width: 100%; max-height: 85vh; display: flex; flex-direction: column; overflow: hidden;
+  }
+  .clip-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 20px; border-bottom: 1px solid var(--border);
+  }
+  .clip-head h3 { font-size: 15px; }
+  .clip-body { padding: 16px 20px; overflow-y: auto; flex: 1; }
+  .clip-textarea {
+    width: 100%; min-height: 200px; font-size: 13px; line-height: 1.6; padding: 12px;
+    border: 1px solid var(--border); border-radius: 10px; resize: vertical; outline: none;
+    background: transparent; color: inherit; font-family: 'SF Mono', 'Consolas', monospace;
+    box-sizing: border-box;
+  }
+  .clip-textarea:focus { border-color: var(--brand); }
+  .clip-preview {
+    margin-top: 12px; background: var(--brand-soft); border: 1px solid var(--border);
+    border-radius: 12px; padding: 14px 16px; display: none;
+  }
+  .clip-preview.show { display: block; }
+  .clip-preview h4 { font-size: 13px; margin-bottom: 8px; color: var(--brand); }
+  .clip-actions { padding: 12px 20px; border-top: 1px solid var(--border); display: flex; gap: 10px; flex-wrap: wrap; }
+  .clip-toast {
+    position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
+    background: #10b981; color: white; padding: 10px 24px; border-radius: 10px;
+    font-size: 14px; font-weight: 600; z-index: 300; opacity: 0; transition: opacity 0.3s;
+    pointer-events: none;
+  }
+  .clip-toast.show { opacity: 1; }
+  .clip-hint { font-size: 12px; color: var(--text3); line-height: 1.7; margin-bottom: 12px; }
+  .clip-hint b { color: var(--text2); }
+  .clip-steps { font-size: 12px; color: var(--text3); line-height: 1.9; margin-bottom: 14px; }
+  .clip-steps b { color: var(--text2); }
+
+  /* onboarding */
+  .onboard {
+    max-width: 520px; margin: 80px auto; background: var(--card); border: 1px solid var(--border);
+    border-radius: 16px; padding: 40px 32px; text-align: center;
+  }
+  .onboard .big { font-size: 44px; margin-bottom: 14px; }
+  .onboard h2 { font-size: 18px; margin-bottom: 10px; }
+  .onboard p { font-size: 13px; color: var(--text2); line-height: 1.8; margin-bottom: 20px; }
+  .onboard a {
+    display: inline-block; background: linear-gradient(135deg, #667eea, #764ba2); color: white;
+    padding: 10px 28px; border-radius: 10px; text-decoration: none; font-weight: 700; font-size: 14px;
+  }
+
+  @media (max-width: 640px) {
+    .hero { padding: 18px 0 16px; }
+    .hero h1 { font-size: 18px; }
+    .hero-chip { min-width: 80px; padding: 6px 10px; }
+    .hero-chip .num { font-size: 18px; }
+    .hero-chip .lbl { font-size: 10px; }
+    .hero-stats { gap: 8px; }
+    .stage-chip { padding: 8px 10px; }
+    .sec { margin-top: 18px; }
+    .sec-title { font-size: 14px; }
+    .subj-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+    .subj-card { padding: 10px 12px; }
+    .subj-name { font-size: 12px; }
+    .subj-pct { font-size: 15px; }
+    .subj-meta { font-size: 10px; }
+    .block-head { padding: 10px 12px; gap: 8px; }
+    .block-icon { font-size: 16px; }
+    .block-tt b { font-size: 13px; }
+    .block-tt span { font-size: 10px; }
+    .blk-detail { display: none; }
+    .block-body { padding: 10px 12px; }
+    .topic-line { padding: 8px 10px; font-size: 12px; margin-bottom: 8px; }
+    .todo-name { font-size: 12.5px; }
+    .todo-meta { font-size: 10px; }
+    .heat { font-size: 9px; padding: 1px 5px; }
+    .pill { font-size: 11px; padding: 4px 10px; }
+    .flash-grid { grid-template-columns: 1fr 1fr; }
+    .flash { min-height: 90px; padding: 10px 8px; }
+    .flash .f-front { font-size: 12px; }
+    .flash .f-back { font-size: 11px; }
+    .hermes-bar { padding: 10px 12px; gap: 8px; }
+    .hermes-btn { font-size: 12px; padding: 7px 14px; }
+    .hermes-modal-box, .clip-box { border-radius: 14px; }
+    .hermes-resp-body, .clip-body { padding: 12px 14px; }
+    .hermes-stream { font-size: 13px; line-height: 1.7; }
+    .wrap { padding: 0 10px; }
+    .rv-name { font-size: 12px; }
+    .rv-btns button { font-size: 11px; padding: 4px 12px; }
+    .clip-steps { font-size: 11px; }
+    .foot { font-size: 11px; }
+  }
+</style>
+</head>
+<body>
+
+<div id="app"></div>
+
+<!-- Hermes Config Modal -->
+<div class="hermes-modal" id="hermes-cfg-modal">
+  <div class="hermes-modal-box">
+    <h3>⚙ AI 老师配置</h3>
+    <div class="preset-divider">一键选择服务商</div>
+    <div class="preset-row">
+      <button class="preset-btn" data-p="gemini-flash" onclick="window.__preset('gemini-flash')">✨ Gemini Flash <small>免费</small></button>
+      <button class="preset-btn" data-p="gemini-pro" onclick="window.__preset('gemini-pro')">✨ Gemini Pro <small>免费</small></button>
+      <button class="preset-btn" data-p="hermes" onclick="window.__preset('hermes')">🔧 Hermes <small>自建</small></button>
+      <button class="preset-btn" data-p="openai" onclick="window.__preset('openai')">🟢 OpenAI <small>付费</small></button>
+    </div>
+    <label>API 端点</label>
+    <input id="hc-endpoint" type="text" placeholder="https://generativelanguage.googleapis.com/v1beta/openai/chat/completions">
+    <div class="hint" id="hc-endpoint-hint">Gemini 的 OpenAI 兼容端点。免费申请 key: <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" style="color:var(--brand);font-weight:600">Google AI Studio</a></div>
+    <label>API Key</label>
+    <input id="hc-key" type="password" placeholder="粘贴你的 API Key">
+    <div class="hint" id="hc-key-hint">Gemini key 在 AI Studio 首页点「Get API Key」秒出，免费。Hermes 如果没设认证则留空。</div>
+    <label>模型名称</label>
+    <input id="hc-model" type="text" placeholder="gemini-2.5-flash">
+    <div class="hint" id="hc-model-hint">Gemini: gemini-2.5-flash（免费500次/天）或 gemini-2.5-pro（免费100次/天）</div>
+    <div class="hermes-modal-actions">
+      <button class="hermes-btn secondary" onclick="window.__hermesCfgClose()">取消</button>
+      <button class="hermes-btn" onclick="window.__hermesCfgSave()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- Clipboard Export Modal -->
+<div class="clip-modal" id="clip-export-modal">
+  <div class="clip-box">
+    <div class="clip-head">
+      <h3>📋 导出今日汇报</h3>
+      <button class="hermes-config-btn" onclick="window.__clipExportClose()">✕</button>
+    </div>
+    <div class="clip-body">
+      <div class="clip-steps">复制 → 粘贴到 GEM → 拿到 JSON → 回来导入</div>
+      <textarea class="clip-textarea" id="clip-export-text" readonly></textarea>
+    </div>
+    <div class="clip-actions">
+      <button class="hermes-btn" onclick="window.__clipCopy()">复制全部</button>
+      <button class="hermes-btn secondary" onclick="window.__clipCopyGEMPrompt()">复制 GEM 提示词</button>
+      <button class="hermes-btn secondary" onclick="window.__clipExportClose()">关闭</button>
+    </div>
+  </div>
+</div>
+
+<!-- Clipboard Import Modal -->
+<div class="clip-modal" id="clip-import-modal">
+  <div class="clip-box">
+    <div class="clip-head">
+      <h3>📥 导入明日计划</h3>
+      <button class="hermes-config-btn" onclick="window.__clipImportClose()">✕</button>
+    </div>
+    <div class="clip-body">
+      <div class="clip-hint">粘贴 GEM 输出的完整回复，自动提取 JSON。</div>
+      <textarea class="clip-textarea" id="clip-import-text" placeholder='粘贴 GEM 输出的 JSON，例如:&#10;&#10;{&#10;  "focusSheet": "Sheet2_计算机组成原理",&#10;  "newCount": 5,&#10;  "mathNote": "明天重点练换元法",&#10;  "reviewNote": "复盘 Cache 映射",&#10;  "generalNote": "英语记得背作文模板",&#10;  "suggestedTopics": ["Cache映射方式","指令流水线"]&#10;}'></textarea>
+      <div class="clip-preview" id="clip-import-preview"></div>
+    </div>
+    <div class="clip-actions">
+      <button class="hermes-btn" onclick="window.__clipParse()">解析并导入</button>
+      <button class="hermes-btn secondary" onclick="window.__clipImportClose()">取消</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="clip-toast" id="clip-toast"></div>
+<div class="hermes-response" id="hermes-resp-modal">
+  <div class="hermes-resp-box">
+    <div class="hermes-resp-head">
+      <h3 id="hermes-resp-title">🤖 AI 复盘</h3>
+      <button class="hermes-config-btn" onclick="window.__hermesRespClose()">✕</button>
+    </div>
+    <div class="hermes-resp-body">
+      <div class="hermes-stream" id="hermes-stream"></div>
+      <div class="hermes-plan-preview" id="hermes-plan-preview"></div>
+    </div>
+    <div class="hermes-resp-actions" id="hermes-resp-actions" style="display:none">
+      <button class="hermes-btn secondary" onclick="window.__hermesRespClose()">关闭</button>
+      <button class="hermes-btn" id="hermes-import-btn" onclick="window.__hermesImport()" style="display:none">导入明日计划</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  // ===== 共享数据键（与《考研408考点学习管理表》同源共享）=====
+  var DATA_KEY = 'kaoyan_408_study_data_v1';
+  var SCHEDULE_KEY = 'kaoyan_schedule_v1';
+  var THEME_KEY = 'kaoyan_408_theme';
+  var ACTIVITY_KEY = 'kaoyan_408_activity_log';
+  var PLAN_KEY = 'kaoyan_daily_plan_v1';
+
+  var SPRINT_START = '2026-09-09';
+  var EXAM_DATE = new Date('2026-12-19T08:30:00+08:00');
+  var TOTAL_DAYS = daysBetween(SPRINT_START, '2026-12-19') + 1;
+  var REVIEW_INTERVALS = [1, 2, 4, 7, 15, 30];
+  var HEAT_WEIGHT = { '🔥 高频': 3, '🟡 中频': 2, '🟢 低频': 1, '⚪ 冷门': 0 };
+
+  var SHEET_DISPLAY = {
+    'Sheet1_数据结构': '数据结构',
+    'Sheet2_计算机组成原理': '组成原理',
+    'Sheet3_操作系统': '操作系统',
+    'Sheet4_计算机网络': '计算机网络'
+  };
+
+  var STAGES = [
+    { id: 's1', name: '极速清尾', icon: '🚀', range: ['2026-09-09', '2026-09-30'], order: ['Sheet2_计算机组成原理', 'Sheet3_操作系统', 'Sheet4_计算机网络'] },
+    { id: 's2', name: '真题拉练', icon: '💪', range: ['2026-10-01', '2026-10-31'], order: ['Sheet1_数据结构', 'Sheet2_计算机组成原理', 'Sheet3_操作系统', 'Sheet4_计算机网络'] },
+    { id: 's3', name: '弱点爆破', icon: '🎯', range: ['2026-11-01', '2026-11-30'], order: ['Sheet1_数据结构', 'Sheet2_计算机组成原理', 'Sheet3_操作系统', 'Sheet4_计算机网络'] },
+    { id: 's4', name: '终极保底', icon: '🛡️', range: ['2026-12-01', '2026-12-18'], order: ['Sheet1_数据结构', 'Sheet2_计算机组成原理', 'Sheet3_操作系统', 'Sheet4_计算机网络'] }
+  ];
+
+  // ===== Hermes Agent 配置 =====
+  var HERMES_KEY = 'kaoyan_hermes_config';
+  var hermesConfig = readJson(HERMES_KEY, { endpoint: '', key: '', model: '' });
+  var hermesHistory = []; // 对话历史
+
+  function saveHermesConfig() { localStorage.setItem(HERMES_KEY, JSON.stringify(hermesConfig)); }
+
+  function buildProgressReport() {
+    var stage = getCurrentStage();
+    var slots = getSlots();
+    var slotDone = slots.c.slots.filter(Boolean).length;
+    var slotDetail = TIME_SLOTS.map(function (sl, i) {
+      return sl.title + (slots.c.slots[i] ? ' ✓' : ' ✗');
+    }).join('\n  ');
+
+    var subjLines = Object.keys(SHEET_DISPLAY).map(function (sheet) {
+      var st = sheetStats(sheet);
+      var pct = st.total ? Math.round(st.mastered / st.total * 100) : 0;
+      return '  ' + SHEET_DISPLAY[sheet] + ': 已掌握 ' + st.mastered + '/' + st.total + ' (' + pct + '%) · 学习中 ' + st.learning + ' · 未开始 ' + st.notStarted;
+    }).join('\n');
+
+    var todayDone = Object.keys(plan.done || {}).map(function (k) {
+      var parts = k.split('|');
+      return SHEET_DISPLAY[parts[0]] + ' · ' + parts[1];
+    });
+
+    var reviews = getReviewList();
+    var dueReviews = reviews.filter(function (e) { return !e.done && e.dueDays !== null && e.dueDays >= 0; });
+    var overdueReviews = reviews.filter(function (e) { return !e.done && e.dueDays !== null && e.dueDays > 0; });
+    var graduated = reviews.filter(function (e) { return e.done; }).length;
+    var inProgress = reviews.filter(function (e) { return !e.done; }).length;
+
+    var mTopic = mathTopic(stage, dayIndex);
+    var tomorrow = addDays(today, 1);
+    var tomorrowDay = dayIndex + 1;
+    var tomorrowTopic = mathTopic(stage, tomorrowDay);
+
+    var report = '## 今日学习汇报\n';
+    report += '**日期**: ' + today + ' (Day ' + dayIndex + '/' + TOTAL_DAYS + ')\n';
+    report += '**距考研**: ' + Math.ceil((EXAM_DATE - new Date()) / 86400000) + ' 天\n';
+    report += '**当前阶段**: ' + stage.icon + ' ' + stage.name + '\n';
+    report += '**今日数学任务**: ' + mTopic + '\n';
+    report += '\n### 时段完成情况 (' + slotDone + '/' + TIME_SLOTS.length + ')\n  ' + slotDetail + '\n';
+    report += '\n### 408 各科进度\n' + subjLines + '\n';
+    report += '\n### 今日新学考点\n  ' + (todayDone.length ? todayDone.join('\n  ') : '无') + '\n';
+    report += '\n### 翻盘复盘队列\n  到期: ' + dueReviews.length + ' 项 · 超期: ' + overdueReviews.length + ' 项\n  在途: ' + inProgress + ' 项 · 已固化: ' + graduated + ' 项\n';
+    if (dueReviews.length) {
+      report += '  到期内容: ' + dueReviews.map(function (e) { return (e.sheet ? SHEET_DISPLAY[e.sheet] : '自定义') + '/' + e.name + (e.dueDays > 0 ? '(超期' + e.dueDays + '天)' : ''); }).join(', ') + '\n';
+    }
+
+    // ===== 盲区清单：每科未掌握的具体考点 =====
+    report += '\n### 各科未掌握考点明细\n';
+    Object.keys(SHEET_DISPLAY).forEach(function (sheet) {
+      var items = (appData[sheet] || []).filter(function (it) {
+        var m = it['掌握程度'] || '未开始';
+        return m !== '已掌握';
+      });
+      if (!items.length) return;
+      report += '\n#### ' + SHEET_DISPLAY[sheet] + ' (' + items.length + ' 个待攻克)\n';
+      items.slice(0, 25).forEach(function (it) {
+        var heat = it['热度等级'] || '⚪ 冷门';
+        var m = it['掌握程度'] || '未开始';
+        var stTag = m === '学习中' ? '[学中] ' : '[未学] ';
+        report += '  ' + stTag + it['考点'] + ' (' + it['考纲章节'] + ', ' + heat;
+        if (it['09—25考频']) report += ', 考频' + it['09—25考频'];
+        if (it['备注']) report += ', 备注: ' + it['备注'];
+        report += ')\n';
+      });
+      if (items.length > 25) report += '  ... 还有 ' + (items.length - 25) + ' 个\n';
+    });
+
+    // ===== 近期活动日志（最近 15 条）=====
+    var log = readJson(ACTIVITY_KEY, []);
+    if (log.length) {
+      report += '\n### 近期学习动态 (最近 ' + Math.min(15, log.length) + ' 条)\n';
+      log.slice(0, 15).forEach(function (e) {
+        var t = new Date(e.timestamp);
+        var ts = (t.getMonth() + 1) + '/' + t.getDate() + ' ' + pad(t.getHours()) + ':' + pad(t.getMinutes());
+        var typeLabel = { learning: '▶ 开始学', mastered: '✓ 已掌握', review: '🔁 复盘' }[e.type] || e.type;
+        report += '  ' + ts + ' ' + typeLabel + ' ' + (e.sheet || '') + (e.chapter ? ' · ' + e.chapter : '') + '\n';
+      });
+    }
+
+    report += '\n### 明日预设\n  日期: ' + tomorrow + ' (Day ' + tomorrowDay + ')\n  数学任务: ' + tomorrowTopic + '\n  当前主攻: ' + (plan.focusSheet ? SHEET_DISPLAY[plan.focusSheet] : '自动') + '\n  每日新知量: ' + plan.newCount + ' 个\n';
+
+    // ===== 今日卡壳点 =====
+    var stuck = [];
+    try { stuck = JSON.parse(localStorage.getItem('kaoyan_408_stuck_points')) || []; } catch(e) {}
+    var todayStuck = stuck.filter(function(s) { return s.date === today; });
+    if (todayStuck.length) {
+      report += '\n### ⚡ 今日卡壳点 (' + todayStuck.length + ' 个)\n';
+      todayStuck.forEach(function(s) {
+        var subj = SHEET_DISPLAY[s.sheet] || s.sheet || '未知';
+        report += '  [' + subj + '] ' + s.point + ' (' + (s.chapter || '') + ')\n    问题: ' + s.note + '\n';
+      });
+      report += '\n  ⚠ 请优先分析这些卡壳点，给出突破建议';
+    } else {
+      report += '\n### 今日卡壳点\n  无';
+    }
+
+    report += '\n### 可用资料\n  复习资料库: /review/ 目录下有考试大纲、考点考频表等文件\n  请基于上述盲区清单和卡壳点，优先安排高频考点';
+
+    return report;
+  }
+
+  function buildSystemPrompt() {
+    return '你是一位资深考研辅导老师，专带 408 计算机 + 数学二冲刺。你的学生正在执行 100 天极限冲刺（9月9日-12月18日），目标 330 分。\n'
+      + '\n你的角色：'
+      + '\n- 像带了一届又一届上岸学生的班主任，既严厉又了解学生'
+      + '\n- 你能看到学生每次发来的：每日完成情况、各科精确盲区清单（带考频热度）、翻盘队列状态、近期学习动态、今日卡壳点'
+      + '\n- ⚡ 卡壳点是学生当天学习时记录的「哪里搞不懂」，请优先分析并给出突破建议'
+      + '\n- 如果你在知识库中存有学生的复习资料（讲义、笔记、真题），请结合资料内容给出具体到知识点的指导，而不是泛泛而谈'
+      + '\n- 你的建议要具体到「明天学哪个知识点的什么内容」，而不是「多看看某章」'
+      + '\n'
+      + '\n学生成绩基线：'
+      + '\n- 数学二 100 分目标：一元微分刚过完，积分与线代未开始'
+      + '\n- 408 专业课 100 分目标：数据结构基础过完（未做大题），计组学完三章（剩四章），OS 与计网未开始'
+      + '\n- 英语二 70 分目标：大纲词汇背诵中，刷了两套真题'
+      + '\n- 政治 60 分目标：零基础，10 月启动'
+      + '\n'
+      + '\n当你需要更新明日计划时，在回复末尾附加 JSON 代码块：'
+      + '\n```json'
+      + '\n{'
+      + '\n  "focusSheet": "Sheet2_计算机组成原理",'
+      + '\n  "newCount": 5,'
+      + '\n  "mathNote": "明天数学的具体任务指导",'
+      + '\n  "reviewNote": "明天复盘的具体重点",'
+      + '\n  "generalNote": "其他建议",'
+      + '\n  "suggestedTopics": ["考点A","考点B"]'
+      + '\n}'
+      + '\n```'
+      + '\n字段说明：'
+      + '\n- focusSheet: 明天主攻科目 (Sheet1_数据结构 / Sheet2_计算机组成原理 / Sheet3_操作系统 / Sheet4_计算机网络)'
+      + '\n- newCount: 明天新学考点数量 (3-9)'
+      + '\n- mathNote: 数学任务指导（具体到知识点，不要超过30字）'
+      + '\n- reviewNote: 复盘重点（具体到哪些考点要口述）'
+      + '\n- generalNote: 其他建议（如英语、政治、作息调整）'
+      + '\n- suggestedTopics: 你建议明天重点攻克的具体考点名称（从盲区清单中选 3-5 个高频的）'
+      + '\n'
+      + '\n如果学生没有要求更新计划，就只做复盘和答疑，不要加 JSON 块。'
+      + '\n回复用中文，风格像一个既严厉又关心的班主任。';
+  }
+
+  function hermesFetch(messages, onChunk, onDone, onErr) {
+    var cfg = hermesConfig;
+    var body = {
+      messages: [{ role: 'system', content: buildSystemPrompt() }].concat(messages),
+      stream: true,
+      temperature: 0.7,
+    };
+    if (cfg.model) body.model = cfg.model;
+
+    var headers = { 'Content-Type': 'application/json' };
+    if (cfg.key) headers['Authorization'] = 'Bearer ' + cfg.key;
+
+    fetch(cfg.endpoint, {
+      method: 'POST',
+      headers: headers,
+      body: JSON.stringify(body),
+    }).then(function (resp) {
+      if (!resp.ok) throw new Error('HTTP ' + resp.status + ' ' + resp.statusText);
+      var reader = resp.body.getReader();
+      var decoder = new TextDecoder();
+      var buffer = '';
+      var fullText = '';
+
+      function pump() {
+        return reader.read().then(function (result) {
+          if (result.done) { onDone(fullText); return; }
+          buffer += decoder.decode(result.value, { stream: true });
+          var lines = buffer.split('\n');
+          buffer = lines.pop();
+          for (var i = 0; i < lines.length; i++) {
+            var line = lines[i].trim();
+            if (!line || !line.startsWith('data:')) continue;
+            var data = line.slice(5).trim();
+            if (data === '[DONE]') { onDone(fullText); return; }
+            try {
+              var json = JSON.parse(data);
+              var delta = json.choices && json.choices[0] && json.choices[0].delta && json.choices[0].delta.content;
+              if (delta) { fullText += delta; onChunk(fullText); }
+            } catch (e) { /* skip non-JSON */ }
+          }
+          return pump();
+        });
+      }
+      return pump();
+    }).catch(onErr);
+  }
+
+  function parsePlanFromResponse(text) {
+    var m = text.match(/```json\s*([\s\S]*?)```/);
+    if (!m) {
+      var m2 = text.match(/\{[^{}]*"focusSheet"[\s\S]*?\}/);
+      if (m2) m = m2;
+    }
+    if (!m) return null;
+    try { return JSON.parse(m[1].trim()); }
+    catch (e) {
+      try { return JSON.parse(m[0].trim()); }
+      catch (e2) { return null; }
+    }
+  }
+
+  var pendingPlan = null;
+
+  function showHermesResponse(title, showActions) {
+    document.getElementById('hermes-resp-title').textContent = title;
+    document.getElementById('hermes-resp-modal').classList.add('show');
+    document.getElementById('hermes-resp-actions').style.display = showActions ? 'flex' : 'none';
+    document.getElementById('hermes-plan-preview').classList.remove('show');
+    document.getElementById('hermes-import-btn').style.display = 'none';
+  }
+
+  function setStreamText(text, typing) {
+    var el = document.getElementById('hermes-stream');
+    el.innerHTML = escapeHtml(text) + (typing ? '<span class="typing"></span>' : '');
+    el.scrollTop = el.scrollHeight;
+  }
+
+  // 第一阶段数学 21 天速通课表（Day N = 9.9 为 1）
+  var MATH_SYLLABUS = [
+    { from: 1, to: 2, topic: '不定积分：基本积分表 + 凑微分' },
+    { from: 3, to: 4, topic: '不定积分：换元法 + 分部积分' },
+    { from: 5, to: 5, topic: '有理函数与三角有理式积分' },
+    { from: 6, to: 7, topic: '定积分：定义 / 性质 / 变限积分求导' },
+    { from: 8, to: 9, topic: '定积分计算综合（N-L 公式）' },
+    { from: 10, to: 10, topic: '定积分应用：面积 / 旋转体体积' },
+    { from: 11, to: 12, topic: '二重积分：直角坐标计算' },
+    { from: 13, to: 13, topic: '二重积分：极坐标 + 交换积分次序' },
+    { from: 14, to: 14, topic: '反常积分 + 积分学收尾自测' },
+    { from: 15, to: 16, topic: '线代：行列式（性质 / 展开 / 化三角）' },
+    { from: 17, to: 18, topic: '线代：矩阵运算 / 逆 / 秩' },
+    { from: 19, to: 19, topic: '线代：向量组线性相关 + 方程组解的结构' },
+    { from: 20, to: 21, topic: '线代：特征值 / 特征向量 / 对角化' },
+    { from: 22, to: 999, topic: '线代：二次型 + 积分学二轮查漏' }
+  ];
+
+  var TIME_SLOTS = [
+    { start: 480, end: 750, icon: '📐', title: '数学大核', detail: '1h 新知突击 + 2.5h 暴力计算 + 1h 错题复盘' },
+    { start: 750, end: 840, icon: '🍰', title: '午休 · 英语', detail: '30min 午休 + 1 篇真题阅读精刷' },
+    { start: 840, end: 1110, icon: '💻', title: '408 大核', detail: '极速推基础 + 单数选择题，不碰大题' },
+    { start: 1110, end: 1230, icon: '🍚', title: '晚饭 · 缓冲', detail: '物理缓冲期' },
+    { start: 1230, end: 1380, icon: '🧠', title: 'AI 费曼复盘', detail: '口述数学 / 408 错题核心逻辑' },
+    { start: 1380, end: 1440, icon: '⚡', title: '快闪抗遗忘', detail: '随机抽查前序章节基础概念' }
+  ];
+
+  // ===== 工具 =====
+  function pad(n) { return String(n).padStart(2, '0'); }
+  function getTodayStr() {
+    var t = new Date();
+    return t.getFullYear() + '-' + pad(t.getMonth() + 1) + '-' + pad(t.getDate());
+  }
+  function daysBetween(a, b) {
+    return Math.round((new Date(b + 'T00:00:00') - new Date(a + 'T00:00:00')) / 86400000);
+  }
+  function addDays(dateStr, n) {
+    var dt = new Date(dateStr + 'T00:00:00');
+    dt.setDate(dt.getDate() + n);
+    return dt.getFullYear() + '-' + pad(dt.getMonth() + 1) + '-' + pad(dt.getDate());
+  }
+  function escapeHtml(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (ch) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch];
+    });
+  }
+  function attrJsStr(s) {
+    return String(s == null ? '' : s).replace(/\\/g, '\\\\').replace(/'/g, "\\'")
+      .replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+  function readJson(key, fallback) {
+    try { return JSON.parse(localStorage.getItem(key)) || fallback; } catch (e) { return fallback; }
+  }
+  function fmtClock(min) { return Math.floor(min / 60) + ':' + pad(min % 60); }
+
+  // ===== 数据装载 =====
+  var appData = readJson(DATA_KEY, null);
+  var today = getTodayStr();
+  var dayIndex = daysBetween(SPRINT_START, today) + 1;
+
+  function getCurrentStage() {
+    for (var i = 0; i < STAGES.length; i++) {
+      if (today >= STAGES[i].range[0] && today <= STAGES[i].range[1]) return STAGES[i];
+    }
+    return today < STAGES[0].range[0] ? STAGES[0] : STAGES[STAGES.length - 1];
+  }
+
+  function loadPlan() {
+    var p = readJson(PLAN_KEY, {});
+    var isNewDay = p.date !== today;
+    if (isNewDay) p = { date: today, focusSheet: p.focusSheet || null, newCount: p.newCount || 6, done: {}, english: {}, math: {}, politics: {}, skipped: {}, flashOffset: 0, flashSeen: {} };
+    if (!p.done) p.done = {};
+    if (!p.english) p.english = {};
+    if (!p.math) p.math = {};
+    if (!p.politics) p.politics = {};
+    if (!p.skipped) p.skipped = {};
+    if (!p.flashSeen) p.flashSeen = {};
+    if (typeof p.newCount !== 'number') p.newCount = 6;
+    // 新的一天：检查 Hermes 昨晚导入的明日计划
+    if (isNewDay) {
+      var sd = readJson(SCHEDULE_KEY, {});
+      var tp = sd.tomorrowPlans && sd.tomorrowPlans[today];
+      if (tp) {
+        if (tp.focusSheet && appData && appData[tp.focusSheet]) p.focusSheet = tp.focusSheet;
+        if (tp.newCount && tp.newCount >= 3 && tp.newCount <= 9) p.newCount = tp.newCount;
+        p.hermesNote = tp;
+        // Hermes 推荐的考点优先展示：跳过同科目其他未开始考点
+        if (tp.suggestedTopics && tp.suggestedTopics.length && p.focusSheet && appData && appData[p.focusSheet]) {
+          var suggested = {};
+          tp.suggestedTopics.forEach(function (n) { suggested[n] = true; });
+          if (!p.skipped) p.skipped = {};
+          (appData[p.focusSheet] || []).forEach(function (it) {
+            var m = it['掌握程度'] || '未开始';
+            if (m === '未开始' && !suggested[it['考点']]) {
+              p.skipped[goalKey(p.focusSheet, it['考点'])] = 1;
+            }
+          });
+        }
+        delete sd.tomorrowPlans[today];
+        localStorage.setItem(SCHEDULE_KEY, JSON.stringify(sd));
+      }
+    }
+    return p;
+  }
+  var plan = loadPlan();
+  function savePlan() { localStorage.setItem(PLAN_KEY, JSON.stringify(plan)); }
+
+  function logActivity(type, point, chapter, sheet) {
+    var log = readJson(ACTIVITY_KEY, []);
+    log.unshift({ type: type, point: point, chapter: chapter, sheet: SHEET_DISPLAY[sheet] || sheet, timestamp: Date.now() });
+    if (log.length > 500) log = log.slice(0, 500);
+    localStorage.setItem(ACTIVITY_KEY, JSON.stringify(log));
+  }
+
+  // ===== 复盘队列镜像（与表格逻辑一致）=====
+  function goalKey(sheet, name) { return sheet + '|' + name; }
+  function getReviewList() {
+    var d = readJson(SCHEDULE_KEY, {});
+    var map = d.reviews || {};
+    var out = [];
+    for (var k in map) {
+      var e = map[k];
+      out.push({ key: k, sheet: e.sheet || '', name: e.name || '', note: e.note || '', learnedAt: e.learnedAt || today, stage: e.stage || 0, nextDate: e.nextDate, done: !!e.done, dueDays: (!e.done && e.nextDate) ? daysBetween(e.nextDate, today) : null });
+    }
+    return out;
+  }
+  function saveReviews(mutate) {
+    var d = readJson(SCHEDULE_KEY, {});
+    if (!d.reviews) d.reviews = {};
+    mutate(d.reviews, d);
+    localStorage.setItem(SCHEDULE_KEY, JSON.stringify(d));
+    return d;
+  }
+  function enqueueReview(sheet, item) {
+    if (!item || !item['考点']) return;
+    saveReviews(function (map) {
+      var key = goalKey(sheet, item['考点']);
+      if (map[key] && !map[key].done) return;
+      map[key] = { sheet: sheet, name: item['考点'], note: item['备注'] || '', learnedAt: today, stage: 0, nextDate: addDays(today, REVIEW_INTERVALS[0]), done: false };
+    });
+  }
+  function dequeueReview(sheet, name) {
+    saveReviews(function (map) { delete map[goalKey(sheet, name)]; });
+  }
+  function syncAppData() { localStorage.setItem(DATA_KEY, JSON.stringify(appData)); }
+  function touchTableReview(e) {
+    if (!e.sheet || !appData[e.sheet]) return;
+    var item = null;
+    for (var i = 0; i < appData[e.sheet].length; i++) {
+      if (appData[e.sheet][i]['考点'] === e.name) { item = appData[e.sheet][i]; break; }
+    }
+    if (!item) return;
+    item['回顾次数'] = (parseInt(item['回顾次数'], 10) || 0) + 1;
+    logActivity('review', e.name, item['考纲章节'], e.sheet);
+    syncAppData();
+  }
+  function actReview(key, pass) {
+    saveReviews(function (map) {
+      var e = map[key];
+      if (!e || e.done) return;
+      if (pass) {
+        e.stage = (e.stage || 0) + 1;
+        if (e.stage >= REVIEW_INTERVALS.length) {
+          e.done = true; e.nextDate = null;
+          if (e.sheet && appData[e.sheet]) {
+            for (var i = 0; i < appData[e.sheet].length; i++) {
+              var it = appData[e.sheet][i];
+              if (it['考点'] === e.name) {
+                if ((it['掌握程度'] || '未开始') !== '已掌握') {
+                  it['掌握程度'] = '已掌握';
+                  logActivity('mastered', e.name, it['考纲章节'], e.sheet);
+                }
+                break;
+              }
+            }
+            syncAppData();
+          }
+        } else {
+          e.nextDate = addDays(today, REVIEW_INTERVALS[e.stage]);
+          touchTableReview(e);
+        }
+      } else {
+        e.stage = 0;
+        e.nextDate = addDays(today, REVIEW_INTERVALS[0]);
+        touchTableReview(e);
+      }
+    });
+    render();
+  }
+
+  // ===== 408 新知推荐 =====
+  function sheetStats(sheet) {
+    var items = (appData && appData[sheet]) || [];
+    var mastered = 0, learning = 0, notStarted = 0;
+    items.forEach(function (it) {
+      var m = it['掌握程度'] || '未开始';
+      if (m === '已掌握') mastered++;
+      else if (m === '学习中') learning++;
+      else notStarted++;
+    });
+    return { total: items.length, mastered: mastered, learning: learning, notStarted: notStarted };
+  }
+  function autoFocusSheet(stage) {
+    var order = stage.order;
+    for (var i = 0; i < order.length; i++) {
+      if (sheetStats(order[i]).notStarted > 0) return order[i];
+    }
+    for (var j = 0; j < order.length; j++) {
+      if (sheetStats(order[j]).total - sheetStats(order[j]).mastered > 0) return order[j];
+    }
+    return order[0];
+  }
+  function getNewPoints(sheet, n) {
+    var skipped = plan.skipped || {};
+    var items = (appData[sheet] || []).filter(function (it) {
+      return (it['掌握程度'] || '未开始') === '未开始' && !skipped[goalKey(sheet, it['考点'])];
+    });
+    return items.slice(0, n);
+  }
+  function currentFocus() {
+    var stage = getCurrentStage();
+    return plan.focusSheet && appData[plan.focusSheet] ? plan.focusSheet : autoFocusSheet(stage);
+  }
+  function togglePointDone(sheet, name) {
+    var item = null;
+    (appData[sheet] || []).forEach(function (it) { if (it['考点'] === name) item = it; });
+    if (!item) return;
+    var key = goalKey(sheet, name);
+    if (plan.done[key]) {
+      // 已被翻盘队列毕业为「已掌握」的，只撤视觉勾选，不回退数据
+      if (item['掌握程度'] === '学习中') {
+        item['掌握程度'] = '未开始';
+        dequeueReview(sheet, name);
+      }
+      delete plan.done[key];
+    } else {
+      item['掌握程度'] = '学习中';
+      logActivity('learning', name, item['考纲章节'], sheet);
+      enqueueReview(sheet, item);
+      plan.done[key] = 1;
+    }
+    syncAppData();
+    savePlan();
+    render();
+  }
+
+  // ===== 数学科目规划 =====
+  function mathTopic(stage, dayN) {
+    if (stage.id === 's1') {
+      for (var i = 0; i < MATH_SYLLABUS.length; i++) {
+        if (dayN >= MATH_SYLLABUS[i].from && dayN <= MATH_SYLLABUS[i].to) return MATH_SYLLABUS[i].topic;
+      }
+      return MATH_SYLLABUS[MATH_SYLLABUS.length - 1].topic;
+    }
+    if (stage.id === 's2') {
+      return dayN % 2 === 1 ? '真题模考日：严格限时 3h 模拟一套数学真题' : '真题复盘日：昨天的模考卷 AI 深度复盘 3h';
+    }
+    if (stage.id === 's3') return '弱点特训：选填题 + 二重积分等必拿分模块集中爆破';
+    return '保底维持：错题本反复扫视 + 半套选填保持题感（不做新题）';
+  }
+
+  // ===== 快闪抽查（按日期播种，当日稳定）=====
+  function seededRandom(str) {
+    var h = 2166136261;
+    for (var i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
+    return function () { h ^= h << 13; h ^= h >>> 17; h ^= h << 5; return ((h >>> 0) % 10000) / 10000; };
+  }
+  function getFlashCards() {
+    var pool = [];
+    Object.keys(SHEET_DISPLAY).forEach(function (sheet) {
+      (appData[sheet] || []).forEach(function (it) {
+        var m = it['掌握程度'] || '未开始';
+        if (m === '已掌握' || m === '学习中') pool.push({ sheet: sheet, item: it });
+      });
+    });
+    if (!pool.length) return [];
+    var rand = seededRandom(today + '#' + plan.flashOffset);
+    var arr = pool.slice();
+    for (var i = arr.length - 1; i > 0; i--) {
+      var j = Math.floor(rand() * (i + 1));
+      var t = arr[i]; arr[i] = arr[j]; arr[j] = t;
+    }
+    return arr.slice(0, 5);
+  }
+
+  // ===== 打卡（与表格看板共享）=====
+  function getSlots() {
+    var d = readJson(SCHEDULE_KEY, {});
+    if (!d.checkins) d.checkins = {};
+    if (!d.checkins[today]) d.checkins[today] = { slots: [], goals: {}, offset: 0 };
+    var c = d.checkins[today];
+    if (!Array.isArray(c.slots) || c.slots.length !== TIME_SLOTS.length) c.slots = TIME_SLOTS.map(function () { return 0; });
+    return { d: d, c: c };
+  }
+  function toggleSlot(i) {
+    var s = getSlots();
+    s.c.slots[i] = s.c.slots[i] ? 0 : 1;
+    localStorage.setItem(SCHEDULE_KEY, JSON.stringify(s.d));
+    render();
+  }
+
+  // ===== 渲染 =====
+  var app = document.getElementById('app');
+
+  function render() {
+    if (!appData || !Object.keys(appData).length) { renderOnboard(); return; }
+    var stage = getCurrentStage();
+    var now = new Date();
+    var nowMin = now.getHours() * 60 + now.getMinutes();
+    var examLeft = Math.ceil((EXAM_DATE - now) / 86400000);
+    var week = ['日', '一', '二', '三', '四', '五', '六'][now.getDay()];
+    var dateTxt = (now.getMonth() + 1) + '月' + now.getDate() + '日 星期' + week;
+    var stageLen = daysBetween(stage.range[0], stage.range[1]) + 1;
+    var stagePct = Math.min(100, Math.max(0, Math.round((daysBetween(stage.range[0], today) + 1) / stageLen * 100)));
+    var isDark = document.body.classList.contains('dark');
+
+    var html = '';
+    // ===== hero =====
+    html += '<div class="hero"><div class="wrap">'
+      + '<div class="hero-row"><div><h1>📅 每日规划</h1><div class="hero-date">' + dateTxt + ' · 100 天冲刺</div></div>'
+      + '<button class="theme-btn" onclick="window.__toggleTheme()" title="切换主题">' + (isDark ? '☀️' : '🌙') + '</button></div>'
+      + '<div class="hero-stats">'
+      + '<div class="hero-chip"><div class="num">Day ' + dayIndex + '</div><div class="lbl">/ ' + TOTAL_DAYS + ' 天</div></div>'
+      + '<div class="hero-chip"><div class="num">' + examLeft + '</div><div class="lbl">天后考研</div></div>'
+      + '<div class="hero-chip"><div class="num">' + stage.icon + ' ' + stage.name + '</div><div class="lbl">当前阶段 · ' + stagePct + '%</div></div>'
+      + '</div>'
+      + '<div class="stage-chip"><div class="s-name">' + stage.icon + ' 第' + (STAGES.indexOf(stage) + 1) + '阶段 · ' + stage.name + '</div>'
+      + '<div class="s-range">' + stage.range[0].slice(5).replace('-', '.') + ' – ' + stage.range[1].slice(5).replace('-', '.') + '</div>'
+      + '<div class="stage-bar"><i style="width:' + stagePct + '%"></i></div></div>'
+      + (plan.hermesNote ? '<div class="stage-chip" style="background:rgba(16,185,129,0.15);border:1px solid rgba(16,185,129,0.3)"><div class="s-name">🤖 Hermes 昨晚建议</div>'
+        + '<div class="s-range" style="line-height:1.7">' + (plan.hermesNote.mathNote ? '📐 ' + escapeHtml(plan.hermesNote.mathNote) + '<br>' : '')
+        + (plan.hermesNote.reviewNote ? '🔁 ' + escapeHtml(plan.hermesNote.reviewNote) + '<br>' : '')
+        + (plan.hermesNote.generalNote ? '💡 ' + escapeHtml(plan.hermesNote.generalNote) : '') + '</div></div>' : '')
+      + '</div></div>';
+
+    html += '<div class="wrap">';
+
+    // ===== 进度快照 =====
+    html += '<div class="sec"><div class="sec-title">📚 当前进度 <small>来自 408 学习表实时数据</small></div><div class="subj-grid">';
+    Object.keys(SHEET_DISPLAY).forEach(function (sheet) {
+      var st = sheetStats(sheet);
+      var pct = st.total ? Math.round(st.mastered / st.total * 100) : 0;
+      html += '<div class="subj-card"><div class="subj-head"><span class="subj-name">' + SHEET_DISPLAY[sheet] + '</span><span class="subj-pct">' + pct + '%</span></div>'
+        + '<div class="subj-bar"><i style="width:' + pct + '%"></i></div>'
+        + '<div class="subj-meta">已掌握 <b>' + st.mastered + '</b> · 学习中 <b>' + st.learning + '</b> · 未开始 <b>' + st.notStarted + '</b> / ' + st.total + '</div></div>';
+    });
+    html += '</div></div>';
+
+    var s = getSlots();
+
+    // ===== 1 数学大核 =====
+    var mTopic = mathTopic(stage, dayIndex);
+    html += blockOpen(0, nowMin, s) + '<div class="block-body">'
+      + '<div class="topic-line"><b>今日数学任务：</b>' + escapeHtml(mTopic) + '</div>'
+      + todoRow('math', 'new', '1h 新知突击（网课 / 讲义对应章节）')
+      + todoRow('math', 'calc', '2.5h 暴力计算（1000 题只做奇数题）')
+      + todoRow('math', 'review', '1h 错题复盘（卡壳点记入错题本）')
+      + '</div></div>';
+
+    // ===== 2 午休英语 =====
+    html += blockOpen(1, nowMin, s) + '<div class="block-body">'
+      + todoRow('english', 'nap', '午休 30 分钟（强制离屏）')
+      + todoRow('english', 'reading', '真题阅读精刷 1 篇（长难句 + 选项陷阱拆解）')
+      + todoRow('english', 'vocab', '大纲词汇打卡（碎片时间过一遍）')
+      + '</div></div>';
+
+    // ===== 3 408 大核 =====
+    var focus = currentFocus();
+    var newPoints = getNewPoints(focus, plan.newCount);
+    html += blockOpen(2, nowMin, s) + '<div class="block-body">';
+    html += '<div class="pills">';
+    var pills = stage.order;
+    pills.forEach(function (sheet) {
+      var remain = getNewPoints(sheet, 999).length;
+      var on = sheet === focus ? ' on' : '';
+      html += '<button class="pill' + on + '" onclick="window.__setFocus(\'' + attrJsStr(sheet) + '\')">' + SHEET_DISPLAY[sheet] + ' <small>' + remain + ' 待学</small></button>';
+    });
+    html += '</div>';
+    html += '<div class="tool-row"><span style="font-size:12px;color:var(--text3)">今日新知</span>'
+      + '<div class="stepper"><button onclick="window.__adjCount(-1)">−</button><span>' + plan.newCount + ' 个</span><button onclick="window.__adjCount(1)">＋</button></div>'
+      + '<span style="font-size:11px;color:var(--text3)">（勾选即写入表格「学习中」并自动排入翻盘队列）</span>'
+      + '<button class="regen-btn" onclick="window.__regen()">↻ 换一批</button></div>';
+    if (!newPoints.length) {
+      html += '<div class="empty">🎉 ' + escapeHtml(SHEET_DISPLAY[focus]) + ' 的考点已全部进入「学习中 / 已掌握」<br>切换上方科目继续推进，或回表格标记掌握情况</div>';
+    } else {
+      newPoints.forEach(function (it) {
+        var hw = HEAT_WEIGHT[it['热度等级']] || 0;
+        var key = goalKey(focus, it['考点']);
+        var done = !!plan.done[key];
+        html += '<div class="todo">'
+          + '<button class="todo-cb' + (done ? ' on' : '') + '" onclick="window.__togglePoint(\'' + attrJsStr(focus) + '\',\'' + attrJsStr(it['考点']) + '\')">✓</button>'
+          + '<div class="todo-main"><div class="todo-name">' + escapeHtml(it['考点']) + '</div>'
+          + '<div class="todo-meta">' + escapeHtml(it['考纲章节'] || '') + ' · 考频 ' + escapeHtml(it['09—25考频'] || '—') + '</div></div>'
+          + '<span class="heat h' + hw + '">' + escapeHtml(it['热度等级'] || '⚪ 冷门') + '</span></div>';
+      });
+    }
+    html += '</div></div>';
+
+    // ===== 4 晚饭政治 =====
+    var politicsOn = today >= '2026-10-01';
+    html += blockOpen(3, nowMin, s) + '<div class="block-body">';
+    if (politicsOn) {
+      html += '<div class="topic-line"><b>政治已入局：</b>每天 1.5h 专攻选择题，绝不看主观题大部头</div>'
+        + todoRow('politics', 'course', '政治核心课 1 节')
+        + todoRow('politics', 'quiz', '1000 题选择题盲刷')
+        + todoRow('politics', 'err', '错题回顾（只看错项）');
+    } else {
+      html += '<div class="topic-line"><b>物理缓冲期</b> · 政治还剩 ' + daysBetween(today, '2026-09-30') + ' 天入局</div>';
+    }
+    html += '</div></div>';
+
+    // ===== 5 AI 费曼复盘 =====
+    var due = getReviewList().filter(function (e) { return !e.done && e.dueDays !== null && e.dueDays >= 0; })
+      .sort(function (a, b) { return b.dueDays - a.dueDays; });
+    html += blockOpen(4, nowMin, s) + '<div class="block-body">';
+    if (!due.length) {
+      html += '<div class="empty">🎉 今日无到期复盘项<br>在表格标「学习中」的考点会自动排入翻盘</div>';
+    } else {
+      due.forEach(function (e) {
+        var over = e.dueDays > 0;
+        var src = e.sheet ? SHEET_DISPLAY[e.sheet] : (e.subj || '自定义');
+        html += '<div class="rv-item' + (over ? ' overdue' : '') + '">'
+          + '<div class="rv-top"><span class="rv-src">' + escapeHtml(src) + '</span>'
+          + '<span class="rv-when">' + (over ? '⚠ 超期 ' + e.dueDays + ' 天' : '今日到期') + ' · 第 ' + (e.stage + 1) + ' 轮</span></div>'
+          + '<div class="rv-name">' + escapeHtml(e.name) + '</div>'
+          + (e.note ? '<div class="rv-note">📝 ' + escapeHtml(e.note) + '</div>' : '')
+          + '<div class="rv-btns"><button class="btn-pass" onclick="window.__actReview(\'' + attrJsStr(e.key) + '\',true)">✓ 记住了</button>'
+          + '<button class="btn-fail" onclick="window.__actReview(\'' + attrJsStr(e.key) + '\',false)">✗ 还模糊</button></div>'
+          + '</div>';
+      });
+    }
+    html += '</div></div>';
+
+    // ===== 6 快闪抗遗忘 =====
+    var cards = getFlashCards();
+    html += blockOpen(5, nowMin, s) + '<div class="block-body">';
+    if (!cards.length) {
+      html += '<div class="empty">暂无快闪卡片：表格中「学习中 / 已掌握」的考点自动进入抽查池</div>';
+    } else {
+      html += '<div class="flash-grid">';
+      cards.forEach(function (c, i) {
+        var key = 'f' + i;
+        var seen = !!plan.flashSeen[key];
+        html += '<div class="flash' + (seen ? ' flipped' : '') + '" onclick="window.__flip(\'' + key + '\')">'
+          + '<div class="f-subj">' + SHEET_DISPLAY[c.sheet] + '</div>'
+          + (seen
+            ? '<div class="f-back">' + escapeHtml(c.item['考纲章节'] || '') + (c.item['备注'] ? '<br>💡 ' + escapeHtml(c.item['备注']) : '') + '</div>'
+            : '<div class="f-front">' + escapeHtml(c.item['考点']) + '</div>')
+          + '<div class="f-subj">' + (seen ? '↑ 点击翻回' : '点击看所属章节') + '</div>'
+          + '</div>';
+      });
+      html += '</div>'
+        + '<div class="tool-row" style="margin-top:10px"><span style="font-size:11px;color:var(--text3)">先口述这个考点的核心逻辑，再翻面对照</span>'
+        + '<button class="regen-btn" onclick="window.__reflash()">↻ 换 5 个</button></div>';
+    }
+    html += '</div></div>';
+
+    // ===== AI 老师栏（剪贴板 + API 双模式）=====
+    var hc = hermesConfig;
+    var slotsDone = s.c.slots.filter(Boolean).length;
+    var hasApi = !!hc.endpoint;
+    html += '<div class="hermes-bar">'
+      + '<span class="hb-label">🤖 AI 老师</span>'
+      + (slotsDone ? '<span class="hb-desc">今日 ' + slotsDone + '/' + TIME_SLOTS.length + ' 已完成</span>' : '')
+      + '<button class="hermes-btn" onclick="window.__clipExport()">📋 导出汇报</button>'
+      + '<button class="hermes-btn secondary" onclick="window.__clipImport()">📥 导入计划</button>'
+      + '<button class="hermes-config-btn" onclick="window.__hermesCfg()" title="API 配置">⚙</button>'
+      + '</div>';
+
+    // API 直连模式（配置了端点才显示）
+    if (hasApi) {
+      html += '<div class="hermes-bar" style="margin-top:8px;padding:10px 18px">'
+        + '<span class="hb-desc">' + (hc.model || 'default') + '</span>'
+        + '<button class="hermes-btn" onclick="window.__hermesReport()">API 汇报</button>'
+        + '<button class="hermes-btn secondary" onclick="window.__hermesChat()">对话</button>'
+        + '</div>';
+    }
+
+    // ===== footer =====
+    html += '<div class="foot">'
+      + '数据与 <a href="考研408考点学习管理表.html">408 学习表</a> · <a href="review/">复习资料库</a> 同源共享 &nbsp;·&nbsp; 100 天冲刺 · 目标 330</div>';
+
+    html += '</div>';
+    app.innerHTML = html;
+  }
+
+  function blockOpen(i, nowMin, s) {
+    var slot = TIME_SLOTS[i];
+    var isNow = nowMin >= slot.start && nowMin < slot.end;
+    var checked = s.c.slots[i] ? ' on' : '';
+    return '<div class="block' + (isNow ? ' now' : '') + '"><div class="block-head">'
+      + '<span class="block-icon">' + slot.icon + '</span>'
+      + '<div class="block-tt"><b>' + slot.title + '</b><span>' + fmtClock(slot.start) + '–' + fmtClock(slot.end) + ' <i class="blk-detail">' + escapeHtml(slot.detail) + '</i></span></div>'
+      + (isNow ? '<span class="now-tag">进行中</span>' : '')
+      + '<button class="block-check' + checked + '" onclick="window.__toggleSlot(' + i + ')" title="时段打卡">✓</button>'
+      + '</div>';
+  }
+
+  function todoRow(group, key, label) {
+    var on = !!plan[group][key];
+    return '<div class="todo"><button class="todo-cb' + (on ? ' on' : '') + '" onclick="window.__toggleTodo(\'' + group + '\',\'' + key + '\')">✓</button>'
+      + '<div class="todo-main"><div class="todo-name">' + escapeHtml(label) + '</div></div></div>';
+  }
+
+  function renderOnboard() {
+    app.innerHTML = '<div class="onboard"><div class="big">📅</div><h2>还没有学习数据</h2>'
+      + '<p>每日规划与《408 学习表》共享同一份浏览器数据。<br>请先打开一次学习表（会自动初始化考点数据），再回到本页生成规划。</p>'
+      + '<a href="考研408考点学习管理表.html">打开 408 学习表</a></div>';
+  }
+
+  // ===== 交互桥 =====
+  window.__toggleTheme = function () {
+    var dark = document.body.classList.toggle('dark');
+    localStorage.setItem(THEME_KEY, dark ? 'dark' : 'light');
+    render();
+  };
+  window.__toggleSlot = toggleSlot;
+  window.__toggleTodo = function (group, key) {
+    if (plan[group][key]) delete plan[group][key]; else plan[group][key] = 1;
+    savePlan(); render();
+  };
+  window.__togglePoint = togglePointDone;
+  window.__setFocus = function (sheet) { plan.focusSheet = sheet; savePlan(); render(); };
+  window.__adjCount = function (delta) {
+    plan.newCount = Math.min(9, Math.max(3, plan.newCount + delta));
+    savePlan(); render();
+  };
+  window.__regen = function () {
+    var focus = currentFocus();
+    var fresh = getNewPoints(focus, plan.newCount);
+    var skipNames = fresh.filter(function (it) { return !plan.done[goalKey(focus, it['考点'])]; })
+      .map(function (it) { return it['考点']; });
+    plan.skipped = plan.skipped || {};
+    if (!skipNames.length) {
+      // 当前批次已全部完成或没有可跳过的：清空跳过记录从头再来
+      plan.skipped = {};
+    } else {
+      skipNames.forEach(function (n) { plan.skipped[goalKey(focus, n)] = 1; });
+    }
+    savePlan(); render();
+  };
+  window.__actReview = actReview;
+  window.__flip = function (key) {
+    if (plan.flashSeen[key]) delete plan.flashSeen[key]; else plan.flashSeen[key] = 1;
+    savePlan(); render();
+  };
+  window.__reflash = function () {
+    plan.flashOffset = (plan.flashOffset || 0) + 1;
+    plan.flashSeen = {};
+    savePlan(); render();
+  };
+
+  // ===== Hermes 交互桥 =====
+
+  // ----- 剪贴板桥接（GEM 模式）-----
+  function showToast(msg) {
+    var t = document.getElementById('clip-toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(function () { t.classList.remove('show'); }, 2200);
+  }
+  function copyToClipboard(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () { showToast('✅ 已复制到剪贴板'); });
+    } else {
+      var ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); showToast('✅ 已复制到剪贴板'); }
+      catch (e) { showToast('❌ 复制失败，请手动选中文本'); }
+      document.body.removeChild(ta);
+    }
+  }
+  function buildGEMPrompt() {
+    return '你是我的考研辅导老师，专带 408 + 数学二冲刺。我正在执行 100 天极限冲刺（9.9-12.18），目标 330 分。\n\n'
+      + '我会把每天的进度数据发给你，包括完成情况、盲区清单和卡壳点。请你：\n'
+      + '1. 复盘今天的完成情况，指出亮点和不足\n'
+      + '2. ⚡ 优先分析「卡壳点」部分，结合你知识库中的资料给出突破建议\n'
+      + '3. 结合你知识库中的资料，给出具体到知识点的指导\n'
+      + '4. 当我要求更新明日计划时，在回复末尾附加 JSON 代码块：\n'
+      + '```json\n{"focusSheet":"Sheet2_计算机组成原理","newCount":5,"mathNote":"数学重点","reviewNote":"复盘重点","generalNote":"其他建议","suggestedTopics":["考点A","考点B"]}\n```\n'
+      + 'focusSheet 可选: Sheet1_数据结构 / Sheet2_计算机组成原理 / Sheet3_操作系统 / Sheet4_计算机网络\n'
+      + 'suggestedTopics 从我发的盲区清单中选 3-5 个高频考点\n'
+      + '回复用中文，像一个既严厉又关心的班主任。';
+  }
+  window.__clipExport = function () {
+    var report = buildProgressReport();
+    var prompt = buildGEMPrompt();
+    var full = prompt + '\n\n---\n\n' + report + '\n\n请复盘今天的完成情况，并帮我更新明天的学习计划。';
+    document.getElementById('clip-export-text').value = full;
+    document.getElementById('clip-export-modal').classList.add('show');
+  };
+  window.__clipExportClose = function () {
+    document.getElementById('clip-export-modal').classList.remove('show');
+  };
+  window.__clipCopy = function () {
+    var text = document.getElementById('clip-export-text').value;
+    copyToClipboard(text);
+  };
+  window.__clipCopyGEMPrompt = function () {
+    copyToClipboard(buildGEMPrompt());
+  };
+  window.__clipImport = function () {
+    document.getElementById('clip-import-text').value = '';
+    document.getElementById('clip-import-preview').classList.remove('show');
+    document.getElementById('clip-import-modal').classList.add('show');
+  };
+  window.__clipImportClose = function () {
+    document.getElementById('clip-import-modal').classList.remove('show');
+  };
+  window.__clipParse = function () {
+    var text = document.getElementById('clip-import-text').value.trim();
+    if (!text) { showToast('❌ 请先粘贴内容'); return; }
+    var plan = parsePlanFromResponse(text);
+    if (!plan) {
+      var pv = document.getElementById('clip-import-preview');
+      pv.innerHTML = '<h4 style="color:var(--danger)">❌ 未找到有效的 JSON</h4><div class="clip-hint">请确认粘贴的是 GEM 输出的完整回复（包含 ```json 代码块），或直接粘贴 JSON 本身。</div>';
+      pv.classList.add('show');
+      return;
+    }
+    pendingPlan = plan;
+    var pv = document.getElementById('clip-import-preview');
+    var html = '<h4>📋 解析成功，明日计划预览</h4>';
+    if (plan.focusSheet) html += '<div class="hermes-plan-row">主攻科目: <b>' + escapeHtml(SHEET_DISPLAY[plan.focusSheet] || plan.focusSheet) + '</b></div>';
+    if (plan.newCount) html += '<div class="hermes-plan-row">新知量: <b>' + plan.newCount + ' 个</b></div>';
+    if (plan.mathNote) html += '<div class="hermes-plan-row">数学重点: ' + escapeHtml(plan.mathNote) + '</div>';
+    if (plan.reviewNote) html += '<div class="hermes-plan-row">复盘重点: ' + escapeHtml(plan.reviewNote) + '</div>';
+    if (plan.generalNote) html += '<div class="hermes-plan-row">其他建议: ' + escapeHtml(plan.generalNote) + '</div>';
+    if (plan.suggestedTopics && plan.suggestedTopics.length) html += '<div class="hermes-plan-row">📌 推荐攻克: <b>' + plan.suggestedTopics.map(escapeHtml).join('、') + '</b></div>';
+    html += '<div style="margin-top:10px"><button class="hermes-btn" onclick="window.__clipConfirmImport()">确认导入</button></div>';
+    pv.innerHTML = html;
+    pv.classList.add('show');
+  };
+  window.__clipConfirmImport = function () {
+    if (!pendingPlan) return;
+    var tomorrow = addDays(today, 1);
+    var d = readJson(SCHEDULE_KEY, {});
+    if (!d.tomorrowPlans) d.tomorrowPlans = {};
+    d.tomorrowPlans[tomorrow] = pendingPlan;
+    localStorage.setItem(SCHEDULE_KEY, JSON.stringify(d));
+    var tips = ['✅ 明日计划已导入: ' + tomorrow];
+    if (pendingPlan.focusSheet) tips.push('主攻: ' + (SHEET_DISPLAY[pendingPlan.focusSheet] || pendingPlan.focusSheet));
+    if (pendingPlan.suggestedTopics && pendingPlan.suggestedTopics.length) tips.push('推荐攻克: ' + pendingPlan.suggestedTopics.join('、'));
+    tips.push('明天打开规划页会自动应用。');
+    alert(tips.join('\n'));
+    window.__clipImportClose();
+  };
+
+  window.__hermesCfg = function () {
+    document.getElementById('hc-endpoint').value = hermesConfig.endpoint || '';
+    document.getElementById('hc-key').value = hermesConfig.key || '';
+    document.getElementById('hc-model').value = hermesConfig.model || '';
+    updatePresetHighlight();
+    document.getElementById('hermes-cfg-modal').classList.add('show');
+  };
+  var PRESETS = {
+    'gemini-flash': {
+      endpoint: 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions',
+      model: 'gemini-2.5-flash',
+      endpointHint: 'Gemini 的 OpenAI 兼容端点。免费申请 key: <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" style="color:var(--brand);font-weight:600">Google AI Studio</a>',
+      keyHint: 'Gemini key 在 AI Studio 首页点「Get API Key」秒出，免费额度 500 次/天。',
+      modelHint: 'gemini-2.5-flash（免费 500 次/天，速度快，日常复盘够用）'
+    },
+    'gemini-pro': {
+      endpoint: 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions',
+      model: 'gemini-2.5-pro',
+      endpointHint: 'Gemini 的 OpenAI 兼容端点。免费申请 key: <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" style="color:var(--brand);font-weight:600">Google AI Studio</a>',
+      keyHint: 'Gemini key 在 AI Studio 首页点「Get API Key」秒出，免费额度 100 次/天（更聪明但更少）。',
+      modelHint: 'gemini-2.5-pro（免费 100 次/天，推理更强，适合深度复盘）'
+    },
+    'hermes': {
+      endpoint: '',
+      model: '',
+      endpointHint: '填写你云服务器上 Hermes 的 OpenAI 兼容端点地址。需在 Hermes 配置中允许本站域名的 CORS。',
+      keyHint: '如果 Hermes 的 api_server 配置了 api_key 验证则填，否则留空。',
+      modelHint: '填 Hermes 后端使用的模型名，留空则用默认。'
+    },
+    'openai': {
+      endpoint: 'https://api.openai.com/v1/chat/completions',
+      model: 'gpt-4o-mini',
+      endpointHint: 'OpenAI 官方端点。需付费充值，key 在 platform.openai.com 申请。',
+      keyHint: '填入你的 OpenAI API Key（sk- 开头），需绑定信用卡充值。',
+      modelHint: 'gpt-4o-mini（便宜）或 gpt-4o（更强但贵约 5 倍）'
+    }
+  };
+  function updatePresetHighlight() {
+    var ep = hermesConfig.endpoint || '';
+    var match = '';
+    for (var k in PRESETS) {
+      if (PRESETS[k].endpoint && PRESETS[k].endpoint === ep) { match = k; break; }
+    }
+    var btns = document.querySelectorAll('.preset-btn');
+    for (var i = 0; i < btns.length; i++) {
+      btns[i].classList.remove('on');
+      btns[i].removeAttribute('data-preset');
+    }
+    if (match) {
+      var btn = document.querySelector('.preset-btn[data-p="' + match + '"]');
+      if (btn) { btn.classList.add('on'); btn.setAttribute('data-preset', match); }
+    }
+  }
+  window.__preset = function (name) {
+    var p = PRESETS[name];
+    if (!p) return;
+    if (p.endpoint) document.getElementById('hc-endpoint').value = p.endpoint;
+    if (p.model) document.getElementById('hc-model').value = p.model;
+    document.getElementById('hc-endpoint-hint').innerHTML = p.endpointHint;
+    document.getElementById('hc-key-hint').innerHTML = p.keyHint;
+    document.getElementById('hc-model-hint').innerHTML = p.modelHint;
+    var btns = document.querySelectorAll('.preset-btn');
+    for (var i = 0; i < btns.length; i++) {
+      btns[i].classList.remove('on');
+      btns[i].removeAttribute('data-preset');
+    }
+    var clicked = document.querySelector('.preset-btn[data-p="' + name + '"]');
+    if (clicked) { clicked.classList.add('on'); clicked.setAttribute('data-preset', name); }
+    if (name === 'gemini-flash' || name === 'gemini-pro') {
+      document.getElementById('hc-key').focus();
+    }
+  };
+  window.__hermesCfgClose = function () {
+    document.getElementById('hermes-cfg-modal').classList.remove('show');
+  };
+  window.__hermesCfgSave = function () {
+    hermesConfig.endpoint = document.getElementById('hc-endpoint').value.trim();
+    hermesConfig.key = document.getElementById('hc-key').value.trim();
+    hermesConfig.model = document.getElementById('hc-model').value.trim();
+    saveHermesConfig();
+    document.getElementById('hermes-cfg-modal').classList.remove('show');
+    render();
+  };
+  window.__hermesRespClose = function () {
+    document.getElementById('hermes-resp-modal').classList.remove('show');
+  };
+  window.__hermesReport = function () {
+    if (!hermesConfig.endpoint) return;
+    var report = buildProgressReport();
+    var userMsg = report + '\n\n请复盘今天的完成情况，指出亮点和不足。如果我要求更新明日计划，请附加JSON代码块。';
+    hermesHistory = [{ role: 'user', content: userMsg }];
+    showHermesResponse('🤖 AI 复盘 · 今日汇报', false);
+    setStreamText('', true);
+    hermesFetch(hermesHistory, function (text) {
+      setStreamText(text, true);
+    }, function (fullText) {
+      setStreamText(fullText, false);
+      var plan = parsePlanFromResponse(fullText);
+      if (plan) {
+        pendingPlan = plan;
+        var pv = document.getElementById('hermes-plan-preview');
+        var html = '<h4>📋 检测到明日计划</h4>';
+        if (plan.focusSheet) html += '<div class="hermes-plan-row">主攻科目: <b>' + escapeHtml(SHEET_DISPLAY[plan.focusSheet] || plan.focusSheet) + '</b></div>';
+        if (plan.newCount) html += '<div class="hermes-plan-row">新知量: <b>' + plan.newCount + ' 个</b></div>';
+        if (plan.mathNote) html += '<div class="hermes-plan-row">数学重点: ' + escapeHtml(plan.mathNote) + '</div>';
+        if (plan.reviewNote) html += '<div class="hermes-plan-row">复盘重点: ' + escapeHtml(plan.reviewNote) + '</div>';
+        if (plan.generalNote) html += '<div class="hermes-plan-row">其他建议: ' + escapeHtml(plan.generalNote) + '</div>';
+        if (plan.suggestedTopics && plan.suggestedTopics.length) html += '<div class="hermes-plan-row">📌 推荐攻克: <b>' + plan.suggestedTopics.map(escapeHtml).join('、') + '</b></div>';
+        pv.innerHTML = html;
+        pv.classList.add('show');
+        document.getElementById('hermes-import-btn').style.display = 'block';
+      }
+      document.getElementById('hermes-resp-actions').style.display = 'flex';
+    }, function (err) {
+      setStreamText('❌ 请求失败: ' + (err.message || err) + '\n\n请检查:\n1. Hermes 端点地址是否正确\n2. Hermes 是否配置了允许本站域名的 CORS\n3. API Key 是否正确（如果需要）', false);
+      document.getElementById('hermes-resp-actions').style.display = 'flex';
+    });
+  };
+  window.__hermesChat = function () {
+    if (!hermesConfig.endpoint) return;
+    var msg = prompt('发送消息给 Hermes:');
+    if (!msg || !msg.trim()) return;
+    if (!hermesHistory.length) {
+      hermesHistory = [{ role: 'user', content: buildProgressReport() + '\n\n（以上是今日进度数据，供参考）\n\n' + msg }];
+    } else {
+      hermesHistory.push({ role: 'user', content: msg });
+    }
+    showHermesResponse('🤖 AI 对话', false);
+    setStreamText('', true);
+    hermesFetch(hermesHistory, function (text) {
+      setStreamText(text, true);
+    }, function (fullText) {
+      setStreamText(fullText, false);
+      hermesHistory.push({ role: 'assistant', content: fullText });
+      var plan = parsePlanFromResponse(fullText);
+      if (plan) {
+        pendingPlan = plan;
+        var pv = document.getElementById('hermes-plan-preview');
+        var html = '<h4>📋 检测到明日计划</h4>';
+        if (plan.focusSheet) html += '<div class="hermes-plan-row">主攻科目: <b>' + escapeHtml(SHEET_DISPLAY[plan.focusSheet] || plan.focusSheet) + '</b></div>';
+        if (plan.newCount) html += '<div class="hermes-plan-row">新知量: <b>' + plan.newCount + ' 个</b></div>';
+        if (plan.mathNote) html += '<div class="hermes-plan-row">数学重点: ' + escapeHtml(plan.mathNote) + '</div>';
+        if (plan.reviewNote) html += '<div class="hermes-plan-row">复盘重点: ' + escapeHtml(plan.reviewNote) + '</div>';
+        if (plan.generalNote) html += '<div class="hermes-plan-row">其他建议: ' + escapeHtml(plan.generalNote) + '</div>';
+        if (plan.suggestedTopics && plan.suggestedTopics.length) html += '<div class="hermes-plan-row">📌 推荐攻克: <b>' + plan.suggestedTopics.map(escapeHtml).join('、') + '</b></div>';
+        pv.innerHTML = html;
+        pv.classList.add('show');
+        document.getElementById('hermes-import-btn').style.display = 'block';
+      }
+      document.getElementById('hermes-resp-actions').style.display = 'flex';
+    }, function (err) {
+      setStreamText('❌ 请求失败: ' + (err.message || err), false);
+      document.getElementById('hermes-resp-actions').style.display = 'flex';
+    });
+  };
+  window.__hermesImport = function () {
+    if (!pendingPlan) return;
+    var tomorrow = addDays(today, 1);
+    var d = readJson(SCHEDULE_KEY, {});
+    if (!d.tomorrowPlans) d.tomorrowPlans = {};
+    d.tomorrowPlans[tomorrow] = pendingPlan;
+    localStorage.setItem(SCHEDULE_KEY, JSON.stringify(d));
+    var tips = ['✅ 明日计划已导入: ' + tomorrow];
+    if (pendingPlan.focusSheet) tips.push('主攻: ' + (SHEET_DISPLAY[pendingPlan.focusSheet] || pendingPlan.focusSheet));
+    if (pendingPlan.suggestedTopics && pendingPlan.suggestedTopics.length) tips.push('推荐攻克: ' + pendingPlan.suggestedTopics.join('、'));
+    tips.push('明天打开规划页会自动应用 Hermes 的建议。');
+    alert(tips.join('\n'));
+    window.__hermesRespClose();
+  };
+
+  // ===== 启动 =====
+  if (localStorage.getItem(THEME_KEY) === 'dark') document.body.classList.add('dark');
+  render();
+  setInterval(render, 60000);
+})();
+</script>
+</body>
+</html>

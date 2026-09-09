@@ -51,6 +51,16 @@ export const nav: DefaultTheme.Config["nav"] = [
     target: "_blank",
   },
   {
+    text: "每日规划",
+    link: "/每日规划.html",
+    target: "_blank",
+  },
+  {
+    text: "复习资料",
+    link: "/review/",
+    activeMatch: "/review/",
+  },
+  {
     text: "草稿纸",
     link: "https://draft.lonemonk.xyz/",
     target: "_blank",
