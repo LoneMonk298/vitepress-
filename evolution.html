@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hermes Agent 进化档案</title>
+<style>
+:root {
+  --bg:#0f1117; --card:#1a1d27; --line:#2a2e3d; --txt:#e6e8ee; --dim:#9aa0b4;
+  --acc:#6c8cff; --acc2:#ff7ac3;
+}
+* { box-sizing:border-box; margin:0; padding:0; }
+body { background:var(--bg); color:var(--txt); font-family:-apple-system,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif; line-height:1.6; padding:2rem 1rem; }
+.wrap { max-width:1100px; margin:0 auto; }
+header { text-align:center; margin-bottom:2rem; }
+header h1 { font-size:2rem; background:linear-gradient(90deg,var(--acc),var(--acc2)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+header p { color:var(--dim); margin-top:.4rem; }
+.bot-grid { display:grid; grid-template-columns:1fr 1fr; gap:1.2rem; }
+@media (max-width:800px) { .bot-grid { grid-template-columns:1fr; } }
+.bot-card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:1.2rem; }
+.bot-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; }
+.bot-head h2 { font-size:1.3rem; }
+.badge { background:linear-gradient(90deg,var(--acc),var(--acc2)); color:#fff; padding:.2rem .7rem; border-radius:20px; font-size:.8rem; }
+.stat-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:.5rem; margin-bottom:1rem; }
+.stat { background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:.6rem; text-align:center; }
+.stat b { display:block; font-size:1.4rem; color:var(--acc); }
+.stat span { font-size:.75rem; color:var(--dim); }
+h3 { margin:1rem 0 .5rem; font-size:.95rem; color:var(--acc2); }
+table { width:100%; border-collapse:collapse; font-size:.85rem; }
+td,th { padding:.35rem .5rem; border-bottom:1px solid var(--line); text-align:left; }
+th { color:var(--dim); font-weight:500; }
+.memory { background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:.7rem; font-size:.78rem; color:var(--dim); max-height:220px; overflow:auto; }
+footer { text-align:center; color:var(--dim); font-size:.78rem; margin-top:2rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>🤖 Hermes Agent 进化档案</h1>
+    <p>双机器人技能 / 使用统计 / 记忆快照 · 生成于 2026-09-09 19:40 UTC</p>
+  </header>
+  <div class="stat-grid" style="grid-template-columns:repeat(3,1fr);">
+    <div class="stat"><b>190</b><span>技能总数</span></div>
+    <div class="stat"><b>188</b><span>累计使用次数</span></div>
+    <div class="stat"><b>2</b><span>机器人</span></div>
+  </div>
+  <div class="bot-grid">
+    
+        <div class="bot-card" id="default">
+          <div class="bot-head">
+            <h2>Default</h2>
+            <span class="badge">102 skills</span>
+          </div>
+          <div class="stat-grid">
+            <div class="stat"><b>102</b><span>技能总数</span></div>
+            <div class="stat"><b>12</b><span>自创技能</span></div>
+            <div class="stat"><b>165</b><span>总使用次数</span></div>
+            <div class="stat"><b>137</b><span>总查看次数</span></div>
+          </div>
+          <h3>🌱 最近成长（新技能）</h3>
+          <table><thead><tr><th>技能</th><th>创建时间</th></tr></thead><tbody><tr><td>wrongbook-ops</td><td>2026-09-09</td></tr><tr><td>server-git-workflow</td><td>2026-09-09</td></tr><tr><td>408-knowledge-ops</td><td>2026-09-09</td></tr><tr><td>headless-canvas-debug</td><td>2026-09-09</td></tr><tr><td>408-viz</td><td>2026-09-09</td></tr><tr><td>viz-animation</td><td>2026-09-08</td></tr><tr><td>knowledge-base-rag-deployment</td><td>2026-09-07</td></tr><tr><td>ds-note-writing-style</td><td>2026-09-05</td></tr></tbody></table>
+          <h3>🔥 最常用技能</h3>
+          <table><thead><tr><th>技能</th><th>使用次数</th></tr></thead><tbody><tr><td>remote-server-ops</td><td>28</td></tr><tr><td>hermes-agent</td><td>26</td></tr><tr><td>ds408-review</td><td>21</td></tr><tr><td>ssh-remote-operations</td><td>17</td></tr><tr><td>wrongbook-backend</td><td>17</td></tr><tr><td>vitepress-blog-maintenance</td><td>12</td></tr><tr><td>knowledge-base-rag-deployment</td><td>7</td></tr><tr><td>remote-server-ssh-monitoring</td><td>6</td></tr></tbody></table>
+          <h3>📂 分类分布</h3>
+          <table><thead><tr><th>分类</th><th>数量</th></tr></thead><tbody><tr><td>productivity</td><td>18</td></tr><tr><td>software-development</td><td>18</td></tr><tr><td>creative</td><td>16</td></tr><tr><td>research</td><td>9</td></tr><tr><td>devops</td><td>7</td></tr><tr><td>github</td><td>7</td></tr><tr><td>autonomous-ai-agents</td><td>6</td></tr><tr><td>apple</td><td>4</td></tr><tr><td>uncategorized</td><td>3</td></tr><tr><td>media</td><td>3</td></tr><tr><td>email</td><td>2</td></tr><tr><td>evaluation</td><td>2</td></tr><tr><td>inference</td><td>2</td></tr><tr><td>mlops</td><td>1</td></tr><tr><td>note-taking</td><td>1</td></tr><tr><td>smart-home</td><td>1</td></tr><tr><td>social-media</td><td>1</td></tr><tr><td>system</td><td>1</td></tr></tbody></table>
+          <h3>🧠 记忆快照</h3>
+          <div class="memory">用户环境：GitHub 账号 LoneMonk298（LoneMonk）。GITHUB_TOKEN 存于宿主机 /opt/ai-agent/workspace/.env（沙箱 /workspace 与宿主机该目录不是同一挂载，需经 SSH 从宿主机拉取后加载使用）。宿主机 ser233585529714 (192.168.0.1) 可用 SSH 密钥 /root/.ssh/id_ed25519 以 hermes 用户免密登录（无 sudo）。网站项目位于 /www/wwwroot/：ai-psychological-assistant（图床 uploads/ 按年月日+UUID 存储）、web.lonemonk.xyz、vitepress（VitePress 1.6.3 知识库博客，属主已改为 hermes:hermes，我可编辑维护，含 408 数据结构笔记、Mermaid/MathJax/Gitalk）。<br>§<br>博客架构：VitePress 知识库（github.com/LoneMonk298/vitepress-），部署在 /www/wwwroot/vitepress/，GitHub Actions 自动发布 GitHub Pages，域名 blog.lonemonk.xyz（Cloudflare 代理）。维护规范见 skill vitepress-blog-maintenance。<br>§<br>网络拓扑：沙箱=36.138.103.18上的Docker容器；宿主机同一机器，hermes@192.168.0.1 免密SSH 无sudo /www/wwwroot 只读；root@36.138.103.18:30008 免密SSH 可写可管服务。代理：Telegram→SSH SOCKS5(192.168.48.1:10808)→AWS WARP；HTTP→Privoxy(192.168.48.1:10809)。Hermes 在 /opt/ai-agent，服务 aws-socks/privoxy.service。<br>§<br>408-knowledge API（/www/wwwroot/408-knowledge/，8001，FastAPI+SQLite FTS5）：LLM=商汤 sensenova-6.8-flash-lite 零成本，key 在 /opt/ai-agent/hermes-data/.env。OpenRouter 免费模型已全部阵亡。运维/重启/模板细节见 skill 408-knowledge-ops。</div>
+        </div>
+        
+        <div class="bot-card" id="taskbot">
+          <div class="bot-head">
+            <h2>Taskbot</h2>
+            <span class="badge">88 skills</span>
+          </div>
+          <div class="stat-grid">
+            <div class="stat"><b>88</b><span>技能总数</span></div>
+            <div class="stat"><b>6</b><span>自创技能</span></div>
+            <div class="stat"><b>23</b><span>总使用次数</span></div>
+            <div class="stat"><b>23</b><span>总查看次数</span></div>
+          </div>
+          <h3>🌱 最近成长（新技能）</h3>
+          <table><thead><tr><th>技能</th><th>创建时间</th></tr></thead><tbody><tr><td>hermes-selfhost-ops</td><td>2026-09-09</td></tr><tr><td>hermes-gateway-troubleshooting</td><td>2026-09-09</td></tr><tr><td>hermes-gateway-ops</td><td>2026-09-07</td></tr><tr><td>hermes-gateway-diagnostics</td><td>2026-09-07</td></tr><tr><td>hermes-provider-diagnostics</td><td>2026-09-07</td></tr><tr><td>hermes-telegram-multibot-groups</td><td>2026-09-05</td></tr><tr><td>youtube-content</td><td>2026-09-04</td></tr><tr><td>xurl</td><td>2026-09-04</td></tr></tbody></table>
+          <h3>🔥 最常用技能</h3>
+          <table><thead><tr><th>技能</th><th>使用次数</th></tr></thead><tbody><tr><td>hermes-telegram-multibot-groups</td><td>8</td></tr><tr><td>hermes-gateway-diagnostics</td><td>7</td></tr><tr><td>hermes-agent</td><td>4</td></tr><tr><td>hermes-gateway-ops</td><td>3</td></tr><tr><td>hermes-provider-diagnostics</td><td>1</td></tr><tr><td>apple-notes</td><td>0</td></tr><tr><td>apple-reminders</td><td>0</td></tr><tr><td>findmy</td><td>0</td></tr></tbody></table>
+          <h3>📂 分类分布</h3>
+          <table><thead><tr><th>分类</th><th>数量</th></tr></thead><tbody><tr><td>productivity</td><td>17</td></tr><tr><td>creative</td><td>16</td></tr><tr><td>autonomous-ai-agents</td><td>12</td></tr><tr><td>software-development</td><td>11</td></tr><tr><td>github</td><td>7</td></tr><tr><td>research</td><td>7</td></tr><tr><td>apple</td><td>4</td></tr><tr><td>media</td><td>3</td></tr><tr><td>email</td><td>2</td></tr><tr><td>evaluation</td><td>2</td></tr><tr><td>inference</td><td>2</td></tr><tr><td>devops</td><td>1</td></tr><tr><td>mlops</td><td>1</td></tr><tr><td>note-taking</td><td>1</td></tr><tr><td>smart-home</td><td>1</td></tr><tr><td>social-media</td><td>1</td></tr></tbody></table>
+          <h3>🧠 记忆快照</h3>
+          <div class="memory">用户想要创建综合型 soul.md：技术解答时风趣可爱、猫娘风（仍在试用阶段，未最终拍板长期生效），偶尔句末带'喵~'；明确不要猫相关emoji；soul.md 模板偏好无图标的干净文本排版。<br>§<br>用户运行两个 Hermes bot：taskbot（本 profile）+ default机器人（default profile，HERMES_HOME=/opt/data，生产用，承载 408-knowledge 项目）。提到"default机器人"即指 default profile 的 gateway。环境：Hermes 跑在 docker 容器 hermes-agent 内，gateway 由 s6-supervise 管理（gateway-default / gateway-taskbot），/opt/hermes 源码 root 所有，改文件需 docker exec（如 docker cp + docker exec python3）。<br>§<br>Telegram 群 'Ciallo' 三个成员：用户 lonemonk guo、taskbot（我）、default 机器人（LoneSistant）；用户允许 taskbot 在群里直接 @default 指挥它。default = HERMES_HOME=/opt/data 的 profile，与 taskbot 同在 hermes-agent 容器内；宿主机 SSH root@36.138.103.18 -p 30008。<br>§<br>default 模型链：主 deepseek-v4-flash @ custom:ps.air-outer.com（必须 api_mode=chat_completions；codex_responses 模式会被阿里云 WAF 拦 405）；fallback custom:glm5.2-sen 商汤 sensenova-6.8-flash-lite（reasoning 模型 content 常为 None，免费档偶发 429）。408-knowledge API 在宿主机 /www/wwwroot/408-knowledge/api.py:8001（/ask、/knowledge/ask 端点），SSH 访问；/408 命令已用插件实现（/opt/data/plugins/408-ask）。</div>
+        </div>
+        
+  </div>
+  <footer>Automatically generated by Hermes cron · 每两天更新一次</footer>
+</div>
+</body>
+</html>
