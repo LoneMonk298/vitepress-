@@ -3161,12 +3161,12 @@ function getTodayGoals() {
 }
 
 function escapeHtml(s) {
-  return String(s ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+  return String(s != null ? s : '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
 }
 
 // 转义后可安全嵌入 onclick="fn('...')"：HTML 实体由属性解码还原，单引号经 JS 层转义保护
 function attrJsStr(s) {
-  return String(s ?? '')
+  return String(s != null ? s : '')
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
@@ -5227,7 +5227,8 @@ function showDragVisual() {
   
   // Create ghost element
   if (srcRow) {
-    const pointName = srcRow.querySelector('td:nth-child(4)')?.textContent?.trim() || '考点';
+    var pointCell = srcRow.querySelector('td:nth-child(4)');
+    var pointName = (pointCell && pointCell.textContent ? pointCell.textContent.trim() : '') || '考点';
     dragGhostEl = document.createElement('div');
     dragGhostEl.className = 'drag-ghost';
     dragGhostEl.textContent = '↕ ' + pointName.substring(0, 30);
