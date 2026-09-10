@@ -5,7 +5,7 @@
     <link>https://blog.lonemonk.xyz</link>
     <description>个人技术知识库，记录 &amp; 分享个人碎片化、结构化、体系化的技术知识内容。</description>
     <language>zh-CN</language>
-    <lastBuildDate>Wed, 09 Sep 2026 19:41:18 GMT</lastBuildDate>
+    <lastBuildDate>Thu, 10 Sep 2026 01:33:23 GMT</lastBuildDate>
     <atom:link href="https://blog.lonemonk.xyz/rss.xml" rel="self" type="application/rss+xml" />
     <item>
       <title>Hermes Agent 多模型供应商配置实战1</title>
@@ -22,25 +22,11 @@
       <description>收集平时练习的纯 HTML/CSS/JS 原型，通过 VizEmbed 组件直接嵌入博客，方便留存与回顾。</description>
     </item>
     <item>
-      <title>408-计算机组成原理公式篇</title>
-      <link>https://blog.lonemonk.xyz/categories/data-structures/2026/8/23/408-%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BB%84%E6%88%90%E5%8E%9F%E7%90%86%E5%85%AC%E5%BC%8F%E7%AF%87</link>
-      <guid isPermaLink="true">https://blog.lonemonk.xyz/categories/data-structures/2026/8/23/408-%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BB%84%E6%88%90%E5%8E%9F%E7%90%86%E5%85%AC%E5%BC%8F%E7%AF%87</guid>
-      <pubDate>Sun, 23 Aug 2026 12:00:00 GMT</pubDate>
-      <description>408-计算机组成原理公式篇</description>
-    </item>
-    <item>
       <title>SOCKS 协议应用</title>
       <link>https://blog.lonemonk.xyz/categories/servers/2026/8/22/socks%E5%8D%8F%E8%AE%AE%E5%BA%94%E7%94%A8</link>
       <guid isPermaLink="true">https://blog.lonemonk.xyz/categories/servers/2026/8/22/socks%E5%8D%8F%E8%AE%AE%E5%BA%94%E7%94%A8</guid>
       <pubDate>Sat, 22 Aug 2026 12:00:00 GMT</pubDate>
       <description>介绍 SOCKS4、SOCKS5 的工作方式，并整理 SSH 动态代理、Privoxy、WARP 与 systemd 的实际配置方法。</description>
-    </item>
-    <item>
-      <title>408-放弃篇</title>
-      <link>https://blog.lonemonk.xyz/categories/data-structures/2026/8/8/408-%E6%94%BE%E5%BC%83%E7%AF%87</link>
-      <guid isPermaLink="true">https://blog.lonemonk.xyz/categories/data-structures/2026/8/8/408-%E6%94%BE%E5%BC%83%E7%AF%87</guid>
-      <pubDate>Sat, 08 Aug 2026 21:00:00 GMT</pubDate>
-      <description>整理 408 数据结构复习中可战略性降低优先级的实现题与知识点。</description>
     </item>
     <item>
       <title>408-数据结构邪修篇</title>
