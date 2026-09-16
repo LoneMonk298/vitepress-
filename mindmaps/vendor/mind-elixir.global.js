@@ -2419,6 +2419,4 @@ D.new = (e) => ({
   }
 });
 D.dragMoveHelper = k;
-export {
-  D as default
-};
+window.MindElixir = D;

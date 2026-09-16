@@ -45,7 +45,6 @@
   .mbox .row button{flex:1;padding:9px}
   @media(max-width:768px){
     .sidebar{position:absolute;z-index:20;height:100%;box-shadow:4px 0 16px #0002}
-    .sidebar.hide{margin-left:-260px}
     .mob-mask{display:block;position:absolute;inset:0;background:#0004;z-index:10}
     .mob-mask.hide{display:none}
     .topbar .t{font-size:13px}
@@ -61,7 +60,7 @@
   <div class="mob-mask hide" id="mask"></div>
   <main class="main">
     <div class="topbar">
-      <button class="ico" id="btnSide">☰</button>
+      <button class="ico" id="btnSide">&#9776;</button>
       <span class="t" id="cur">请选择章节</span>
       <button id="btnFit">居中</button>
       <button id="btnReset">恢复原版</button>
@@ -75,7 +74,7 @@
 <div class="modal" id="modal">
   <div class="mbox">
     <h3>云同步设置</h3>
-    <p>填入 jsonbin.io 的凭证即可多端同步编辑。<br>未填写时仅保存在本机浏览器。</p>
+    <p>填入 jsonbin.io 的凭证即可多端同步编辑（请用<b>独立的 Bin</b>，勿与学习管理表共用）。<br>未填写时仅保存在本机浏览器。</p>
     <label>Bin ID</label><input id="i_bin" placeholder="如 65f3a...">
     <label>Master Key</label><input id="i_key" placeholder="如 $2a$10$...">
     <div class="row">
@@ -86,153 +85,177 @@
   </div>
 </div>
 
-<script type="module">
-import MindElixir from "./vendor/mind-elixir.4.4.3.js";
-const LS_CFG='mm408_cfg', LS_PFX='mm408:';
-let mind=null, curFile=null, curTitle='', timer=null, index=[];
+<script src="./vendor/mind-elixir.global.js"></script>
+<script>
+var LS_CFG='mm408_cfg', LS_PFX='mm408:';
+var mind=null, curFile=null, curChapter='', curSheet='', index=[], timer=null, loadSeq=0;
 
-const $=id=>document.getElementById(id);
-const isDark=()=>document.documentElement.classList.contains('dark')||matchMedia('(prefers-color-scheme:dark)').matches;
+function $(id){ return document.getElementById(id); }
+function isDark(){ return document.documentElement.classList.contains('dark')||window.matchMedia('(prefers-color-scheme:dark)').matches; }
 if(isDark()) document.documentElement.classList.add('dark');
 
-function setStatus(t,keep){ if(keep){$('status').textContent=t;return;} $('status').textContent=t; clearTimeout(timer); timer=setTimeout(()=>{$('status').textContent='';},3000); }
+function setStatus(t,keep){
+  $('status').textContent=t;
+  if(keep) return;
+  clearTimeout(timer); timer=setTimeout(function(){ $('status').textContent=''; },3000);
+}
 function edited(f){ return !!localStorage.getItem(LS_PFX+f); }
 
-// 初始化导图实例
+/* 动态加载脚本 —— file:// 协议下也能用（不受 CORS 限制） */
+function loadScript(src){
+  return new Promise(function(res,rej){
+    var s=document.createElement('script');
+    s.src=src;
+    s.onload=function(){ if(s.parentNode) s.parentNode.removeChild(s); res(); };
+    s.onerror=function(){ rej(new Error('无法加载 '+src)); };
+    document.head.appendChild(s);
+  });
+}
+
 function initMind(data){
-  if(mind){ try{mind.destroy()}catch(e){} }
+  if(mind){ try{ mind.destroy(); }catch(e){} }
   mind=new MindElixir({
     el:'#map', direction:MindElixir.RIGHT, draggable:true, editable:true,
     contextMenu:true, toolBar:true, keypress:true, overflowHidden:false,
-    theme: isDark()?MindElixir.DARK_THEME:MindElixir.THEME
+    theme: isDark()? MindElixir.DARK_THEME : MindElixir.THEME
   });
   mind.init(data);
-  mind.toCenter && mind.toCenter();
-  mind.bus.addListener('operation',()=>{ queueSave(); });
+  if(mind.toCenter) mind.toCenter();
+  mind.bus.addListener('operation', function(){ queueSave(); });
 }
 
 function queueSave(){
   if(!curFile) return;
   clearTimeout(queueSave._t);
-  queueSave._t=setTimeout(()=>{
+  queueSave._t=setTimeout(function(){
     try{
       localStorage.setItem(LS_PFX+curFile, JSON.stringify(mind.getData()));
       setStatus('已自动保存到本机',true);
-      document.querySelectorAll('.ch').forEach(el=>{ if(el.dataset.f===curFile) el.classList.add('edited'); });
-    }catch(e){ setStatus('保存失败：'+e.message,true); }
+      var els=document.querySelectorAll('.ch');
+      for(var i=0;i<els.length;i++){ if(els[i].dataset.f===curFile) els[i].classList.add('edited'); }
+    }catch(e){ setStatus('保存失败：'+e.message); }
   },800);
 }
 
-async function loadChapter(item){
-  curFile=item.file; curTitle=item.chapter;
+function loadChapter(item){
+  curFile=item.file; curChapter=item.chapter; curSheet=item.sheet;
   $('cur').textContent=item.sheet+' · '+item.chapter;
-  document.querySelectorAll('.ch').forEach(el=>el.classList.toggle('on',el.dataset.f===curFile));
+  var els=document.querySelectorAll('.ch');
+  for(var i=0;i<els.length;i++) els[i].classList.toggle('on', els[i].dataset.f===curFile);
   $('sidebar').classList.add('hide'); $('mask').classList.add('hide');
   setStatus('加载中…',true);
-  let data=null;
-  const local=localStorage.getItem(LS_PFX+item.file);
-  if(local){ try{ data=JSON.parse(local); setStatus('已载入本机编辑版本',true);}catch(e){} }
-  if(!data){
+  var local=localStorage.getItem(LS_PFX+item.file);
+  if(local){
     try{
-      const r=await fetch('./data/'+item.file+'?v=1');
-      data=await r.json();
-      setStatus('已载入原版 · 共 '+item.nodes+' 个节点',true);
-    }catch(e){ setStatus('加载失败：'+e.message); return; }
+      initMind(JSON.parse(local));
+      setStatus('已载入本机编辑版本',true);
+      return;
+    }catch(e){}
   }
-  initMind(data);
+  window.MM_DATA=null;
+  loadScript('./data/'+item.file+'.js').then(function(){
+    if(!window.MM_DATA){ setStatus('数据为空'); return; }
+    initMind(window.MM_DATA);
+    setStatus('已载入原版 · 共 '+item.nodes+' 个节点',true);
+  }).catch(function(e){ setStatus('加载失败：'+e.message); });
 }
 
 function renderList(){
-  const list=$('list'); const bySheet={};
-  index.forEach(it=>{ (bySheet[it.sheet]=bySheet[it.sheet]||[]).push(it); });
+  var list=$('list'), bySheet={}, order=[], i;
+  for(i=0;i<index.length;i++){
+    var it=index[i];
+    if(!bySheet[it.sheet]){ bySheet[it.sheet]=[]; order.push(it.sheet); }
+    bySheet[it.sheet].push(it);
+  }
   $('cnt').textContent=index.length+' 章';
-  let h='';
-  for(const s in bySheet){
+  var h='';
+  for(var k=0;k<order.length;k++){
+    var s=order[k];
     h+='<div class="grp"><div class="grp-t">'+s+'</div>';
-    bySheet[s].forEach(it=>{
-      h+='<div class="ch'+(edited(it.file)?' edited':'')+'" data-f="'+it.file+'" data-s="'+it.sheet+'" data-c="'+it.chapter+'" data-n="'+it.nodes+'">'
-        +'<span>'+it.chapter+'</span><span class="n">'+it.nodes+'</span><span class="dot"></span></div>';
-    });
+    for(i=0;i<bySheet[s].length;i++){
+      var t=bySheet[s][i];
+      h+='<div class="ch'+(edited(t.file)?' edited':'')+'" data-f="'+t.file+'" data-s="'+t.sheet+'" data-c="'+t.chapter+'" data-n="'+t.nodes+'">'
+        +'<span>'+t.chapter+'</span><span class="n">'+t.nodes+'</span><span class="dot"></span></div>';
+    }
     h+='</div>';
   }
   list.innerHTML=h;
-  list.querySelectorAll('.ch').forEach(el=>{
-    el.onclick=()=>loadChapter({sheet:el.dataset.s,chapter:el.dataset.c,file:el.dataset.f,nodes:el.dataset.n});
-  });
+  var els=list.querySelectorAll('.ch');
+  for(i=0;i<els.length;i++){
+    els[i].onclick=(function(el){ return function(){
+      loadChapter({sheet:el.dataset.s, chapter:el.dataset.c, file:el.dataset.f, nodes:el.dataset.n});
+    };})(els[i]);
+  }
 }
 
-function getCfg(){ try{return JSON.parse(localStorage.getItem(LS_CFG))||{}}catch(e){return{}} }
-function setCfg(c){ localStorage.setItem(LS_CFG,JSON.stringify(c)) }
+function getCfg(){ try{ return JSON.parse(localStorage.getItem(LS_CFG))||{}; }catch(e){ return {}; } }
+function setCfg(c){ localStorage.setItem(LS_CFG, JSON.stringify(c)); }
 
-async function upload(){
-  const c=getCfg();
+function upload(){
+  var c=getCfg();
   if(!c.bin||!c.key){ setStatus('请先填写 Bin ID 和 Master Key'); return; }
-  // 收集所有本机修改过的章节
-  const payload={};
-  Object.keys(localStorage).forEach(k=>{
-    if(k.startsWith(LS_PFX)){ payload[k.slice(LS_PFX.length)]=JSON.parse(localStorage.getItem(k)); }
-  });
-  const n=Object.keys(payload).length;
+  var payload={}, n=0;
+  for(var k in localStorage){
+    if(k.indexOf(LS_PFX)===0){
+      try{ payload[k.slice(LS_PFX.length)]=JSON.parse(localStorage.getItem(k)); n++; }catch(e){}
+    }
+  }
   if(!n){ setStatus('本机还没有编辑过任何章节'); return; }
   setStatus('上传中…',true);
-  try{
-    const r=await fetch('https://api.jsonbin.io/v3/b/'+c.bin,{
-      method:'PUT',
-      headers:{'Content-Type':'application/json','X-Master-Key':c.key},
-      body:JSON.stringify(payload)
-    });
+  fetch('https://api.jsonbin.io/v3/b/'+c.bin,{
+    method:'PUT',
+    headers:{'Content-Type':'application/json','X-Master-Key':c.key},
+    body:JSON.stringify(payload)
+  }).then(function(r){
     if(!r.ok) throw new Error('HTTP '+r.status);
     setStatus('已上传 '+n+' 个章节到云端');
-  }catch(e){ setStatus('上传失败：'+e.message); }
+  }).catch(function(e){ setStatus('上传失败：'+e.message); });
 }
 
-async function download(){
-  const c=getCfg();
+function download(){
+  var c=getCfg();
   if(!c.bin||!c.key){ setStatus('请先填写 Bin ID 和 Master Key'); return; }
   setStatus('下载中…',true);
-  try{
-    const r=await fetch('https://api.jsonbin.io/v3/b/'+c.bin+'/latest',{headers:{'X-Master-Key':c.key}});
-    if(!r.ok) throw new Error('HTTP '+r.status);
-    const j=await r.json();
-    const d=j.record||{};
-    let n=0;
-    for(const f in d){ localStorage.setItem(LS_PFX+f,JSON.stringify(d[f])); n++; }
+  fetch('https://api.jsonbin.io/v3/b/'+c.bin+'/latest',{headers:{'X-Master-Key':c.key}})
+  .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+  .then(function(j){
+    var d=j.record||{}, n=0;
+    for(var f in d){ localStorage.setItem(LS_PFX+f, JSON.stringify(d[f])); n++; }
     setStatus('已从云端载入 '+n+' 个章节');
     renderList();
-    if(curFile && d[curFile]) loadChapter({sheet:curTitle.split(' · ')[0],chapter:curTitle.split(' · ')[1],file:curFile,nodes:'-'});
-  }catch(e){ setStatus('下载失败：'+e.message); }
+    if(curFile && d[curFile]) loadChapter({sheet:curSheet, chapter:curChapter, file:curFile, nodes:'-'});
+  }).catch(function(e){ setStatus('下载失败：'+e.message); });
 }
 
-// 事件
-$('btnSide').onclick=()=>{ $('sidebar').classList.toggle('hide'); $('mask').classList.toggle('hide'); };
-$('mask').onclick=()=>{ $('sidebar').classList.add('hide'); $('mask').classList.add('hide'); };
-$('btnFit').onclick=()=>{ mind && mind.toCenter && mind.toCenter(); };
-$('btnReset').onclick=()=>{
-  if(!curFile) return;
-  if(!confirm('确定放弃本机对这个章节的修改，恢复原版吗？')) return;
-  localStorage.removeItem(LS_PFX+curFile);
-  const it=index.find(x=>x.file===curFile);
-  if(it) loadChapter(it);
-  renderList();
-};
-$('btnSync').onclick=()=>{
-  const c=getCfg(); $('i_bin').value=c.bin||''; $('i_key').value=c.key||'';
-  $('modal').classList.add('show');
-};
-$('btnClose').onclick=()=>{ setCfg({bin:$('i_bin').value.trim(),key:$('i_key').value.trim()}); $('modal').classList.remove('show'); };
-$('btnUp').onclick=()=>{ setCfg({bin:$('i_bin').value.trim(),key:$('i_key').value.trim()}); upload(); };
-$('btnDown').onclick=()=>{ setCfg({bin:$('i_bin').value.trim(),key:$('i_key').value.trim()}); download(); };
+document.addEventListener('DOMContentLoaded', function(){
+  $('btnSide').onclick=function(){ $('sidebar').classList.toggle('hide'); $('mask').classList.toggle('hide'); };
+  $('mask').onclick=function(){ $('sidebar').classList.add('hide'); $('mask').classList.add('hide'); };
+  $('btnFit').onclick=function(){ if(mind&&mind.toCenter) mind.toCenter(); };
+  $('btnReset').onclick=function(){
+    if(!curFile) return;
+    if(!confirm('确定放弃本机对这个章节的修改，恢复原版吗？')) return;
+    localStorage.removeItem(LS_PFX+curFile);
+    var it=null;
+    for(var i=0;i<index.length;i++) if(index[i].file===curFile) it=index[i];
+    if(it) loadChapter(it);
+    renderList();
+  };
+  $('btnSync').onclick=function(){
+    var c=getCfg();
+    $('i_bin').value=c.bin||''; $('i_key').value=c.key||'';
+    $('modal').classList.add('show');
+  };
+  $('btnClose').onclick=function(){ setCfg({bin:$('i_bin').value.trim(),key:$('i_key').value.trim()}); $('modal').classList.remove('show'); };
+  $('btnUp').onclick=function(){ setCfg({bin:$('i_bin').value.trim(),key:$('i_key').value.trim()}); upload(); };
+  $('btnDown').onclick=function(){ setCfg({bin:$('i_bin').value.trim(),key:$('i_key').value.trim()}); download(); };
 
-// 启动
-(async function(){
-  try{
-    const r=await fetch('./index.json');
-    index=await r.json();
+  loadScript('./index.js').then(function(){
+    index=window.MM_INDEX||[];
     renderList();
     setStatus('共 '+index.length+' 章 · 选择左侧章节开始');
-    if(innerWidth>768) $('sidebar').classList.remove('hide');
-  }catch(e){ setStatus('索引加载失败：'+e.message); }
-})();
+    if(window.innerWidth>768) $('sidebar').classList.remove('hide');
+  }).catch(function(e){ setStatus('索引加载失败：'+e.message); });
+});
 </script>
 </body>
 </html>
