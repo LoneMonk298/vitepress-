@@ -87,6 +87,7 @@
 
 <script src="./vendor/mind-elixir.global.js"></script>
 <script>
+(function(){
 var LS_CFG='mm408_cfg', LS_PFX='mm408:';
 var mind=null, curFile=null, curChapter='', curSheet='', index=[], timer=null, loadSeq=0;
 
@@ -256,6 +257,7 @@ document.addEventListener('DOMContentLoaded', function(){
     if(window.innerWidth>768) $('sidebar').classList.remove('hide');
   }).catch(function(e){ setStatus('索引加载失败：'+e.message); });
 });
+})();
 </script>
 </body>
 </html>
