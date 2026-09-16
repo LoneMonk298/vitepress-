@@ -51,6 +51,11 @@ export const nav: DefaultTheme.Config["nav"] = [
     target: "_blank",
   },
   {
+    text: "思维导图",
+    link: "/mindmaps/",
+    target: "_blank",
+  },
+  {
     text: "每日规划",
     link: "/每日规划.html",
     target: "_blank",
