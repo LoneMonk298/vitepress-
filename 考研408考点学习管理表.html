@@ -4544,7 +4544,7 @@ function openMindmap(chapterName) {
   const map = MINDMAP_MAP[currentTab] || {};
   const chId = map[chapterName];
   if (!chId) { alert('「' + chapterName + '」暂无思维导图'); return; }
-  const url = '/mindmaps/#' + chId;
+  const url = './mindmaps/#' + chId;
   document.getElementById('mm-title').textContent = chapterName + ' · 思维导图';
   const nw = document.getElementById('mm-new');
   if (nw) nw.href = url;
@@ -5428,7 +5428,7 @@ function confirmReset() {
     <div class="mm-head">
       <span class="mm-t" id="mm-title">思维导图</span>
       <div class="mm-act">
-        <a class="mm-new" id="mm-new" href="/mindmaps/" target="_blank">新窗口打开</a>
+        <a class="mm-new" id="mm-new" href="./mindmaps/" target="_blank">新窗口打开</a>
         <button onclick="closeMindmap()">关闭</button>
       </div>
     </div>
