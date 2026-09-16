@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>408 思维导图</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  :root{--bg:#f5f6f8;--card:#fff;--text:#1f2937;--text2:#6b7280;--bd:#e5e7eb;--pri:#667eea}
+  html.dark{--bg:#16171a;--card:#202127;--text:#e5e7eb;--text2:#9ca3af;--bd:#33353d}
+  body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--text);height:100vh;overflow:hidden}
+  .app{display:flex;height:100vh}
+  .sidebar{width:260px;background:var(--card);border-right:1px solid var(--bd);display:flex;flex-direction:column;transition:margin-left .2s}
+  .sidebar.hide{margin-left:-260px}
+  .side-h{padding:16px;font-weight:700;font-size:15px;border-bottom:1px solid var(--bd);display:flex;justify-content:space-between;align-items:center}
+  .side-h small{font-weight:400;color:var(--text2);font-size:11px}
+  .side-list{flex:1;overflow-y:auto;padding:8px}
+  .grp{margin-bottom:10px}
+  .grp-t{font-size:12px;color:var(--text2);padding:8px 10px 4px;font-weight:600;letter-spacing:.5px}
+  .ch{padding:8px 10px;border-radius:7px;cursor:pointer;font-size:13.5px;display:flex;justify-content:space-between;align-items:center;gap:6px}
+  .ch:hover{background:var(--bg)}
+  .ch.on{background:linear-gradient(135deg,#667eea22,#764ba222);color:var(--pri);font-weight:600}
+  .ch .n{font-size:11px;color:var(--text2)}
+  .ch .dot{width:6px;height:6px;border-radius:50%;background:#f59e0b;flex:none;display:none}
+  .ch.edited .dot{display:block}
+  .main{flex:1;display:flex;flex-direction:column;position:relative;min-width:0}
+  .topbar{height:52px;background:var(--card);border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:10px;padding:0 14px;flex:none}
+  .topbar .t{font-weight:600;font-size:14px;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  button{font-family:inherit;font-size:12.5px;padding:7px 12px;border-radius:7px;border:1px solid var(--bd);background:var(--card);color:var(--text);cursor:pointer}
+  button:hover{border-color:var(--pri);color:var(--pri)}
+  button.pri{background:var(--pri);color:#fff;border-color:var(--pri)}
+  button.pri:hover{opacity:.9;color:#fff}
+  .ico{padding:7px 10px;font-size:15px}
+  #map{flex:1;min-height:0;background:var(--bg)}
+  .mob-mask{display:none}
+  .status{position:absolute;left:14px;bottom:12px;font-size:12px;color:var(--text2);background:var(--card);padding:6px 12px;border-radius:20px;box-shadow:0 2px 8px #0001;max-width:70%}
+  .modal{position:fixed;inset:0;background:#0007;display:none;align-items:center;justify-content:center;z-index:99;padding:16px}
+  .modal.show{display:flex}
+  .mbox{background:var(--card);border-radius:12px;padding:22px;width:100%;max-width:420px}
+  .mbox h3{font-size:16px;margin-bottom:6px}
+  .mbox p{font-size:12.5px;color:var(--text2);margin-bottom:14px;line-height:1.6}
+  .mbox label{display:block;font-size:12px;color:var(--text2);margin:10px 0 4px}
+  .mbox input{width:100%;padding:8px 10px;border:1px solid var(--bd);border-radius:7px;background:var(--bg);color:var(--text);font-size:13px;font-family:inherit}
+  .mbox .row{display:flex;gap:8px;margin-top:18px}
+  .mbox .row button{flex:1;padding:9px}
+  @media(max-width:768px){
+    .sidebar{position:absolute;z-index:20;height:100%;box-shadow:4px 0 16px #0002}
+    .sidebar.hide{margin-left:-260px}
+    .mob-mask{display:block;position:absolute;inset:0;background:#0004;z-index:10}
+    .mob-mask.hide{display:none}
+    .topbar .t{font-size:13px}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar hide" id="sidebar">
+    <div class="side-h"><span>408 思维导图</span><small id="cnt"></small></div>
+    <div class="side-list" id="list"></div>
+  </aside>
+  <div class="mob-mask hide" id="mask"></div>
+  <main class="main">
+    <div class="topbar">
+      <button class="ico" id="btnSide">☰</button>
+      <span class="t" id="cur">请选择章节</span>
+      <button id="btnFit">居中</button>
+      <button id="btnReset">恢复原版</button>
+      <button class="pri" id="btnSync">云同步</button>
+    </div>
+    <div id="map"></div>
+    <div class="status" id="status">选择左侧章节开始</div>
+  </main>
+</div>
+
+<div class="modal" id="modal">
+  <div class="mbox">
+    <h3>云同步设置</h3>
+    <p>填入 jsonbin.io 的凭证即可多端同步编辑。<br>未填写时仅保存在本机浏览器。</p>
+    <label>Bin ID</label><input id="i_bin" placeholder="如 65f3a...">
+    <label>Master Key</label><input id="i_key" placeholder="如 $2a$10$...">
+    <div class="row">
+      <button id="btnDown">从云端下载</button>
+      <button class="pri" id="btnUp">上传到云端</button>
+    </div>
+    <div class="row"><button id="btnClose">关闭</button></div>
+  </div>
+</div>
+
+<script type="module">
+import MindElixir from "./lib/mind-elixir.js";
+const LS_CFG='mm408_cfg', LS_PFX='mm408:';
+let mind=null, curFile=null, curTitle='', timer=null, index=[];
+
+const $=id=>document.getElementById(id);
+const isDark=()=>document.documentElement.classList.contains('dark')||matchMedia('(prefers-color-scheme:dark)').matches;
+if(isDark()) document.documentElement.classList.add('dark');
+
+function setStatus(t,keep){ if(keep){$('status').textContent=t;return;} $('status').textContent=t; clearTimeout(timer); timer=setTimeout(()=>{$('status').textContent='';},3000); }
+function edited(f){ return !!localStorage.getItem(LS_PFX+f); }
+
+// 初始化导图实例
+function initMind(data){
+  if(mind){ try{mind.destroy()}catch(e){} }
+  mind=new MindElixir({
+    el:'#map', direction:MindElixir.RIGHT, draggable:true, editable:true,
+    contextMenu:true, toolBar:true, keypress:true, overflowHidden:false,
+    theme: isDark()?MindElixir.DARK_THEME:MindElixir.THEME
+  });
+  mind.init(data);
+  mind.toCenter && mind.toCenter();
+  mind.bus.addListener('operation',()=>{ queueSave(); });
+}
+
+function queueSave(){
+  if(!curFile) return;
+  clearTimeout(queueSave._t);
+  queueSave._t=setTimeout(()=>{
+    try{
+      localStorage.setItem(LS_PFX+curFile, JSON.stringify(mind.getData()));
+      setStatus('已自动保存到本机',true);
+      document.querySelectorAll('.ch').forEach(el=>{ if(el.dataset.f===curFile) el.classList.add('edited'); });
+    }catch(e){ setStatus('保存失败：'+e.message,true); }
+  },800);
+}
+
+async function loadChapter(item){
+  curFile=item.file; curTitle=item.chapter;
+  $('cur').textContent=item.sheet+' · '+item.chapter;
+  document.querySelectorAll('.ch').forEach(el=>el.classList.toggle('on',el.dataset.f===curFile));
+  $('sidebar').classList.add('hide'); $('mask').classList.add('hide');
+  setStatus('加载中…',true);
+  let data=null;
+  const local=localStorage.getItem(LS_PFX+item.file);
+  if(local){ try{ data=JSON.parse(local); setStatus('已载入本机编辑版本',true);}catch(e){} }
+  if(!data){
+    try{
+      const r=await fetch('./data/'+item.file+'?v=1');
+      data=await r.json();
+      setStatus('已载入原版 · 共 '+item.nodes+' 个节点',true);
+    }catch(e){ setStatus('加载失败：'+e.message); return; }
+  }
+  initMind(data);
+}
+
+function renderList(){
+  const list=$('list'); const bySheet={};
+  index.forEach(it=>{ (bySheet[it.sheet]=bySheet[it.sheet]||[]).push(it); });
+  $('cnt').textContent=index.length+' 章';
+  let h='';
+  for(const s in bySheet){
+    h+='<div class="grp"><div class="grp-t">'+s+'</div>';
+    bySheet[s].forEach(it=>{
+      h+='<div class="ch'+(edited(it.file)?' edited':'')+'" data-f="'+it.file+'" data-s="'+it.sheet+'" data-c="'+it.chapter+'" data-n="'+it.nodes+'">'
+        +'<span>'+it.chapter+'</span><span class="n">'+it.nodes+'</span><span class="dot"></span></div>';
+    });
+    h+='</div>';
+  }
+  list.innerHTML=h;
+  list.querySelectorAll('.ch').forEach(el=>{
+    el.onclick=()=>loadChapter({sheet:el.dataset.s,chapter:el.dataset.c,file:el.dataset.f,nodes:el.dataset.n});
+  });
+}
+
+function getCfg(){ try{return JSON.parse(localStorage.getItem(LS_CFG))||{}}catch(e){return{}} }
+function setCfg(c){ localStorage.setItem(LS_CFG,JSON.stringify(c)) }
+
+async function upload(){
+  const c=getCfg();
+  if(!c.bin||!c.key){ setStatus('请先填写 Bin ID 和 Master Key'); return; }
+  // 收集所有本机修改过的章节
+  const payload={};
+  Object.keys(localStorage).forEach(k=>{
+    if(k.startsWith(LS_PFX)){ payload[k.slice(LS_PFX.length)]=JSON.parse(localStorage.getItem(k)); }
+  });
+  const n=Object.keys(payload).length;
+  if(!n){ setStatus('本机还没有编辑过任何章节'); return; }
+  setStatus('上传中…',true);
+  try{
+    const r=await fetch('https://api.jsonbin.io/v3/b/'+c.bin,{
+      method:'PUT',
+      headers:{'Content-Type':'application/json','X-Master-Key':c.key},
+      body:JSON.stringify(payload)
+    });
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    setStatus('已上传 '+n+' 个章节到云端');
+  }catch(e){ setStatus('上传失败：'+e.message); }
+}
+
+async function download(){
+  const c=getCfg();
+  if(!c.bin||!c.key){ setStatus('请先填写 Bin ID 和 Master Key'); return; }
+  setStatus('下载中…',true);
+  try{
+    const r=await fetch('https://api.jsonbin.io/v3/b/'+c.bin+'/latest',{headers:{'X-Master-Key':c.key}});
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const j=await r.json();
+    const d=j.record||{};
+    let n=0;
+    for(const f in d){ localStorage.setItem(LS_PFX+f,JSON.stringify(d[f])); n++; }
+    setStatus('已从云端载入 '+n+' 个章节');
+    renderList();
+    if(curFile && d[curFile]) loadChapter({sheet:curTitle.split(' · ')[0],chapter:curTitle.split(' · ')[1],file:curFile,nodes:'-'});
+  }catch(e){ setStatus('下载失败：'+e.message); }
+}
+
+// 事件
+$('btnSide').onclick=()=>{ $('sidebar').classList.toggle('hide'); $('mask').classList.toggle('hide'); };
+$('mask').onclick=()=>{ $('sidebar').classList.add('hide'); $('mask').classList.add('hide'); };
+$('btnFit').onclick=()=>{ mind && mind.toCenter && mind.toCenter(); };
+$('btnReset').onclick=()=>{
+  if(!curFile) return;
+  if(!confirm('确定放弃本机对这个章节的修改，恢复原版吗？')) return;
+  localStorage.removeItem(LS_PFX+curFile);
+  const it=index.find(x=>x.file===curFile);
+  if(it) loadChapter(it);
+  renderList();
+};
+$('btnSync').onclick=()=>{
+  const c=getCfg(); $('i_bin').value=c.bin||''; $('i_key').value=c.key||'';
+  $('modal').classList.add('show');
+};
+$('btnClose').onclick=()=>{ setCfg({bin:$('i_bin').value.trim(),key:$('i_key').value.trim()}); $('modal').classList.remove('show'); };
+$('btnUp').onclick=()=>{ setCfg({bin:$('i_bin').value.trim(),key:$('i_key').value.trim()}); upload(); };
+$('btnDown').onclick=()=>{ setCfg({bin:$('i_bin').value.trim(),key:$('i_key').value.trim()}); download(); };
+
+// 启动
+(async function(){
+  try{
+    const r=await fetch('./index.json');
+    index=await r.json();
+    renderList();
+    setStatus('共 '+index.length+' 章 · 选择左侧章节开始');
+    if(innerWidth>768) $('sidebar').classList.remove('hide');
+  }catch(e){ setStatus('索引加载失败：'+e.message); }
+})();
+</script>
+</body>
+</html>
