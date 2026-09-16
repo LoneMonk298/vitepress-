@@ -46,29 +46,12 @@ export const nav: DefaultTheme.Config["nav"] = [
     activeMatch: "/archives",
   },
   {
-    text: "408学习表",
-    link: "/考研408考点学习管理表.html",
-    target: "_blank",
-  },
-  {
-    text: "思维导图",
-    link: "/mindmaps/",
-    target: "_blank",
-  },
-  {
-    text: "每日规划",
-    link: "/每日规划.html",
-    target: "_blank",
-  },
-  {
-    text: "复习资料",
-    link: "/review/",
-    activeMatch: "/review/",
-  },
-  {
-    text: "草稿纸",
-    link: "https://draft.lonemonk.xyz/",
-    target: "_blank",
+    text: "AI赋能",
+    items: [
+      { text: "408学习表", link: "/考研408考点学习管理表.html", target: "_blank" },
+      { text: "草稿纸", link: "https://draft.lonemonk.xyz/", target: "_blank" },
+      { text: "思维导图", link: "/mindmaps/", target: "_blank" },
+    ],
   },
   {
     text: "考研资源",
