@@ -4539,13 +4539,15 @@ const MINDMAP_MAP = {
   }
 };
 
-function openMindmap(chapterName) {
+function openMindmap(chapterName, keyword) {
   if (!chapterName) return;
   const map = MINDMAP_MAP[currentTab] || {};
   const chId = map[chapterName];
   if (!chId) { alert('「' + chapterName + '」暂无思维导图'); return; }
-  const url = './mindmaps/#' + chId;
-  document.getElementById('mm-title').textContent = chapterName + ' · 思维导图';
+  const url = './mindmaps/#' + chId + (keyword ? '|' + encodeURIComponent(keyword) : '');
+  document.getElementById('mm-title').textContent = chapterName
+    + (keyword ? ' · ' + keyword : '')
+    + ' · 思维导图';
   const nw = document.getElementById('mm-new');
   if (nw) nw.href = url;
   document.getElementById('mm-frame').src = url;
@@ -4682,7 +4684,7 @@ function renderTable() {
                  contenteditable="false">${note || '点击添加备注'}</div>
           </td>
           <td>
-            <button class="action-btn warn small" onclick="openStuckModal(${idx})" title="记录卡壳点">📌</button><button class="mm-btn" data-ch="${item['考纲章节']}" title="思维导图" style="margin-left:4px">🧠</button>
+            <button class="action-btn warn small" onclick="openStuckModal(${idx})" title="记录卡壳点">📌</button><button class="mm-btn" data-ch="${item['考纲章节']}" data-kw="${String(item['考点']||'').replace(/"/g,'&quot;')}" title="定位到该考点" style="margin-left:4px">🧠</button>
             ${item._custom ? `<button class="delete-btn" onclick="deletePoint(${idx})" style="margin-left:4px">删除</button>` : ''}
           </td>
         </tr>
@@ -4693,7 +4695,7 @@ function renderTable() {
   tbody.innerHTML = html;
   initDragHandlers();
   tbody.querySelectorAll(".mm-btn").forEach(function(b){
-    b.onclick = function(ev){ ev.stopPropagation(); openMindmap(b.getAttribute("data-ch")); };
+    b.onclick = function(ev){ ev.stopPropagation(); openMindmap(b.getAttribute("data-ch"), b.getAttribute("data-kw")||""); };
   });
 }
 
