@@ -144,6 +144,7 @@ function loadChapter(item){
   var els=document.querySelectorAll('.ch');
   for(var i=0;i<els.length;i++) els[i].classList.toggle('on', els[i].dataset.f===curFile);
   $('sidebar').classList.add('hide'); $('mask').classList.add('hide');
+  try{ if(location.hash !== '#'+item.file) history.replaceState(null,'','#'+item.file); }catch(e){}
   setStatus('加载中…',true);
   var local=localStorage.getItem(LS_PFX+item.file);
   if(local){
@@ -255,6 +256,8 @@ document.addEventListener('DOMContentLoaded', function(){
     renderList();
     setStatus('共 '+index.length+' 章 · 选择左侧章节开始');
     if(window.innerWidth>768) $('sidebar').classList.remove('hide');
+    var want=(location.hash||'').replace('#','') || (new URLSearchParams(location.search)).get('ch') || '';
+    if(want){ for(var qi=0;qi<index.length;qi++){ if(index[qi].file===want){ loadChapter(index[qi]); break; } } }
   }).catch(function(e){ setStatus('索引加载失败：'+e.message); });
 });
 })();

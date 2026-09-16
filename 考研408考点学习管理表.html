@@ -1916,6 +1916,23 @@
     .table-container td:nth-child(10) { white-space: nowrap; }
     .table-scroll-hint { display: flex; }
   }
+
+/* ===== 思维导图弹层 ===== */
+.mm-modal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;z-index:9998;align-items:center;justify-content:center;padding:14px}
+.mm-modal.show{display:flex}
+.mm-box{width:100%;height:100%;max-width:1600px;background:#fff;border-radius:12px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.mm-head{height:50px;display:flex;align-items:center;justify-content:space-between;padding:0 14px;border-bottom:1px solid #e5e7eb;flex:none;background:#fff}
+.mm-head .mm-t{font-weight:600;font-size:14px;color:#1f2937;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mm-head .mm-act{display:flex;gap:8px;align-items:center;flex:none}
+.mm-head a.mm-new,.mm-head button{font-size:12.5px;padding:6px 12px;border-radius:7px;border:1px solid #e5e7eb;background:#fff;color:#374151;cursor:pointer;text-decoration:none;font-family:inherit}
+.mm-head a.mm-new:hover,.mm-head button:hover{border-color:#667eea;color:#667eea}
+#mm-frame{flex:1;width:100%;border:0;display:block;background:#f5f6f8}
+.mm-btn{cursor:pointer;border:1px solid #e5e7eb;background:#fff;border-radius:6px;padding:3px 7px;font-size:13px;line-height:1.2}
+.mm-btn:hover{border-color:#667eea;background:#f5f3ff}
+body.dark .mm-box,body.dark .mm-head{background:#1e293b}
+body.dark .mm-head{border-color:#334155}
+body.dark .mm-head .mm-t{color:#e2e8f0}
+body.dark .mm-head a.mm-new,body.dark .mm-head button,body.dark .mm-btn{background:#1e293b;color:#cbd5e1;border-color:#334155}
 </style>
 </head>
 <body>
@@ -4485,6 +4502,69 @@ function renderStatsView() {
 }
 
 // Render table
+
+// ===== 思维导图集成 =====
+const MINDMAP_MAP = {
+  'Sheet1_数据结构': {
+    '基本概念': '0-0',
+    '线性表': '0-1',
+    '栈、队列和数组': '0-1',
+    '树和二叉树': '0-2',
+    '图': '0-2',
+    '查找': '0-3',
+    '排序': '0-4'
+  },
+  'Sheet2_计算机组成原理': {
+    '计算机系统概述': '1-0',
+    '数据的表示和运算': '1-0',
+    '存储器层次结构': '1-1',
+    '指令系统': '1-2',
+    '中央处理器(CPU)': '1-3',
+    '总线和输入输出系统': '1-4'
+  },
+  'Sheet3_操作系统': {
+    '操作系统基础': '2-0',
+    '进程管理': '2-1',
+    '内存管理': '2-2',
+    '文件管理': '2-3',
+    '输入/输出(I/O)管理': '2-4'
+  },
+  'Sheet4_计算机网络': {
+    '计算机网络概述': '3-0',
+    '物理层': '3-1',
+    '数据链路层': '3-2',
+    '网络层': '3-3',
+    '传输层': '3-4',
+    '应用层': '3-5'
+  }
+};
+
+function openMindmap(chapterName) {
+  if (!chapterName) return;
+  const map = MINDMAP_MAP[currentTab] || {};
+  const chId = map[chapterName];
+  if (!chId) { alert('「' + chapterName + '」暂无思维导图'); return; }
+  const url = '/mindmaps/#' + chId;
+  document.getElementById('mm-title').textContent = chapterName + ' · 思维导图';
+  const nw = document.getElementById('mm-new');
+  if (nw) nw.href = url;
+  document.getElementById('mm-frame').src = url;
+  document.getElementById('mm-modal').classList.add('show');
+}
+
+function closeMindmap() {
+  document.getElementById('mm-modal').classList.remove('show');
+  var f = document.getElementById('mm-frame');
+  if (f) f.src = 'about:blank';
+}
+
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') {
+    var m = document.getElementById('mm-modal');
+    if (m && m.classList.contains('show')) closeMindmap();
+  }
+});
+
 function renderTable() {
   const tbody = document.getElementById('table-body');
   const data = appData[currentTab] || [];
@@ -4558,7 +4638,7 @@ function renderTable() {
     html += `<tr class="chapter-row" data-chapter-idx="${chIdx}" style="cursor:pointer">
       <td colspan="10">
         <span class="chapter-arrow">${arrow}</span>
-        📖 ${chapter} (${chapters[chapter].length}个考点)
+        📖 ${chapter} (${chapters[chapter].length}个考点) <button class="mm-btn" data-ch="${chapter}" title="章节思维导图">🧠</button>
       </td>
     </tr>`;
     chapters[chapter].forEach(item => {
@@ -4602,7 +4682,7 @@ function renderTable() {
                  contenteditable="false">${note || '点击添加备注'}</div>
           </td>
           <td>
-            <button class="action-btn warn small" onclick="openStuckModal(${idx})" title="记录卡壳点">📌</button>
+            <button class="action-btn warn small" onclick="openStuckModal(${idx})" title="记录卡壳点">📌</button><button class="mm-btn" data-ch="${item['考纲章节']}" title="思维导图" style="margin-left:4px">🧠</button>
             ${item._custom ? `<button class="delete-btn" onclick="deletePoint(${idx})" style="margin-left:4px">删除</button>` : ''}
           </td>
         </tr>
@@ -4612,6 +4692,9 @@ function renderTable() {
   
   tbody.innerHTML = html;
   initDragHandlers();
+  tbody.querySelectorAll(".mm-btn").forEach(function(b){
+    b.onclick = function(ev){ ev.stopPropagation(); openMindmap(b.getAttribute("data-ch")); };
+  });
 }
 
 // Update mastery
@@ -5339,4 +5422,17 @@ function confirmReset() {
 </script>
 
 
+
+<div class="mm-modal" id="mm-modal">
+  <div class="mm-box">
+    <div class="mm-head">
+      <span class="mm-t" id="mm-title">思维导图</span>
+      <div class="mm-act">
+        <a class="mm-new" id="mm-new" href="/mindmaps/" target="_blank">新窗口打开</a>
+        <button onclick="closeMindmap()">关闭</button>
+      </div>
+    </div>
+    <iframe id="mm-frame" src="about:blank"></iframe>
+  </div>
+</div>
 </body></html>
