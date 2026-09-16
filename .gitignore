@@ -39,3 +39,6 @@ admin-dist/
 .env.*.local
 .local-dev.lock
 .pnpm-store/
+
+# npm lock（本项目使用 pnpm）
+package-lock.json

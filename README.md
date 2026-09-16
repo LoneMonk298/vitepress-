@@ -2,11 +2,19 @@
 
 # Lonemonk 知识库
 
-这是一个基于 VitePress 的个人技术知识库。文章以 Markdown 文件保存在 `docs` 目录中，适合在 IDE 中编写、Git 管理并部署到静态托管平台。
+个人技术知识库 + 408 考研备考系统。文章以 Markdown 保存在 `docs` 目录，适合在 IDE 中编写、Git 管理并部署到静态托管平台。
 
-项目同时提供一个独立的本地管理端，用于查看文章索引、检查 Frontmatter、复制文章路径、管理置顶状态、创建分类以及上传图片。文章正文仍然在 IDE 中编辑，管理端不会替代 Markdown 编辑器。
+项目由三部分组成：
+
+- **内容站点**（VitePress）：文章、课程、复习资料与工具页
+- **本地管理端**（独立 Vite App）：文章索引、Frontmatter 检查、置顶管理、分类创建、图片上传
+- **408 备考板块**：复盘式讲义笔记、真题解析、思维导图、考点学习管理表、每日规划
+
+文章正文仍在 IDE 中编辑，管理端不替代 Markdown 编辑器。
 
 ## 特性
+
+### 站点与工程
 
 - VitePress 文档站点与独立管理端
 - 按分类、标签和归档浏览文章
@@ -18,8 +26,50 @@
 - 管理端创建文章分类，并逐篇修复分类与标签规范问题
 - 图片按日期目录上传，并复制 Markdown 可用路径
 - 独立的课程内容目录：`docs/courses`
-- Mermaid 流程图、Markdown 脚注和数学公式
+- Mermaid 流程图、Markdown 脚注和数学公式（MathJax）
 - Waline 文章评论
+- RSS 与 Sitemap 自动生成
+
+### 408 备考
+
+- **复盘式讲义笔记**：按考点驱动的改写版，含符号约定表、boxed 公式、易错清单与速记
+- **历年真题解析**：从暴力解到最优解的完整推导路径
+- **可编辑思维导图**：四科 26 章、4247 个节点，支持展开/折叠/拖拽编辑与多端同步
+- **考点学习管理表**：考频热度、掌握程度、回归次数、艾宾浩斯复习提醒、云同步
+- **每日规划**：日程看板、翻盘队列、卡壳记录
+- **复习资料库**：试卷、答案、专题讲义等 PDF/XLSX 在线索引
+
+## 目录结构
+
+```text
+.
+├── docs/                       站点内容
+│   ├── categories/             文章分类（awesome / data-structures / servers）
+│   │   └── <分类 ID>/YYYY/M/D/ 按年月日归档的文章
+│   ├── courses/                课程内容（course1：408 讲义 + 真题）
+│   ├── drafts/                 草稿工作区（不参与前台/RSS/Sitemap 构建）
+│   ├── public/                 静态资源与工具页（原样复制到站点根）
+│   │   ├── mindmaps/           408 思维导图（可编辑，含 vendor 库与 data 数据）
+│   │   ├── review/             复习资料库（PDF / XLSX）
+│   │   ├── visualizers/        知识点可视化产物
+│   │   ├── img/YYYY/M/D/       文章图片
+│   │   ├── 考研408考点学习管理表.html
+│   │   └── 每日规划.html
+│   ├── review/                 复习资料索引页
+│   ├── templates/              文章与课程模板
+│   └── .vitepress/             站点配置与主题
+├── admin/                      独立管理端（Vite 应用）
+├── scripts/                    工程脚本
+│   ├── doctor.mjs              环境与项目结构诊断
+│   ├── generate-rss.mjs        RSS / Sitemap 生成
+│   └── local-dev.mjs           前台 + 管理端一键启动
+├── article.data.js             VitePress data loader：文章索引
+├── review-files.data.js        VitePress data loader：复习资料索引
+├── content.registry.json       分类与标签注册表（唯一来源）
+└── content-registry.mjs        注册表加载与规范化工具
+```
+
+> 根目录的 `*.data.js` 是 VitePress 的 [data loader](https://vitepress.dev/guide/data-loading) 约定文件，构建期运行、供页面 `import { data }` 消费，**不是构建产物**。
 
 ## 环境要求
 
@@ -149,6 +199,33 @@ isTop: false
 ![示例图片](/img/2026/8/23/example.png)
 ```
 
+## 408 备考内容
+
+### 讲义笔记（`docs/courses/course1/03-408讲义/`）
+
+按**考点驱动 + 问题驱动**的复盘式写法：每个概念先问「为什么需要它 / 不用会怎样 / 容易误解成什么」，再给结论，最后收敛成「易错清单 + 速记」。使用符号约定表、boxed 公式与 tip/warning/details 容器。
+
+### 真题解析（`docs/courses/course1/02-408真题/`）
+
+从暴力解 → 复杂度浪费分析 → 最优解的完整推导路径，附评分维度与易错点。
+
+### 思维导图（`docs/public/mindmaps/`）
+
+四科 26 章、4247 个节点的可编辑思维导图：
+
+- 左侧按科目/章节切换，点击加载对应章节
+- 支持展开、折叠、拖拽与直接编辑
+- 编辑结果自动保存到浏览器，可通过 jsonbin 多端同步
+- 支持 URL 定位：`/mindmaps/#0-1|线性表的应用`
+
+### 学习管理表（`docs/public/考研408考点学习管理表.html`）
+
+考点级备考追踪，与思维导图联动：考点行的 🧠 按钮可直接打开对应导图并**定位到该考点节点**。
+
+### 复习资料库（`docs/public/review/`）
+
+试卷、答案、专题讲义等 PDF/XLSX 的在线索引页（`docs/review/index.md`），索引由 `review-files.data.js` 在构建期扫描生成。
+
 ## 管理端说明
 
 管理端只在本地开发服务中提供文件写入能力。它扫描 `docs/**/*.md`，显示文章的真实路径、分类、标签、归档日期和问题状态。
@@ -184,7 +261,7 @@ pnpm admin:build
 pnpm admin:preview
 ```
 
-前台可以部署到 Vercel、Netlify、GitHub Pages、个人服务器等静态托管环境。Waline 服务端需要单独部署，并在 `docs/.vitepress/config/theme.ts` 的 `commentConfig.serverURL` 中填写 Waline 服务地址。
+前台可以部署到 Vercel、Netlify、GitHub Pages、个人服务器等静态托管环境。本项目当前使用 GitHub Actions 构建并发布到 GitHub Pages，再由 Cloudflare 提供域名与缓存。Waline 服务端需要单独部署，并在 `docs/.vitepress/config/theme.ts` 的 `commentConfig.serverURL` 中填写 Waline 服务地址。
 
 ## 许可证
 
