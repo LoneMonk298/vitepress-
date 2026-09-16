@@ -1,5 +1,0 @@
-__pycache__/
-*.pyc
-docs/public/visualizers/*.html
-examples/*.html
-.env
