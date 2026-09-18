@@ -79,13 +79,16 @@
 <div class="modal" id="modal">
   <div class="mbox">
     <h3>云同步设置</h3>
-    <p>填入 jsonbin.io 的凭证即可多端同步编辑（请用<b>独立的 Bin</b>，勿与学习管理表共用）。<br>未填写时仅保存在本机浏览器。</p>
-    <label>Bin ID</label><input id="i_bin" placeholder="如 65f3a...">
-    <label>Master Key</label><input id="i_key" placeholder="如 $2a$10$...">
+    <p>填入 jsonbin.io 的 <b>X-Access-Key</b> 即可多端同步（与「408学习表」同一把钥匙）。<br>
+    <b>请用独立的 Bin</b>，勿与学习管理表共用；首次使用点「创建/连接云端」。</p>
+    <label>Bin ID</label><input id="i_bin" placeholder="留空则由「创建/连接云端」生成">
+    <label>X-Access-Key</label><input id="i_key" placeholder="如 sk_test_ak_...">
     <div class="row">
-      <button id="btnDown">从云端下载</button>
-      <button class="pri" id="btnUp">上传到云端</button>
+      <button id="btnNew">创建/连接云端</button>
+      <button id="btnDown">下载</button>
+      <button class="pri" id="btnUp">上传</button>
     </div>
+    <div id="syncInfo" style="font-size:12px;color:var(--text2);margin-top:12px;line-height:1.6;word-break:break-all"></div>
     <div class="row"><button id="btnClose">关闭</button></div>
   </div>
 </div>
@@ -285,38 +288,94 @@ function renderList(){
 }
 
 function getCfg(){ try{ return JSON.parse(localStorage.getItem(LS_CFG))||{}; }catch(e){ return {}; } }
+function syncInfo(t){ var el=$('syncInfo'); if(el) el.textContent=t; }
+function syncErr(e){
+  var t = String(e && (e.msg || e.message) || e);
+  setStatus('同步失败：' + t);
+  if($('syncInfo')) $('syncInfo').textContent = t;
+}
 function setCfg(c){ localStorage.setItem(LS_CFG, JSON.stringify(c)); }
 
+function syncHd(c, extra){
+  var h = {'Content-Type':'application/json'};
+  if(c.key) h['X-Access-Key'] = c.key;
+  if(extra) for(var k in extra) h[k] = extra[k];
+  return h;
+}
+function syncHttp(method, url, body, h){
+  return fetch(url, {method:method, headers:h, body:body}).then(function(r){
+    return r.text().then(function(t){
+      var d = null; try{ d = t ? JSON.parse(t) : null; }catch(e){}
+      if(!r.ok){
+        var m = 'HTTP ' + r.status;
+        if(d && (d.status || d.message)) m += ' - ' + (d.status || d.message);
+        var err = new Error(m); err.msg = m; err.body = d;
+        throw err;
+      }
+      return {status:r.status, text:t, json:d};
+    });
+  });
+}
 function upload(){
-  var c=getCfg();
-  if(!c.bin||!c.key){ setStatus('请先填写 Bin ID 和 Master Key'); return; }
-  var payload={}, n=0;
+  var c = getCfg();
+  if(!c.key){ syncErr('请先填写 X-Access-Key'); return; }
+  var payload = {}, n = 0;
   for(var k in localStorage){
-    if(k.indexOf(LS_PFX)===0){ try{ payload[k.slice(LS_PFX.length)]=JSON.parse(localStorage.getItem(k)); n++; }catch(e){} }
+    if(k.indexOf(LS_PFX)===0){ try{ payload[k.slice(LS_PFX.length)] = JSON.parse(localStorage.getItem(k)); n++; }catch(e){} }
   }
-  if(!n){ setStatus('本机还没有编辑过任何章节'); return; }
-  setStatus('上传中…',true);
-  fetch('https://api.jsonbin.io/v3/b/'+c.bin,{
-    method:'PUT', headers:{'Content-Type':'application/json','X-Master-Key':c.key},
-    body:JSON.stringify(payload)
-  }).then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); setStatus('已上传 '+n+' 个章节到云端'); })
-   .catch(function(e){ setStatus('上传失败：'+e.message); });
+  if(!n){ syncErr('本机还没有编辑过任何章节，先编辑导图再上传'); return; }
+  function doPush(){
+    setStatus('上传中...', true);
+    syncHttp('PUT', 'https://api.jsonbin.io/v3/b/' + c.bin, JSON.stringify(payload), syncHd(c))
+      .then(function(){
+        setStatus('已上传 ' + n + ' 个章节到云端');
+        syncInfo('Bin ID: ' + c.bin + '\n已上传 ' + n + ' 个编辑过的章节（共 ' + index.length + ' 章）');
+      })
+      .catch(function(e){ syncErr(e); });
+  }
+  if(c.bin) doPush();
+  else syncBin(c, doPush);
 }
 function download(){
-  var c=getCfg();
-  if(!c.bin||!c.key){ setStatus('请先填写 Bin ID 和 Master Key'); return; }
-  setStatus('下载中…',true);
-  fetch('https://api.jsonbin.io/v3/b/'+c.bin+'/latest',{headers:{'X-Master-Key':c.key}})
-  .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
-  .then(function(j){
-    var d=j.record||{}, n=0;
-    for(var f in d){ localStorage.setItem(LS_PFX+f, JSON.stringify(d[f])); n++; }
-    setStatus('已从云端载入 '+n+' 个章节');
-    renderList();
-    if(curFile && d[curFile]) loadChapter({sheet:curSheet, chapter:curChapter, file:curFile, nodes:'-'}, '');
-  }).catch(function(e){ setStatus('下载失败：'+e.message); });
+  var c = getCfg();
+  if(!c.key){ syncErr('请先填写 X-Access-Key'); return; }
+  if(!c.bin){ syncErr('还没有 Bin ID，请先点「创建/连接云端」'); return; }
+  setStatus('下载中...', true);
+  syncHttp('GET', 'https://api.jsonbin.io/v3/b/' + c.bin + '/latest', syncHd(c))
+    .then(function(res){
+      var j = res.json || {};
+      var d = j.record || {}, n = 0;
+      for(var f in d){ localStorage.setItem(LS_PFX + f, JSON.stringify(d[f])); n++; }
+      setStatus('已从云端载入 ' + n + ' 个章节');
+      renderList();
+      if(curFile && d[curFile]) loadChapter({sheet:curSheet, chapter:curChapter, file:curFile, nodes:'-'}, '');
+      syncInfo('Bin ID: ' + c.bin + '\n云端共 ' + n + ' 个章节，已应用到本机');
+    })
+    .catch(function(e){ syncErr(e); });
 }
-
+function syncBin(c, cb){
+  setStatus('连接云端中...', true);
+  syncHttp('GET', 'https://api.jsonbin.io/v3/bins?filterBy[metadata.name]=mm408_data', syncHd(c))
+    .then(function(res){
+      var list = (res.json && res.json.bins) || [];
+      var hit = null;
+      for(var i=0;i<list.length;i++){
+        if(list[i].metadata && list[i].metadata.name === 'mm408_data') hit = list[i];
+      }
+      if(hit){ c.bin = hit.id; setCfg(c); $('i_bin').value = hit.id; cb(c); return; }
+      syncHttp('POST', 'https://api.jsonbin.io/v3/b', JSON.stringify({}), syncHd(c, {
+        'X-Bin-Name':'mm408_data', 'X-Bin-Private':'true'
+      })).then(function(r){
+        var j = r.json || {};
+        c.bin = j.metadata && j.metadata.id;
+        setCfg(c); $('i_bin').value = c.bin || '';
+        if(!c.bin) throw new Error('创建成功但未取到 Bin ID');
+        syncInfo('已创建私有 Bin: ' + c.bin);
+        cb(c);
+      });
+    })
+    .catch(function(e){ syncErr(e); });
+}
 document.addEventListener('DOMContentLoaded', function(){
   $('btnSide').onclick=function(){ $('sidebar').classList.toggle('hide'); $('mask').classList.toggle('hide'); };
   $('mask').onclick=function(){ $('sidebar').classList.add('hide'); $('mask').classList.add('hide'); };
@@ -333,11 +392,18 @@ document.addEventListener('DOMContentLoaded', function(){
   $('btnSync').onclick=function(){
     var c=getCfg();
     $('i_bin').value=c.bin||''; $('i_key').value=c.key||'';
+    syncInfo(c.bin ? ('Bin ID: ' + c.bin) : '尚未连接云端 Bin - 填入 Access Key 后点「创建/连接云端」');
     $('modal').classList.add('show');
   };
-  $('btnClose').onclick=function(){ setCfg({bin:$('i_bin').value.trim(),key:$('i_key').value.trim()}); $('modal').classList.remove('show'); };
-  $('btnUp').onclick=function(){ setCfg({bin:$('i_bin').value.trim(),key:$('i_key').value.trim()}); upload(); };
-  $('btnDown').onclick=function(){ setCfg({bin:$('i_bin').value.trim(),key:$('i_key').value.trim()}); download(); };
+  function saveCfgFromUI(){
+    setCfg({bin:$('i_bin').value.trim(), key:$('i_key').value.trim()});
+    var c = getCfg();
+    syncInfo(c.bin ? ('Bin ID: ' + c.bin) : '尚未连接云端 Bin');
+  }
+  $('btnClose').onclick=function(){ saveCfgFromUI(); $('modal').classList.remove('show'); };
+  $('btnUp').onclick=function(){ saveCfgFromUI(); upload(); };
+  $('btnDown').onclick=function(){ saveCfgFromUI(); download(); };
+  $('btnNew').onclick=function(){ saveCfgFromUI(); var c=getCfg(); if(c.key) syncBin(c, function(){ syncInfo('云端就绪，可直接上传/下载'); }); };
 
   /* 节点搜索 */
   $('find').addEventListener('keydown', function(e){
