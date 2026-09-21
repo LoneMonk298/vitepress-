@@ -86,8 +86,10 @@ button.pri{background:var(--pri);color:#fff;border-color:var(--pri)}
 </div>
 
 <div class="modal" id="modal">
+  <div class="mbox">
     <h3>☁️ 云同步</h3>
-    <p style="font-size:13px;color:var(--text2);margin-bottom:12px">使用 jsonbin.io 多设备同步导图编辑（与「408学习表」同一套凭证）</p>
+    <p>使用 jsonbin.io 多设备同步导图编辑（与「408学习表」同一套凭证）。<br>
+    <b>请用独立的 Bin</b>，勿与学习管理表共用，否则会互相覆盖。</p>
 
     <div id="sync-status"></div>
 
@@ -105,11 +107,13 @@ button.pri{background:var(--pri);color:#fff;border-color:var(--pri)}
 
     <div id="sync-last-time" style="font-size:12px;color:var(--text2);margin-top:12px"></div>
 
-    <p style="font-size:12px;color:var(--text2);line-height:1.7;margin:12px 0 0">
-      ❓ 第一次使用：填好两个 Key，Bin ID 留空，点「推送到云端」会自动创建 Bin，然后把 Bin ID 保存下来。<br>
-      ⚠️ 请务必使用<b>独立的 Bin</b>，不要与学习管理表共用，否则会互相覆盖。
+    <p style="font-size:12px;color:var(--text2);line-height:1.7;margin:10px 0 0">
+      ❓ 第一次使用：填好两个 Key，Bin ID 留空，点「推送到云端」会自动创建 Bin，然后把 Bin ID 保存下来。
     </p>
 
+    <div class="row"><button id="btnClose">关闭</button></div>
+  </div>
+</div>
 
 <script src="./vendor/mind-elixir.global.js"></script>
 <script>
