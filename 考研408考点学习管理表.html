@@ -3455,26 +3455,35 @@ function renderSchedulePanel() {
     + '<span class="sch-chip">✅ 考点推进 <b>' + goalDone + '</b></span>'
     + '</div>';
 
-  // 今日时间轴（直接放最前，去掉"四阶段路标"）
-  html += '<div><div class="sch-section-title">⏰ 今日时间轴（08:00 - 24:00）</div>';
-  TIME_SLOTS.forEach((slot, i) => {
-    const isNow = nowMin >= slot.start && nowMin < slot.end;
-    const isPast = nowMin >= slot.end;
-    const checked = !!c.slots[i];
-    const title = slot.political && politicalOn ? '晚饭 · 政治' : slot.title;
-    const detail = slot.political && politicalOn ? '晚饭缓冲 + 1.5h 政治核心课 / 1000 题选择题' : slot.detail;
-    const fmt = m => String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0');
-    html += '<div class="sch-slot' + (isNow ? ' active' : '') + (isPast ? ' past' : '') + (checked ? ' checked' : '') + '">'
-      + '<span class="s-icon">' + slot.icon + '</span>'
-      + '<div class="s-main">'
-      + '<div class="s-title">' + title
-      + (isNow ? ' <span class="s-now">● 进行中</span>' : '')
-      + ' <span class="s-time">' + fmt(slot.start) + '-' + fmt(slot.end) + '</span></div>'
-      + '<div class="s-detail">' + detail + '</div>'
-      + '</div>'
-      + '<button class="sch-check" onclick="toggleSlot(' + i + ')" title="打卡">' + (checked ? '✓' : '') + '</button>'
-      + '</div>';
-  });
+  // 今日时间轴（读每日规划页的自定义时间表数据）
+  const DAILY_PLAN_KEY = 'kaoyan_408_v2';
+  let dailyData = {};
+  try { dailyData = JSON.parse(localStorage.getItem(DAILY_PLAN_KEY)) || {}; } catch(e) { dailyData = {}; }
+  const sessions = (dailyData.date === today && Array.isArray(dailyData.sessions)) ? dailyData.sessions : [];
+  html += '<div><div class="sch-section-title">⏰ 今日时间轴'
+    + (sessions.length ? ' <span class="rv-hint">来自每日规划页</span>' : ' <span class="rv-hint">无自定义时段</span>')
+    + '</div>';
+  if (sessions.length === 0) {
+    html += '<div class="rv-empty">📭 今日无自定义时段。<br><small>打开 <a href="每日规划.html" style="color:#667eea;font-weight:600;">每日规划页</a> 添加今日时间表</small></div>';
+  } else {
+    sessions.forEach((slot, i) => {
+      const isNow = slot.time && nowMin >= parseInt(slot.time.split(':')[0]) * 60 + parseInt(slot.time.split(':')[1] || '0')
+                       && nowMin < parseInt(slot.time.split(':')[0]) * 60 + parseInt(slot.time.split(':')[1] || '0') + (slot.duration || 30);
+      const isPast = slot.time && nowMin >= parseInt(slot.time.split(':')[0]) * 60 + parseInt(slot.time.split(':')[1] || '0') + (slot.duration || 30);
+      const checked = !!slot.done;
+      const fmt = m => String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0');
+      html += '<div class="sch-slot' + (isNow ? ' active' : '') + (isPast ? ' past' : '') + (checked ? ' checked' : '') + '">'
+        + '<span class="s-icon">' + (slot.icon || '📋') + '</span>'
+        + '<div class="s-main">'
+        + '<div class="s-title">' + (slot.title || '')
+        + (isNow ? ' <span class="s-now">● 进行中</span>' : '')
+        + (slot.time ? ' <span class="s-time">' + slot.time + ' · ' + (slot.duration || 30) + 'min</span>' : '')
+        + '</div>'
+        + '</div>'
+        + '<button class="sch-check" onclick="toggleSession(\'' + (slot.id || i) + '\')" title="打卡">' + (checked ? '✓' : '') + '</button>'
+        + '</div>';
+    });
+  }
   html += '</div>';
 
   // Review flip queue
