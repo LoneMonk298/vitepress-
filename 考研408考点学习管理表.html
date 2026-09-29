@@ -3455,40 +3455,7 @@ function renderSchedulePanel() {
     + '<span class="sch-chip">✅ 考点推进 <b>' + goalDone + '</b></span>'
     + '</div>';
 
-  // Stage timeline
-  html += '<div><div class="sch-section-title">🧭 四阶段路标</div>';
-  const d = loadScheduleData();
-  const stageTasks = d.stageTasks || {};
-  SCHEDULE_STAGES.forEach(s => {
-    const isCurrent = s.id === stage.id;
-    const isDone = today > s.range[1];
-    const tasks = stageTasks[s.id] || [];
-    const doneCnt = s.tasks.filter((_, i) => tasks[i]).length;
-    let stagePct = 0;
-    if (isDone) stagePct = 100;
-    else if (isCurrent) {
-      const span = daysBetween(s.range[0], s.range[1]) + 1;
-      stagePct = Math.min(100, Math.round((daysBetween(s.range[0], today) + 1) / span * 100));
-    }
-    html += '<div class="sch-stage' + (isCurrent ? ' current' : '') + (isDone ? ' done' : '') + '">'
-      + '<div class="sch-stage-head" onclick="toggleStageExpand(event)">'
-      + '<span>' + s.icon + '</span>'
-      + '<span class="sch-stage-name">' + s.name + '</span>'
-      + '<span class="sch-stage-state">' + (isCurrent ? '进行中 ' + stagePct + '%' : (isDone ? '已完成' : '待开启')) + '</span>'
-      + '<span class="sch-stage-dates">' + fmtRange(s.range) + ' · 任务 ' + doneCnt + '/' + s.tasks.length + '</span>'
-      + '</div>'
-      + '<div class="sch-stage-desc">' + s.desc + '</div>'
-      + '<div class="sch-stage-progress"><i style="width:' + stagePct + '%"></i></div>'
-      + '<div class="sch-stage-tasks">'
-      + s.tasks.map((t, i) =>
-        '<div class="sch-task' + (tasks[i] ? ' done' : '') + '" onclick="toggleStageTask(\'' + s.id + '\',' + i + ')">'
-        + '<span class="box">' + (tasks[i] ? '✓' : '') + '</span><span class="txt">' + t + '</span></div>'
-      ).join('')
-      + '</div></div>';
-  });
-  html += '</div>';
-
-  // Today time slots
+  // 今日时间轴（直接放最前，去掉"四阶段路标"）
   html += '<div><div class="sch-section-title">⏰ 今日时间轴（08:00 - 24:00）</div>';
   TIME_SLOTS.forEach((slot, i) => {
     const isNow = nowMin >= slot.start && nowMin < slot.end;
@@ -3576,22 +3543,7 @@ function renderSchedulePanel() {
   }
   html += '</div>';
 
-  // Subject progress
-  html += '<div><div class="sch-section-title">📈 考点推进（点击科目跳转）</div>';
-  const focusSheets = getFocusSheets();
-  Object.keys(SHEET_DISPLAY).forEach(sheet => {
-    const p = getSheetProgress(sheet);
-    const mPct = p.total ? Math.round(p.mastered / p.total * 100) : 0;
-    const lPct = p.total ? Math.round(p.learning / p.total * 100) : 0;
-    html += '<div class="sch-subject' + (focusSheets.includes(sheet) ? ' focus' : '') + '" onclick="jumpToSheet(\'' + sheet + '\')" title="跳转到 ' + SHEET_DISPLAY[sheet] + '">'
-      + '<span class="sub-name">' + SHEET_DISPLAY[sheet] + '</span>'
-      + '<div class="sub-bar"><i class="m" style="width:' + mPct + '%"></i><i class="l" style="width:' + lPct + '%"></i></div>'
-      + '<span class="sub-num">' + p.mastered + ' 掌握 / ' + p.total + '</span>'
-      + '</div>';
-  });
-  html += '</div>';
-
-  // Today goals
+  // Today goals（去掉"考点推进"列表，只留考点目标）
   const goals = getTodayGoals();
   html += '<div><div class="sch-section-title">🎯 今日考点目标（主攻科 · 高频优先）</div>';
   if (goals.length === 0) {
