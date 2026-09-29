@@ -3036,7 +3036,8 @@ updatePomoStatsDisplay();
 
 // ================= Sprint schedule dashboard =================
 const SCHEDULE_KEY = 'kaoyan_schedule_v1';
-const SPRINT_START = '2026-09-09';
+const SPRINT_START = '2026-09-29';  // 与每日规划页同步（80 天冲刺）
+const SPRINT_END = '2026-12-18';    // 冲刺最后一天（公式背诵+调整心态）
 const HEAT_WEIGHT = { '🔥 高频': 3, '🟡 中频': 2, '🟢 低频': 1, '⚪ 冷门': 0 };
 const SHEET_DISPLAY = {
   'Sheet1_数据结构': '数据结构',
@@ -3046,48 +3047,21 @@ const SHEET_DISPLAY = {
 };
 
 const SCHEDULE_STAGES = [
-  {
-    id: 's1', name: '极速清尾', icon: '🚀', range: ['2026-09-09', '2026-09-30'],
-    desc: '单核硬推清尾：数学速通积分学与线代；408 扫平计组、速推 OS 与计网。内容极度功利化，放弃抽象证明与硬件微操作推导。',
-    tasks: [
-      '数学：21 天速通积分学（定积分 / 二重积分计算）',
-      '数学：速通线性代数（矩阵 / 特征值）',
-      '408：扫平计组剩余四章（抓数据通路与 Cache）',
-      '408：速推 OS（抓进程调度与内存分页）',
-      '408：速推计网（抓 TCP/IP 交互，其余纯背）',
-      '英语：每天 1 篇真题阅读精刷'
-    ]
-  },
-  {
-    id: 's2', name: '真题拉练', icon: '💪', range: ['2026-10-01', '2026-10-31'],
-    desc: '政治入局；数学与 408 开启「两天一卷」：第一天严格限时模考，第二天 3 小时 AI 深度复盘。',
-    tasks: [
-      '政治：每天 1.5h 专攻选择题，不看主观题大部头',
-      '数学：两天一卷（Day1 限时模考 / Day2 3h 复盘）',
-      '408：两天一卷（同上节奏）',
-      '英语：持续真题阅读单点精刷'
-    ]
-  },
-  {
-    id: 's3', name: '弱点爆破', icon: '🎯', range: ['2026-11-01', '2026-11-30'],
-    desc: '针对「必拿分」模块集中特训，核心公式脱稿默写，作文模板强行落地。',
-    tasks: [
-      '数学：选填题 + 二重积分等必拿分模块特训',
-      '408：每天脱稿默写核心抢分公式（特殊矩阵 / OS 调度 / 计网报文头）',
-      '英语：作文模板背诵 + 答题卡强行套写',
-      '政治：选择题持续盲刷'
-    ]
-  },
-  {
-    id: 's4', name: '终极保底', icon: '🛡️', range: ['2026-12-01', '2026-12-18'],
-    desc: '全面停止做新题。死磕肖四主观题形成肌肉记忆，错题本反复扫视保持题感。',
-    tasks: [
-      '政治：每天 3h 死磕肖四主观题',
-      '数学：错题本反复扫视 + 半套选填保题感',
-      '408：错题本反复扫视 + 半套选填保题感',
-      '考前：调整生物钟，12.18 早睡'
-    ]
-  }
+  { id: 's1', name: '清尾攻坚', icon: '🚀', range: ['2026-09-29', '2026-10-20'],
+    desc: '数学一轮收尾（20 天）+ 408 基础知识冲刺（10/15 转大题与代码）',
+    tasks: ['数学：一轮复习收尾，转真题', '408：基础知识冲刺，10/15 转大题与代码'] },
+  { id: 's2', name: '真题启航', icon: '📝', range: ['2026-10-21', '2026-10-31'],
+    desc: '数学转真题 + 408 大题与代码，10/30 启动 408 真题',
+    tasks: ['408：开始刷历年真题（10/30）'] },
+  { id: 's3', name: '真题拉练', icon: '💪', range: ['2026-11-01', '2026-11-30'],
+    desc: '全科真题强化 + 政治入局',
+    tasks: ['政治：11/1 开始系统复习'] },
+  { id: 's4', name: '弱点爆破', icon: '🎯', range: ['2026-12-01', '2026-12-11'],
+    desc: '查漏补缺，专攻薄弱章节',
+    tasks: [] },
+  { id: 's5', name: '终极保底', icon: '🛡️', range: ['2026-12-12', '2026-12-18'],
+    desc: '保底复习 + 12/18 公式背诵与调整心态',
+    tasks: ['12/18：公式背诵 + 调整心态'] }
 ];
 
 // 时间轴（分钟计）。18:30 时段 10 月起自动切换为政治。
@@ -3433,33 +3407,36 @@ function renderSchedulePanel() {
   const pomo = getPomoStats();
   const politicalOn = today >= '2026-10-01';
 
-  // Countdown hero
+  // Countdown hero（同步每日规划页：9/29 启动 → 12/18 收官 → 12/19 考试）
   const diff = EXAM_DATE - now;
   const daysLeft = diff > 0 ? Math.ceil(diff / 86400000) : 0;
   document.getElementById('sch-days').textContent = daysLeft > 0 ? daysLeft : '加油！';
-  const totalDays = daysBetween(SPRINT_START, '2026-12-19') + 1;
+  const totalDays = daysBetween(SPRINT_START, SPRINT_END) + 1;
   const dayIdx = Math.min(totalDays, Math.max(1, daysBetween(SPRINT_START, today) + 1));
   document.getElementById('sch-day-index').textContent = 'Day ' + dayIdx + ' / ' + totalDays + ' · ' + stage.icon + ' ' + stage.name;
 
   let html = '';
 
-  // Today chips
-  const slotDone = c.slots.filter(Boolean).length;
-  const goalDone = Object.keys(c.goals).length;
-  const rvList = getReviewList();
-  const rvDueCnt = rvList.filter(e => !e.done && e.dueDays !== null && e.dueDays >= 0).length;
-  html += '<div class="sch-chips">'
-    + '<span class="sch-chip">🍅 今日番茄 <b>' + pomo.count + '</b></span>'
-    + '<span class="sch-chip">⏱ 时段打卡 <b>' + slotDone + '/' + TIME_SLOTS.length + '</b></span>'
-    + '<span class="sch-chip">🔁 复盘到期 <b>' + rvDueCnt + '</b></span>'
-    + '<span class="sch-chip">✅ 考点推进 <b>' + goalDone + '</b></span>'
-    + '</div>';
-
-  // 今日时间轴（读每日规划页的自定义时间表数据）
+  // 读每日规划页数据（共享 kaoyan_408_v2）
   const DAILY_PLAN_KEY = 'kaoyan_408_v2';
   let dailyData = {};
   try { dailyData = JSON.parse(localStorage.getItem(DAILY_PLAN_KEY)) || {}; } catch(e) { dailyData = {}; }
   const sessions = (dailyData.date === today && Array.isArray(dailyData.sessions)) ? dailyData.sessions : [];
+  const customTasks = (dailyData.date === today && Array.isArray(dailyData.customTasks)) ? dailyData.customTasks : [];
+  const sessionDone = sessions.filter(s => s.done).length;
+  const taskDone = customTasks.filter(t => t.done).length;
+
+  // Today chips
+  const rvList = getReviewList();
+  const rvDueCnt = rvList.filter(e => !e.done && e.dueDays !== null && e.dueDays >= 0).length;
+  html += '<div class="sch-chips">'
+    + '<span class="sch-chip">🍅 今日番茄 <b>' + pomo.count + '</b></span>'
+    + '<span class="sch-chip">⏰ 时段完成 <b>' + sessionDone + '/' + sessions.length + '</b></span>'
+    + '<span class="sch-chip">📝 任务完成 <b>' + taskDone + '/' + customTasks.length + '</b></span>'
+    + '<span class="sch-chip">🔁 复盘到期 <b>' + rvDueCnt + '</b></span>'
+    + '</div>';
+
+  // 今日时间轴（来自每日规划页）
   html += '<div><div class="sch-section-title">⏰ 今日时间轴'
     + (sessions.length ? ' <span class="rv-hint">来自每日规划页</span>' : ' <span class="rv-hint">无自定义时段</span>')
     + '</div>';
@@ -3467,11 +3444,10 @@ function renderSchedulePanel() {
     html += '<div class="rv-empty">📭 今日无自定义时段。<br><small>打开 <a href="每日规划.html" style="color:#667eea;font-weight:600;">每日规划页</a> 添加今日时间表</small></div>';
   } else {
     sessions.forEach((slot, i) => {
-      const isNow = slot.time && nowMin >= parseInt(slot.time.split(':')[0]) * 60 + parseInt(slot.time.split(':')[1] || '0')
-                       && nowMin < parseInt(slot.time.split(':')[0]) * 60 + parseInt(slot.time.split(':')[1] || '0') + (slot.duration || 30);
-      const isPast = slot.time && nowMin >= parseInt(slot.time.split(':')[0]) * 60 + parseInt(slot.time.split(':')[1] || '0') + (slot.duration || 30);
+      const startMin = slot.time ? parseInt(slot.time.split(':')[0]) * 60 + parseInt(slot.time.split(':')[1] || '0') : 0;
+      const isNow = slot.time && nowMin >= startMin && nowMin < startMin + (slot.duration || 30);
+      const isPast = slot.time && nowMin >= startMin + (slot.duration || 30);
       const checked = !!slot.done;
-      const fmt = m => String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0');
       html += '<div class="sch-slot' + (isNow ? ' active' : '') + (isPast ? ' past' : '') + (checked ? ' checked' : '') + '">'
         + '<span class="s-icon">' + (slot.icon || '📋') + '</span>'
         + '<div class="s-main">'
@@ -3552,34 +3528,50 @@ function renderSchedulePanel() {
   }
   html += '</div>';
 
-  // Today goals（去掉"考点推进"列表，只留考点目标）
-  const goals = getTodayGoals();
-  html += '<div><div class="sch-section-title">🎯 今日考点目标（主攻科 · 高频优先）</div>';
-  if (goals.length === 0) {
-    html += '<div class="sch-goal"><div class="g-main"><div class="g-name">🎉 主攻科目考点已全部掌握！</div>'
-      + '<div class="g-meta">可切换科目或进入真题拉练阶段</div></div></div>';
+  // 今日复习目标（来自每日规划页的自定义任务，无则留空）
+  html += '<div><div class="sch-section-title">🎯 今日复习目标'
+    + (customTasks.length ? ' <span class="rv-hint">来自每日规划页</span>' : ' <span class="rv-hint">无任务</span>')
+    + '</div>';
+  if (customTasks.length === 0) {
+    html += '<div class="rv-empty">📭 今日无复习目标。<br><small>打开 <a href="每日规划.html" style="color:#667eea;font-weight:600;">每日规划页</a> 添加今日任务</small></div>';
   } else {
-    goals.forEach(g => {
-      const key = goalKey(g.sheet, g.item['考点']);
-      const done = !!c.goals[key];
-      const safeName = attrJsStr(g.item['考点']);
-      html += '<div class="sch-goal' + (done ? ' done' : '') + '">'
-        + '<span class="g-heat">' + (g.item['热度等级'] || '') + '</span>'
-        + '<div class="g-main" onclick="jumpToGoal(\'' + g.sheet + '\',\'' + safeName + '\')">'
-        + '<div class="g-name">' + escapeHtml(g.item['考点']) + '</div>'
-        + '<div class="g-meta">' + SHEET_DISPLAY[g.sheet] + ' · ' + escapeHtml(g.item['考纲章节'] || '') + ' · 考频 ' + escapeHtml(g.item['09—25考频'] || '—') + '</div>'
+    customTasks.forEach((t, i) => {
+      html += '<div class="sch-goal' + (t.done ? ' done' : '') + '">'
+        + '<div class="g-main">'
+        + '<div class="g-name">' + escapeHtml(t.text || '') + '</div>'
+        + (t.inferredCat ? '<div class="g-meta">🔁 ' + escapeHtml(t.inferredCat) + (t.done && t.reviews ? ' · 已复习 ' + t.reviews + ' 次' : '') + '</div>' : '')
         + '</div>'
-        + '<button class="g-check" onclick="toggleGoal(\'' + g.sheet + '\',\'' + safeName + '\')" title="标记已掌握">' + (done ? '✓' : '') + '</button>'
+        + '<button class="g-check" onclick="toggleCustomTask(' + i + ')" title="标记完成">' + (t.done ? '✓' : '') + '</button>'
         + '</div>';
     });
-    html += '<div class="sch-goal-footer">'
-      + '<span>✅ 打勾即写入考点表「已掌握」</span>'
-      + '<button class="sch-rotate-btn" onclick="rotateGoals()">🔄 换一批</button>'
-      + '</div>';
   }
   html += '</div>';
 
   body.innerHTML = html;
+}
+
+// 切换自定义任务完成状态（写回每日规划页数据）
+function toggleCustomTask(idx) {
+  const DAILY_PLAN_KEY = 'kaoyan_408_v2';
+  let data = {};
+  try { data = JSON.parse(localStorage.getItem(DAILY_PLAN_KEY)) || {}; } catch(e) { data = {}; }
+  if (!Array.isArray(data.customTasks)) return;
+  if (!data.customTasks[idx]) return;
+  data.customTasks[idx].done = !data.customTasks[idx].done;
+  localStorage.setItem(DAILY_PLAN_KEY, JSON.stringify(data));
+  renderSchedulePanel();
+}
+
+// 切换自定义时间表完成状态（写回每日规划页数据）
+function toggleSession(id) {
+  const DAILY_PLAN_KEY = 'kaoyan_408_v2';
+  let data = {};
+  try { data = JSON.parse(localStorage.getItem(DAILY_PLAN_KEY)) || {}; } catch(e) { data = {}; }
+  if (!Array.isArray(data.sessions)) return;
+  const s = data.sessions.find(x => x.id === id || x.id === String(id));
+  if (s) s.done = !s.done;
+  localStorage.setItem(DAILY_PLAN_KEY, JSON.stringify(data));
+  renderSchedulePanel();
 }
 
 function toggleStageExpand(ev) {
