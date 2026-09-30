@@ -106,6 +106,17 @@ body.dark .cat-badge.cat-pol { background: rgba(190,24,93,0.2); color: #fbcfe8; 
   background: var(--brand-soft); padding: 2px 8px; border-radius: 6px;
   font-variant-numeric: tabular-nums; flex-shrink: 0;
 }
+.session-title[contenteditable] { outline: none; border-radius: 4px; padding: 1px 4px; cursor: text; }
+.session-title[contenteditable]:focus { background: var(--brand-soft); box-shadow: 0 0 0 2px rgba(102,126,234,0.25); }
+.s-time-in { width: 112px; padding: 5px 7px; border-radius: 6px; border: 1px solid var(--border); background: var(--card); color: var(--text); font-size: 13px; font-family: inherit; font-variant-numeric: tabular-nums; flex-shrink: 0; }
+.s-dur-in { width: 66px; padding: 5px 4px; border-radius: 6px; border: 1px solid var(--border); background: var(--card); color: var(--text); font-size: 13px; font-family: inherit; text-align: center; font-variant-numeric: tabular-nums; flex-shrink: 0; }
+.s-time-in:focus, .s-dur-in:focus { outline: none; border-color: var(--brand); }
+.session-range { font-size: 12px; font-weight: 800; color: var(--brand); background: var(--brand-soft); padding: 4px 9px; border-radius: 6px; font-variant-numeric: tabular-nums; flex-shrink: 0; white-space: nowrap; }
+.routine-bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
+.routine-bar button { padding: 8px 14px; border-radius: 9px; border: 1px dashed var(--brand); background: var(--brand-soft); color: var(--brand); font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit; }
+.routine-bar button:hover { background: var(--brand); color: white; }
+.routine-bar .rb-hint { font-size: 11px; color: var(--text3); }
+.routine-bar .rb-hint b { color: var(--brand); }
 .session-duration {
   font-size: 11px; color: var(--text2); font-variant-numeric: tabular-nums;
   padding: 2px 8px; background: var(--bg); border-radius: 6px; border: 1px solid var(--border);
@@ -133,7 +144,8 @@ body.dark .cat-badge.cat-pol { background: rgba(190,24,93,0.2); color: #fbcfe8; 
   background: var(--card); color: var(--text); font-size: 13px; font-family: inherit;
 }
 .add-bar input:focus { outline: none; border-color: var(--brand); }
-.add-bar input[type="time"] { flex: 0 0 100px; min-width: 100px; }
+.add-bar input[type="time"] { flex: 0 0 140px; min-width: 140px; font-size: 14px; padding: 9px 10px; }
+.add-bar input[type="number"] { flex: 0 0 80px; min-width: 80px; text-align: center; font-size: 14px; padding: 9px 6px; }
 .add-bar select {
   padding: 7px 10px; border-radius: 8px; border: 1px solid var(--border);
   background: var(--card); color: var(--text); font-size: 12px; font-family: inherit;
@@ -610,6 +622,15 @@ function fmtClock(timeStr) {
   var parts = timeStr.split(':');
   return (parseInt(parts[0]) || 0) + ':' + (parts[1] || '00');
 }
+function fmtClockEnd(startStr, duration) {
+  if (!startStr) return '';
+  var parts = startStr.split(':');
+  var m = (parseInt(parts[0]) || 0) * 60 + (parseInt(parts[1]) || 0);
+  m += (parseInt(duration) || 0);
+  var h = Math.floor(m / 60) % 24;
+  var mm = m % 60;
+  return String(h).padStart(2, '0') + ':' + String(mm).padStart(2, '0');
+}
 function getDueFlashcards() {
   var fcs = readJson(FLASHCARDS_KEY, []);
   var today = getTodayStr();
@@ -823,6 +844,100 @@ function confirmDeleteSession(id) {
   );
 }
 
+// ===== 作息框架（7:30 起床 → 24:00 睡）=====
+var ROUTINE = [
+  { time: '07:30', dur: 30,  cat: 'rest',   title: '起床洗漱' },
+  { time: '08:00', dur: 45,  cat: 'math',   title: '学习 1 · 数学' },
+  { time: '08:45', dur: 10,  cat: 'rest',   title: '休息 1' },
+  { time: '09:00', dur: 45,  cat: '408',    title: '学习 2 · 408' },
+  { time: '09:45', dur: 10,  cat: 'rest',   title: '休息 2' },
+  { time: '10:00', dur: 45,  cat: 'eng',    title: '学习 3 · 英语' },
+  { time: '10:45', dur: 10,  cat: 'rest',   title: '休息 3' },
+  { time: '11:00', dur: 45,  cat: '408',    title: '学习 4 · 408' },
+  { time: '11:45', dur: 10,  cat: 'rest',   title: '休息 4' },
+  { time: '12:00', dur: 30,  cat: 'rest',   title: '午饭' },
+  { time: '12:30', dur: 80,  cat: 'rest',   title: '午休' },
+  { time: '13:50', dur: 45,  cat: 'math',   title: '学习 5 · 数学' },
+  { time: '14:35', dur: 10,  cat: 'rest',   title: '休息 5' },
+  { time: '14:50', dur: 45,  cat: '408',    title: '学习 6 · 408' },
+  { time: '15:35', dur: 10,  cat: 'rest',   title: '休息 6' },
+  { time: '15:50', dur: 45,  cat: 'eng',    title: '学习 7 · 英语' },
+  { time: '16:35', dur: 10,  cat: 'rest',   title: '休息 7' },
+  { time: '16:50', dur: 45,  cat: '408',    title: '学习 8 · 408' },
+  { time: '17:35', dur: 10,  cat: 'rest',   title: '休息 8' },
+  { time: '17:50', dur: 40,  cat: 'rest',   title: '晚饭' },
+  { time: '18:30', dur: 60,  cat: 'rest',   title: '洗漱 · 调整' },
+  { time: '19:30', dur: 45,  cat: 'math',   title: '自习室 1 · 数学' },
+  { time: '20:15', dur: 10,  cat: 'rest',   title: '休息 9' },
+  { time: '20:30', dur: 45,  cat: '408',    title: '自习室 2 · 408' },
+  { time: '21:15', dur: 10,  cat: 'rest',   title: '休息 10' },
+  { time: '21:30', dur: 45,  cat: 'eng',    title: '自习室 3 · 英语' },
+  { time: '22:15', dur: 10,  cat: 'rest',   title: '休息 11' },
+  { time: '22:30', dur: 45,  cat: '408',    title: '自习室 4 · 408' },
+  { time: '23:15', dur: 10,  cat: 'rest',   title: '休息 12' },
+  { time: '23:30', dur: 30,  cat: 'rest',   title: '睡前整理 · 洗漱' }
+];
+
+// ===== 行内编辑：保存标题 =====
+function saveTitle(id, newText) {
+  var s = data.sessions.find(function (x) { return x.id === id; });
+  if (!s) return;
+  var clean = (newText || '').replace(/<[^>]+>/g, '').trim();
+  if (!clean) clean = s.title;
+  s.title = clean;
+  saveData();
+  render();
+}
+// ===== 行内编辑：更新时间 =====
+function updateTime(id, val) {
+  var s = data.sessions.find(function (x) { return x.id === id; });
+  if (!s) return;
+  s.time = val;
+  saveData();
+  render();
+}
+// ===== 行内编辑：更新时长 =====
+function updateDuration(id, val) {
+  var s = data.sessions.find(function (x) { return x.id === id; });
+  if (!s) return;
+  var d = parseInt(val) || 30;
+  if (d < 5) d = 5;
+  if (d > 720) d = 720;
+  s.duration = d;
+  saveData();
+  render();
+}
+// ===== 直接删除（不弹确认）=====
+function deleteSessionRow(id) {
+  data.sessions = data.sessions.filter(function (x) { return x.id !== id; });
+  saveData();
+  render();
+  showToast('已删除', 'success');
+}
+// ===== 生成作息框架 =====
+function applyRoutine() {
+  if (data.sessions.length > 0) {
+    openModal('📅 生成今日作息框架',
+      '<p style="font-size:13px;color:var(--text2);line-height:1.7;">今天已有 ' + data.sessions.length + ' 个时段。<br>生成框架将<b>覆盖</b>当前时间表（保留任务/背诵卡片/打卡记录）。<br><br>继续生成？</p>' +
+      '<div class="modal-actions">' +
+      '<button onclick="window.__closeModal()">取消</button>' +
+      '<button class="primary" onclick="window.__doApplyRoutine()">继续生成</button>' +
+      '</div>'
+    );
+  } else {
+    doApplyRoutine();
+  }
+}
+function doApplyRoutine() {
+  closeModal();
+  data.sessions = ROUTINE.map(function (r, i) {
+    return { id: 'r' + i + '_' + Date.now(), time: r.time, duration: r.dur, cat: r.cat, title: r.title, done: false, framework: true };
+  });
+  saveData();
+  render();
+  showToast('已生成今日作息框架 · ' + data.sessions.length + ' 个时段', 'success');
+}
+
 // ===== 导出今日汇报 =====
 function exportToday() {
   var stats = getSprintStats();
@@ -936,10 +1051,14 @@ function render() {
   html += '</div>';
   
   // ===== 自定义时间表 =====
-  html += '<div class="sec"><div class="sec-title">⏰ 自定义时间表 <small>每天自己安排，点编辑可改时间/时长/类别</small></div>';
+  html += '<div class="sec"><div class="sec-title">⏰ 自定义时间表 <small>点击标题/时间/时长直接改，区间自动计算</small></div>';
   html += '<div class="sessions">';
+  html += '<div class="routine-bar">';
+  html += '<button onclick="window.__applyRoutine()">📅 生成今日作息框架</button>';
+  html += '<span class="rb-hint">7:30 起床 · 8:00 学习(45+10) · 12:30 午饭午休至 13:50 · 18:30 晚饭洗漱 · 19:30-24:00 自习室</span>';
+  html += '</div>';
   if (!data.sessions.length) {
-    html += '<div class="rc-empty" style="padding:20px"><div class="big" style="font-size:32px">📅</div>今天还没安排时间表<br><small>点击下方「+ 添加时间表」开始安排今日学习计划</small></div>';
+    html += '<div class="rc-empty" style="padding:20px"><div class="big" style="font-size:32px">📅</div>今天还没安排时间表<br><small>点上方「📅 生成今日作息框架」一键生成，或下方手动添加</small></div>';
   } else {
     html += '<div class="session-list">';
     data.sessions.forEach(function (s) {
@@ -950,32 +1069,38 @@ function render() {
         nowIs = nowMin >= sMin && nowMin < sMin + s.duration;
       }
       var cat = catById(s.cat);
+      var endT = fmtClockEnd(s.time, s.duration);
+      var id = s.id.replace(/'/g, "\\'");
       html += '<div class="session' + (nowIs ? ' now' : '') + (s.done ? ' done' : '') + '">';
       html += '<div class="session-icon">' + cat.icon + '</div>';
       html += '<div class="session-main">';
-      html += '<div class="session-title">' + escapeHtml(s.title) + (nowIs ? ' <span class="session-now-tag">进行中</span>' : '') + '</div>';
-      html += '<div class="session-meta"><span class="cat-badge cat-' + cat.id + '">' + cat.name + '</span></div>';
+      html += '<div class="session-title" contenteditable="true" onblur="window.__saveTitle(\'' + id + '\', this.textContent)" onkeydown="if(event.key===\'Enter\'){event.preventDefault();this.blur();}">' + escapeHtml(s.title) + '</div>';
+      html += '<div class="session-meta"><span class="cat-badge cat-' + cat.id + '">' + cat.name + '</span>';
+      if (nowIs) html += ' <span class="session-now-tag">进行中</span>';
       html += '</div>';
-      if (s.time) html += '<span class="session-time">' + fmtClock(s.time) + '</span>';
-      html += '<span class="session-duration">' + s.duration + 'min</span>';
+      html += '</div>';
+      html += '<input type="time" class="s-time-in" value="' + (s.time || '08:00') + '" onchange="window.__updateTime(\'' + id + '\', this.value)" step="300">';
+      html += '<input type="number" class="s-dur-in" value="' + s.duration + '" min="5" max="720" step="5" onchange="window.__updateDuration(\'' + id + '\', this.value)" title="时长(分钟)">';
+      html += '<span class="session-range">' + endT + '</span>';
       html += '<div class="session-actions">';
-      html += '<button class="session-cb' + (s.done ? ' on' : '') + '" onclick="window.__toggleSession(\'' + s.id + '\')">✓</button>';
-      html += '<button class="session-del" onclick="window.__editSession(\'' + s.id + '\')" title="编辑">✏️</button>';
+      html += '<button class="session-cb' + (s.done ? ' on' : '') + '" onclick="window.__toggleSession(\'' + id + '\')">' + (s.done ? '✓' : '○') + '</button>';
+      html += '<button class="session-del" onclick="window.__deleteSessionRow(\'' + id + '\')" title="删除">✕</button>';
       html += '</div>';
       html += '</div>';
     });
     html += '</div>';
   }
   html += '<div class="add-bar">';
-  html += '<input type="time" id="add-time-quick" value="08:00">';
-  html += '<input type="number" id="add-duration-quick" value="30" min="5" max="240" step="5" style="flex:0 0 70px;min-width:70px;">';
+  html += '<input type="time" id="add-time-quick" value="08:00" step="300">';
+  html += '<input type="number" id="add-duration-quick" value="30" min="5" max="720" step="5">';
   html += '<select id="add-cat-quick">' + CATEGORIES.map(function(c){return '<option value="'+c.id+'">'+c.icon+' '+c.name+'</option>';}).join('') + '</select>';
   html += '<input type="text" id="add-title-quick" placeholder="今天学什么？" onkeydown="if(event.key===\'Enter\'){window.__quickAddSession();}">';
   html += '<button onclick="window.__quickAddSession()">+ 添加</button>';
   html += '</div>';
   html += '</div></div>';
   
-  // ===== 自定义任务 =====
+
+// ===== 自定义任务 =====
   html += '<div class="sec"><div class="sec-title">📝 自定义任务 <small>含「背诵/默写」字样的任务完成时自动创建复习</small></div>';
   html += '<div class="tasks">';
   if (!data.customTasks.length) {
@@ -1128,6 +1253,12 @@ window.__editSession = editSessionForm;
 window.__submitEditSession = submitEditSession;
 window.__deleteSession = confirmDeleteSession;
 window.__doDeleteSession = function(id) { closeModal(); deleteSession(id); };
+window.__deleteSessionRow = deleteSessionRow;
+window.__saveTitle = saveTitle;
+window.__updateTime = updateTime;
+window.__updateDuration = updateDuration;
+window.__applyRoutine = applyRoutine;
+window.__doApplyRoutine = doApplyRoutine;
 window.__toggleSession = toggleSession;
 window.__addTask = function() {
   var inp = document.getElementById('task-input');
