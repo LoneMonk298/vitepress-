@@ -74,6 +74,22 @@
   }
   .stat-card .label { font-size: 13px; color: #6b7280; margin-bottom: 6px; }
   .stat-card .value { font-size: 28px; font-weight: 700; color: #1f2937; }
+.header-right { display: flex; align-items: center; gap: 20px; }
+.focus-now-card-mini {
+  background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3);
+  border-radius: 10px; padding: 8px 14px; cursor: pointer;
+  transition: background 0.15s; min-width: 180px; max-width: 260px;
+  position: relative; overflow: hidden;
+}
+.focus-now-card-mini:hover { background: rgba(255,255,255,0.25); }
+.focus-now-card-mini .label { font-size: 11px; font-weight: 700; opacity: 0.9; margin-bottom: 3px; }
+.focus-now-card-mini .mini-title { font-size: 14px; font-weight: 800; color: white; line-height: 1.2; word-break: break-word; }
+.focus-now-card-mini .mini-meta { font-size: 11px; color: rgba(255,255,255,0.85); margin-top: 2px; font-variant-numeric: tabular-nums; }
+.focus-now-card-mini .mini-bar { position: absolute; left: 0; bottom: 0; height: 2px; width: 100%; background: rgba(255,255,255,0.2); overflow: hidden; }
+.focus-now-card-mini .mini-bar i { display: block; height: 100%; background: linear-gradient(90deg, #fde68a, #fbbf24); transition: width 0.5s; }
+.focus-now-card-mini.empty { opacity: 0.75; }
+.focus-now-card-mini .mini-link { font-size: 10px; opacity: 0.7; margin-top: 4px; }
+
 .stat-card.focus-now { border: 1px solid rgba(102,126,234,0.4); background: linear-gradient(135deg, rgba(102,126,234,0.08), rgba(118,75,162,0.05)); position: relative; overflow: hidden; min-width: 200px; }
 .stat-card.focus-now.next { border-color: rgba(102,126,234,0.25); background: rgba(102,126,234,0.04); }
 .stat-card.focus-now.empty { background: rgba(148,163,184,0.06); border-color: rgba(148,163,184,0.2); }
@@ -1960,6 +1976,7 @@ body.dark .mm-head a.mm-new,body.dark .mm-head button,body.dark .mm-btn{backgrou
     </div>
     <div class="header-right">
       <div class="header-time" id="header-time"></div>
+      <div class="focus-now-card-mini" id="focus-now-card" onclick="openSchedule()" title="点击查看时间表"><div class="label">⏳ 加载中...</div></div>
       <div class="header-countdown">
         <span class="countdown-label">距离考研</span>
         <span class="countdown-days" id="countdown-days">--</span>
@@ -1970,7 +1987,6 @@ body.dark .mm-head a.mm-new,body.dark .mm-head button,body.dark .mm-btn{backgrou
   </div>
   
   <div class="stats-bar">
-    <div class="stat-card focus-now" id="focus-now-card"><div class="label">⏳ 加载中...</div></div>
     <div class="stat-card total">
       <div class="label">考点总数</div>
       <div class="value" id="stat-total">0</div>
@@ -3270,8 +3286,23 @@ function dequeueReview(sheet, name) {
 }
 
 function getReviewList() {
-  const map = getReviewMap(loadScheduleData());
+  const d = loadScheduleData();
+  const map = getReviewMap(d);
   const today = getTodayStr();
+  // 自动出队：当前状态非「学习中」的条目自动移除（已掌握/未开始/不存在）
+  let autoOut = 0;
+  Object.keys(map).forEach(key => {
+    const e = map[key];
+    if (e.done) { delete map[key]; autoOut++; return; }
+    if (!e.sheet || !appData[e.sheet]) { delete map[key]; autoOut++; return; }
+    const item = appData[e.sheet].find(it => it['考点'] === e.name);
+    if (!item) { delete map[key]; autoOut++; return; }
+    const mastery = item['掌握程度'] || item['学习状态'] || '';
+    if (mastery === '已掌握' || mastery === '未开始' || mastery === '已完成') {
+      delete map[key]; autoOut++;
+    }
+  });
+  if (autoOut > 0) saveScheduleData(d);
   return Object.keys(map).map(key => {
     const e = map[key];
     return { key: key, sheet: e.sheet, name: e.name, subj: e.subj || '', note: e.note || '',
@@ -4860,11 +4891,10 @@ function renderFocusCard() {
   });
 
   if (!sessions.length) {
-    el.className = 'stat-card focus-now empty';
-    el.innerHTML = '<div class="focus-label">📅 当前聚焦</div>'
-      + '<div class="focus-title">今日暂无时间表</div>'
-      + '<div class="focus-meta">去每日规划页生成作息框架</div>'
-      + '<a class="focus-link" href="每日规划.html">前往每日规划页 →</a>';
+    el.className = 'focus-now-card-mini empty';
+    el.innerHTML = '<div class="label">📅 当前聚焦</div>'
+      + '<div class="mini-title">今日暂无时间表</div>'
+      + '<div class="mini-meta">点击前往每日规划页生成 →</div>';
     return;
   }
   if (cur) {
@@ -4875,25 +4905,25 @@ function renderFocusCard() {
     const pct = Math.max(0, Math.min(100, Math.round(elapsed / dur * 100)));
     const left = Math.max(0, dur - elapsed);
     const cat = focusCat(cur.cat);
-    el.className = 'stat-card focus-now';
-    el.innerHTML = '<div class="focus-label">▶ 进行中</div>'
-      + '<div class="focus-title">' + cat.icon + ' ' + escapeHtml(cur.title || '') + '</div>'
-      + '<div class="focus-meta">' + cur.time + '-' + focusEndTime(cur.time, cur.duration) + ' · 还剩 ' + left + ' 分钟</div>'
-      + '<button class="focus-btn" onclick="toggleFocusSession(\'' + String(cur.id) + '\')" title="标记完成">✓</button>'
-      + '<div class="focus-bar"><i style="width:' + pct + '%"></i></div>';
-  } else if (next) {
-    const cat = focusCat(next.cat);
-    el.className = 'stat-card focus-now next';
-    el.innerHTML = '<div class="focus-label">⏭ 下一个</div>'
-      + '<div class="focus-title">' + cat.icon + ' ' + escapeHtml(next.title || '') + '</div>'
-      + '<div class="focus-meta">' + next.time + '-' + focusEndTime(next.time, next.duration) + ' · ' + nextGap + ' 分钟后开始</div>'
-      + '<a class="focus-link" href="每日规划.html">查看时间表 →</a>';
-  } else {
-    el.className = 'stat-card focus-now empty';
-    el.innerHTML = '<div class="focus-label">🎉 当前聚焦</div>'
-      + '<div class="focus-title">今日时段已全部完成</div>'
-      + '<div class="focus-meta">休息一下，明天继续</div>';
+    el.className = 'focus-now-card-mini';
+    el.innerHTML = '<div class="label">▶ 进行中</div>'
+      + '<div class="mini-title">' + cat.icon + ' ' + escapeHtml(cur.title || '') + '</div>'
+      + '<div class="mini-meta">' + cur.time + '-' + focusEndTime(cur.time, cur.duration) + ' · 还剩 ' + left + ' 分钟</div>'
+      + '<div class="mini-bar"><i style="width:' + pct + '%"></i></div>';
+    return;
   }
+  if (next) {
+    const cat = focusCat(next.cat);
+    el.className = 'focus-now-card-mini';
+    el.innerHTML = '<div class="label">⏭ 下一个</div>'
+      + '<div class="mini-title">' + cat.icon + ' ' + escapeHtml(next.title || '') + '</div>'
+      + '<div class="mini-meta">' + next.time + '-' + focusEndTime(next.time, next.duration) + ' · ' + nextGap + ' 分钟后开始</div>';
+    return;
+  }
+  el.className = 'focus-now-card-mini empty';
+  el.innerHTML = '<div class="label">🎉 当前聚焦</div>'
+    + '<div class="mini-title">今日时段已全部完成</div>'
+    + '<div class="mini-meta">休息一下，明天继续</div>';
 }
 function toggleFocusSession(id) {
   let d = null;
