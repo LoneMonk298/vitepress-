@@ -73,6 +73,15 @@ body {
   font-family: inherit;
 }
 .focus-session .fs-check:hover { background: #f1f5f9; }
+.focus-session .fs-left { font-size: 12px; font-weight: 700; color: #fde68a; }
+.focus-session.next { background: linear-gradient(135deg, rgba(255,255,255,0.16), rgba(255,255,255,0.06)); }
+.focus-session.empty { background: rgba(255,255,255,0.12); }
+.focus-session .fs-bar {
+  position: absolute; left: 0; bottom: 0; height: 3px; width: 100%;
+  background: rgba(255,255,255,0.15); border-radius: 0 0 12px 12px; overflow: hidden;
+}
+.focus-session .fs-bar i { display: block; height: 100%; background: linear-gradient(90deg, #fde68a, #fbbf24); transition: width 0.5s; }
+.focus-session { position: relative; overflow: hidden; }
 .stage-chip { margin-top: 14px; background: rgba(255,255,255,0.15); border-radius: 12px; padding: 10px 16px; }
 .stage-chip .s-name { font-size: 14px; font-weight: 700; }
 .stage-chip .s-range { font-size: 11px; opacity: 0.85; margin-top: 2px; }
@@ -1094,28 +1103,60 @@ function render() {
   html += '<div class="hero-chip"><div class="num">Day ' + (stats.dayIndex + 1) + '<small>/' + stats.totalDays + '</small></div><div class="lbl">总天数</div></div>';
   html += '<div class="hero-chip"><div class="num">' + stats.daysLeft + '</div><div class="lbl">天后考研</div></div>';
   html += '<div class="hero-chip"><div class="num">' + (stats.stage ? stats.stage.icon + ' ' + stats.stage.name : '🏃 冲刺准备期') + '</div><div class="lbl">当前阶段 · ' + stats.stagePct + '%</div></div>';
-      // 当前聚焦时段（在 nowMin 范围内）
+      // 当前/下一个聚焦时段
   var focusSession = null;
+  var focusNext = null;
+  var focusNextGap = null;
   data.sessions.forEach(function (s) {
-    if (!s.done && s.time) {
-      var p = s.time.split(':');
-      var sm = (parseInt(p[0]) || 0) * 60 + (parseInt(p[1]) || 0);
-      if (nowMin >= sm && nowMin < sm + s.duration) {
-        focusSession = s;
-      }
+    if (s.done || !s.time) return;
+    var p = s.time.split(':');
+    var sm = (parseInt(p[0]) || 0) * 60 + (parseInt(p[1]) || 0);
+    var em = sm + (s.duration || 30);
+    if (nowMin >= sm && nowMin < em) {
+      focusSession = s;
+    } else if (sm > nowMin) {
+      var gap = sm - nowMin;
+      if (focusNextGap === null || gap < focusNextGap) { focusNextGap = gap; focusNext = s; }
     }
   });
 
-  // 显示当前聚焦时段
+  // 显示「进行中」或「下一个」时段
   if (focusSession) {
     var fsCat = catById(focusSession.cat);
+    var p2 = focusSession.time.split(':');
+    var sm2 = (parseInt(p2[0]) || 0) * 60 + (parseInt(p2[1]) || 0);
+    var elapsed = nowMin - sm2;
+    var pct = Math.max(0, Math.min(100, Math.round(elapsed / (focusSession.duration || 30) * 100)));
+    var leftMin = (focusSession.duration || 30) - elapsed;
     html += '<div class="focus-session">';
     html += '<span class="fs-icon">' + fsCat.icon + '</span>';
-    html += '<span class="fs-label">当前聚焦</span>';
+    html += '<span class="fs-label">▶ 进行中</span>';
     html += '<span class="fs-title">' + escapeHtml(focusSession.title) + '</span>';
     html += '<span class="fs-time">' + focusSession.time + '-' + fmtClockEnd(focusSession.time, focusSession.duration) + '</span>';
+    html += '<span class="fs-left">还剩 ' + leftMin + ' 分钟</span>';
     html += '<span class="fs-cat cat-' + focusSession.cat + '">' + fsCat.name + '</span>';
     html += '<button class="fs-check" onclick="window.__toggleSession(\'' + String(focusSession.id) + '\')">✓ 完成</button>';
+    html += '<div class="fs-bar"><i style="width:' + pct + '%"></i></div>';
+    html += '</div>';
+  } else if (focusNext) {
+    var fnCat = catById(focusNext.cat);
+    html += '<div class="focus-session next">';
+    html += '<span class="fs-icon">' + fnCat.icon + '</span>';
+    html += '<span class="fs-label">⏭ 下一个</span>';
+    html += '<span class="fs-title">' + escapeHtml(focusNext.title) + '</span>';
+    html += '<span class="fs-time">' + focusNext.time + '-' + fmtClockEnd(focusNext.time, focusNext.duration) + '</span>';
+    html += '<span class="fs-left">' + focusNextGap + ' 分钟后开始</span>';
+    html += '<span class="fs-cat cat-' + focusNext.cat + '">' + fnCat.name + '</span>';
+    html += '</div>';
+  } else if (data.sessions.length === 0) {
+    html += '<div class="focus-session empty">';
+    html += '<span class="fs-icon">📅</span>';
+    html += '<span class="fs-title">还没有今日时间表 —— 点下方「📅 生成今日作息框架」一键生成</span>';
+    html += '</div>';
+  } else {
+    html += '<div class="focus-session empty">';
+    html += '<span class="fs-icon">🎉</span>';
+    html += '<span class="fs-title">今日时间表已全部完成</span>';
     html += '</div>';
   }
 html += '</div>';
@@ -1483,6 +1524,8 @@ window.__genDailyReport = function() {
 
 // 初始渲染
 render();
+// 每分钟刷新聚焦条
+setInterval(function() { render(); }, 60000);
 </script>
 </body>
 </html>
