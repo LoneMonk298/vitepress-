@@ -74,6 +74,22 @@
   }
   .stat-card .label { font-size: 13px; color: #6b7280; margin-bottom: 6px; }
   .stat-card .value { font-size: 28px; font-weight: 700; color: #1f2937; }
+.stat-card.focus-now { border: 1px solid rgba(102,126,234,0.4); background: linear-gradient(135deg, rgba(102,126,234,0.08), rgba(118,75,162,0.05)); position: relative; overflow: hidden; min-width: 200px; }
+.stat-card.focus-now.next { border-color: rgba(102,126,234,0.25); background: rgba(102,126,234,0.04); }
+.stat-card.focus-now.empty { background: rgba(148,163,184,0.06); border-color: rgba(148,163,184,0.2); }
+.stat-card.focus-now .focus-label { font-size: 11px; font-weight: 700; color: #667eea; margin-bottom: 4px; display: flex; align-items: center; gap: 4px; }
+.stat-card.focus-now .focus-title { font-size: 15px; font-weight: 800; line-height: 1.2; word-break: break-word; color: #1f2937; }
+.stat-card.focus-now .focus-meta { font-size: 12px; color: #6b7280; margin-top: 2px; font-variant-numeric: tabular-nums; }
+.stat-card.focus-now .focus-bar { position: absolute; left: 0; bottom: 0; height: 3px; width: 100%; background: rgba(102,126,234,0.12); overflow: hidden; }
+.stat-card.focus-now .focus-bar i { display: block; height: 100%; background: linear-gradient(90deg, #667eea, #764ba2); transition: width 0.5s; }
+.stat-card.focus-now .focus-btn { position: absolute; top: 8px; right: 8px; width: 22px; height: 22px; border-radius: 6px; border: none; background: #667eea; color: white; font-size: 13px; font-weight: 700; cursor: pointer; line-height: 1; display: flex; align-items: center; justify-content: center; }
+.stat-card.focus-now .focus-btn:hover { background: #5566d8; }
+.stat-card.focus-now .focus-link { font-size: 11px; color: #667eea; text-decoration: none; margin-top: 6px; }
+.stat-card.focus-now .focus-link:hover { text-decoration: underline; }
+body.dark .stat-card.focus-now { border-color: rgba(102,126,234,0.5); }
+body.dark .stat-card.focus-now .focus-title { color: #f1f5f9; }
+body.dark .stat-card.focus-now .focus-meta { color: #94a3b8; }
+
   .stat-card .sub { font-size: 12px; color: #9ca3af; margin-top: 4px; }
   .stat-card.total .value { color: #667eea; }
   .stat-card.mastered .value { color: #10b981; }
@@ -1954,6 +1970,7 @@ body.dark .mm-head a.mm-new,body.dark .mm-head button,body.dark .mm-btn{backgrou
   </div>
   
   <div class="stats-bar">
+    <div class="stat-card focus-now" id="focus-now-card"><div class="label">⏳ 加载中...</div></div>
     <div class="stat-card total">
       <div class="label">考点总数</div>
       <div class="value" id="stat-total">0</div>
@@ -3591,6 +3608,9 @@ setInterval(() => {
   if (drawer && drawer.classList.contains('show')) renderSchedulePanel();
 }, 60000);
 
+// 每分钟刷新当前聚焦卡
+setInterval(() => { try { renderFocusCard(); } catch (e) {} }, 60000);
+
 // Point detail modal
 let currentDetailIdx = -1;
 
@@ -4790,6 +4810,103 @@ function bindEvent(id, event, handler) {
   if (el) el.addEventListener(event, handler);
 }
 
+// ===== 当前聚焦（读每日规划页数据 kaoyan_408_v2）=====
+const FOCUS_DAILY_KEY = 'kaoyan_408_v2';
+const FOCUS_CAT = {
+  new:      { icon: '📐', name: '新学' },
+  review:   { icon: '📖', name: '复习' },
+  memory:   { icon: '🧠', name: '背诵' },
+  break:    { icon: '☕', name: '休息' },
+  english:  { icon: '📚', name: '英语' },
+  math:     { icon: '📐', name: '数学' },
+  ds:       { icon: '🌳', name: '数据结构' },
+  os:       { icon: '⚙️', name: '操作系统' },
+  cn:       { icon: '🌐', name: '计网' },
+  cs:       { icon: '🔧', name: '计组' },
+  politics: { icon: '📜', name: '政治' },
+  other:    { icon: '✨', name: '其他' }
+};
+function focusCat(id) { return FOCUS_CAT[id] || FOCUS_CAT.other; }
+function focusEndTime(startStr, duration) {
+  if (!startStr) return '';
+  const parts = startStr.split(':');
+  let m = (parseInt(parts[0]) || 0) * 60 + (parseInt(parts[1]) || 0) + (parseInt(duration) || 0);
+  const h = Math.floor(m / 60) % 24;
+  const mm = m % 60;
+  return String(h).padStart(2, '0') + ':' + String(mm).padStart(2, '0');
+}
+function renderFocusCard() {
+  const el = document.getElementById('focus-now-card');
+  if (!el) return;
+  let d = null;
+  try { d = JSON.parse(localStorage.getItem(FOCUS_DAILY_KEY)) || null; } catch (e) { d = null; }
+  const today = getTodayStr();
+  const sessions = (d && d.date === today && Array.isArray(d.sessions)) ? d.sessions : [];
+  const now = new Date();
+  const nowMin = now.getHours() * 60 + now.getMinutes();
+
+  let cur = null, next = null, nextGap = null;
+  sessions.forEach(s => {
+    if (s.done || !s.time) return;
+    const parts = String(s.time).split(':');
+    const sm = (parseInt(parts[0]) || 0) * 60 + (parseInt(parts[1]) || 0);
+    const em = sm + (parseInt(s.duration) || 30);
+    if (nowMin >= sm && nowMin < em) {
+      cur = s;
+    } else if (sm > nowMin) {
+      const gap = sm - nowMin;
+      if (nextGap === null || gap < nextGap) { nextGap = gap; next = s; }
+    }
+  });
+
+  if (!sessions.length) {
+    el.className = 'stat-card focus-now empty';
+    el.innerHTML = '<div class="focus-label">📅 当前聚焦</div>'
+      + '<div class="focus-title">今日暂无时间表</div>'
+      + '<div class="focus-meta">去每日规划页生成作息框架</div>'
+      + '<a class="focus-link" href="每日规划.html">前往每日规划页 →</a>';
+    return;
+  }
+  if (cur) {
+    const parts = String(cur.time).split(':');
+    const sm = (parseInt(parts[0]) || 0) * 60 + (parseInt(parts[1]) || 0);
+    const elapsed = nowMin - sm;
+    const dur = parseInt(cur.duration) || 30;
+    const pct = Math.max(0, Math.min(100, Math.round(elapsed / dur * 100)));
+    const left = Math.max(0, dur - elapsed);
+    const cat = focusCat(cur.cat);
+    el.className = 'stat-card focus-now';
+    el.innerHTML = '<div class="focus-label">▶ 进行中</div>'
+      + '<div class="focus-title">' + cat.icon + ' ' + escapeHtml(cur.title || '') + '</div>'
+      + '<div class="focus-meta">' + cur.time + '-' + focusEndTime(cur.time, cur.duration) + ' · 还剩 ' + left + ' 分钟</div>'
+      + '<button class="focus-btn" onclick="toggleFocusSession(\'' + String(cur.id) + '\')" title="标记完成">✓</button>'
+      + '<div class="focus-bar"><i style="width:' + pct + '%"></i></div>';
+  } else if (next) {
+    const cat = focusCat(next.cat);
+    el.className = 'stat-card focus-now next';
+    el.innerHTML = '<div class="focus-label">⏭ 下一个</div>'
+      + '<div class="focus-title">' + cat.icon + ' ' + escapeHtml(next.title || '') + '</div>'
+      + '<div class="focus-meta">' + next.time + '-' + focusEndTime(next.time, next.duration) + ' · ' + nextGap + ' 分钟后开始</div>'
+      + '<a class="focus-link" href="每日规划.html">查看时间表 →</a>';
+  } else {
+    el.className = 'stat-card focus-now empty';
+    el.innerHTML = '<div class="focus-label">🎉 当前聚焦</div>'
+      + '<div class="focus-title">今日时段已全部完成</div>'
+      + '<div class="focus-meta">休息一下，明天继续</div>';
+  }
+}
+function toggleFocusSession(id) {
+  let d = null;
+  try { d = JSON.parse(localStorage.getItem(FOCUS_DAILY_KEY)) || null; } catch (e) { d = null; }
+  if (!d || !Array.isArray(d.sessions)) return;
+  const s = d.sessions.find(x => String(x.id) === String(id));
+  if (!s) return;
+  s.done = !s.done;
+  localStorage.setItem(FOCUS_DAILY_KEY, JSON.stringify(d));
+  renderFocusCard();
+  renderSchedulePanel();
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   try {
     initTheme();
@@ -4801,6 +4918,7 @@ document.addEventListener('DOMContentLoaded', () => {
     renderTabs();
     renderTable();
     updateStats();
+    renderFocusCard();
   } catch(e) {
     console.error('Init phase 1 error:', e);
   }

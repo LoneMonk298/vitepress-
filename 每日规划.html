@@ -1096,6 +1096,7 @@ function render() {
   var isDark = document.body.classList.contains('dark');
   
   // 分类今天的任务完成情况
+  var usedMin = data.sessions.filter(function(s){return s.done;}).reduce(function(a,s){return a+(s.duration||0);},0);
   var sessionDone = data.sessions.filter(function (s) { return s.done; }).length;
   var sessionTotal = data.sessions.length;
   var taskDone = data.customTasks.filter(function (t) { return t.done; }).length;
@@ -1112,8 +1113,10 @@ function render() {
   html += '<div class="hero-stats">';
   html += '<div class="hero-chip"><div class="num">Day ' + (stats.dayIndex + 1) + '<small>/' + stats.totalDays + '</small></div><div class="lbl">总天数</div></div>';
   html += '<div class="hero-chip"><div class="num">' + stats.daysLeft + '</div><div class="lbl">天后考研</div></div>';
-  html += '<div class="hero-chip"><div class="num">' + (stats.stage ? stats.stage.icon + ' ' + stats.stage.name : '🏃 冲刺准备期') + '</div><div class="lbl">当前阶段 · ' + stats.stagePct + '%</div></div>';
-      // 当前/下一个聚焦时段
+  html += '<div class="hero-chip"><div class="num">' + (stats.stage ? stats.stage.icon + ' ' + stats.stage.name : '🏃 冲刺准备期') + '</div><div class="lbl">' + (stats.stage ? stats.stage.range[0].slice(5).replace('-', '.') + '–' + stats.stage.range[1].slice(5).replace('-', '.') + ' · ' : '') + stats.stagePct + '%</div></div>';
+  html += '<div class="hero-chip"><div class="num">' + usedMin + '<small>分</small></div><div class="lbl">今日已学</div></div>';
+  html += '</div>';
+  // 当前/下一个聚焦时段
   var focusSession = null;
   var focusNext = null;
   var focusNextGap = null;
@@ -1169,30 +1172,11 @@ function render() {
     html += '<span class="fs-title">今日时间表已全部完成</span>';
     html += '</div>';
   }
-html += '</div>';
-  if (stats.stage) {
-    html += '<div class="stage-chip">';
-    html += '<div class="s-name">' + stats.stage.icon + ' ' + stats.stage.name + '</div>';
-    html += '<div class="s-range">' + stats.stage.range[0].slice(5).replace('-', '.') + ' – ' + stats.stage.range[1].slice(5).replace('-', '.') + '</div>';
-    if (stats.stage.note) html += '<div class="s-range" style="opacity:0.75">' + escapeHtml(stats.stage.note) + '</div>';
-    html += '<div class="stage-bar"><i style="width:' + stats.stagePct + '%"></i></div>';
-    html += '</div>';
-  }
-  var planEnd = PLAN_END_V2;
-  html += '<div class="hero-foot">🎯 ' + SPRINT_START_V2.slice(5).replace('-','.') + ' 启动 · ' + planEnd.slice(5).replace('-','.') + ' 收官 · ' + EXAM_DATE_V2.slice(5).replace('-','.') + ' 考试 · 目标 330</div>';
   html += '</div></div>';
   
   html += '<div class="wrap">';
   
-  // ===== 工具栏 =====
-  html += '<div class="toolbar">';
-  html += '<div style="display:flex;gap:8px;flex-wrap:wrap;">';
-  html += '<button class="toolbar-btn primary" onclick="window.__addSession()">➕ 添加时间表</button>';
-  html += '<button class="toolbar-btn" onclick="window.__exportToday()">📋 导出今日汇报</button>';
-  html += '</div>';
-  html += '<div class="toolbar-info">已用 ' + (data.sessions.filter(function(s){return s.done;}).reduce(function(a,s){return a+(s.duration||0);},0)) + ' 分钟 · 任务 ' + taskDone + '/' + taskTotal + '</div>';
-  html += '</div>';
-  
+
   // ===== 自定义任务 =====
   html += '<div class="sec"><div class="sec-title">📝 自定义任务 <small>含「背诵/默写」字样的任务完成时自动创建复习</small></div>';
   html += '<div class="tasks">';
@@ -1233,7 +1217,7 @@ html += '</div>';
   html += '<div class="sessions">';
   html += '<div class="routine-bar">';
   html += '<button onclick="window.__applyRoutine()">📅 生成今日作息框架</button>';
-  html += '<button class="btn-report" onclick="window.__genDailyReport()">📊 生成今日日报</button>';
+  html += '<button onclick="window.__addSession()" title="中途插入新时段">➕ 添加时间表</button>';
   html += '</div>';
   html += '<div class="rb-hint" style="margin:-2px 0 10px">7:30 起床 · 8:00 学习(45min+10min休息) · 12:30 午饭午休至 13:50 · 18:30 晚饭洗漱 · 19:30-24:00 自习室</div>';
   if (!allSessions.length) {
