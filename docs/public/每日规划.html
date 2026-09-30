@@ -1267,7 +1267,7 @@ html += '</div>';
       html += '<span class="session-range">' + endT + '</span>';
       html += '<div class="session-actions">';
       html += '<button class="session-cb' + (s.done ? ' on' : '') + '" onclick="window.__toggleSession(\'' + id + '\')">' + (s.done ? '✓' : '○') + '</button>';
-      html += '<button class="session-del" onclick="window.__deleteSessionRow(\'' + id + '\')" title="删除">✕</button>';
+      html += '<button class="session-del" onmousedown="event.stopPropagation();event.preventDefault();" onclick="window.__deleteSessionRow(\'' + id + '\')" title="删除">✕</button>';
       html += '</div>';
       html += '</div>';
     });
