@@ -62,7 +62,38 @@ body {
   font-size: 10px; font-weight: 700; padding: 1px 7px; border-radius: 7px;
   flex-shrink: 0;
 }
+.cat-select {
+  font-size: 10px; font-weight: 700; padding: 2px 4px; border-radius: 7px;
+  border: none; font-family: inherit; cursor: pointer; flex-shrink: 0;
+  appearance: none; -webkit-appearance: none; text-align: center;
+}
+.cat-select:focus { outline: 2px solid var(--brand); }
 .cat-badge.cat-new { background: #fed7aa; color: #9a3412; }
+.cat-badge.cat-english, .cat-select.cat-english { background: rgba(59,130,246,0.18); color: #1d4ed8; }
+.cat-badge.cat-ds, .cat-select.cat-ds { background: rgba(96,165,250,0.2); color: #1d4ed8; }
+.cat-badge.cat-os, .cat-select.cat-os { background: rgba(244,114,182,0.2); color: #be185d; }
+.cat-badge.cat-cn, .cat-select.cat-cn { background: rgba(52,211,153,0.2); color: #047857; }
+.cat-badge.cat-cs, .cat-select.cat-cs { background: rgba(251,191,36,0.24); color: #b45309; }
+.cat-badge.cat-politics, .cat-select.cat-politics { background: rgba(236,72,153,0.2); color: #be185d; }
+body.dark .cat-select.cat-english, body.dark .cat-select.cat-ds { background: rgba(59,130,246,0.25); color: #93c5fd; }
+body.dark .cat-select.cat-os, body.dark .cat-select.cat-politics { background: rgba(236,72,153,0.25); color: #f9a8d4; }
+body.dark .cat-select.cat-cn { background: rgba(52,211,153,0.25); color: #6ee7b7; }
+body.dark .cat-select.cat-cs { background: rgba(251,191,36,0.25); color: #fcd34d; }
+body.dark .cat-select.cat-new { background: rgba(249,115,22,0.25); color: #fdba74; }
+body.dark .cat-select.cat-review, body.dark .cat-select.cat-math { background: rgba(34,197,94,0.25); color: #86efac; }
+body.dark .cat-select.cat-memory { background: rgba(168,85,247,0.25); color: #d8b4fe; }
+body.dark .cat-select.cat-break, body.dark .cat-select.cat-other { background: rgba(100,116,139,0.25); color: #cbd5e1; }
+.btn-report {
+  padding: 8px 14px; border-radius: 9px; border: none;
+  background: linear-gradient(135deg, #667eea, #764ba2); color: white;
+  font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit;
+}
+.btn-report:hover { filter: brightness(1.1); }
+.done-toggle {
+  font-size: 12px; color: var(--text3); cursor: pointer; padding: 6px 4px;
+  text-align: center; user-select: none;
+}
+.done-toggle:hover { color: var(--brand); }
 .cat-badge.cat-review { background: #dcfce7; color: #15803d; }
 .cat-badge.cat-memory { background: #f3e8ff; color: #6b21a8; }
 .cat-badge.cat-break { background: #f1f5f9; color: #64748b; }
@@ -846,36 +877,24 @@ function confirmDeleteSession(id) {
 
 // ===== 作息框架（7:30 起床 → 24:00 睡）=====
 var ROUTINE = [
-  { time: '07:30', dur: 30,  cat: 'rest',   title: '起床洗漱' },
-  { time: '08:00', dur: 45,  cat: 'math',   title: '学习 1 · 数学' },
-  { time: '08:45', dur: 10,  cat: 'rest',   title: '休息 1' },
-  { time: '09:00', dur: 45,  cat: '408',    title: '学习 2 · 408' },
-  { time: '09:45', dur: 10,  cat: 'rest',   title: '休息 2' },
-  { time: '10:00', dur: 45,  cat: 'eng',    title: '学习 3 · 英语' },
-  { time: '10:45', dur: 10,  cat: 'rest',   title: '休息 3' },
-  { time: '11:00', dur: 45,  cat: '408',    title: '学习 4 · 408' },
-  { time: '11:45', dur: 10,  cat: 'rest',   title: '休息 4' },
-  { time: '12:00', dur: 30,  cat: 'rest',   title: '午饭' },
-  { time: '12:30', dur: 80,  cat: 'rest',   title: '午休' },
-  { time: '13:50', dur: 45,  cat: 'math',   title: '学习 5 · 数学' },
-  { time: '14:35', dur: 10,  cat: 'rest',   title: '休息 5' },
-  { time: '14:50', dur: 45,  cat: '408',    title: '学习 6 · 408' },
-  { time: '15:35', dur: 10,  cat: 'rest',   title: '休息 6' },
-  { time: '15:50', dur: 45,  cat: 'eng',    title: '学习 7 · 英语' },
-  { time: '16:35', dur: 10,  cat: 'rest',   title: '休息 7' },
-  { time: '16:50', dur: 45,  cat: '408',    title: '学习 8 · 408' },
-  { time: '17:35', dur: 10,  cat: 'rest',   title: '休息 8' },
-  { time: '17:50', dur: 40,  cat: 'rest',   title: '晚饭' },
-  { time: '18:30', dur: 60,  cat: 'rest',   title: '洗漱 · 调整' },
-  { time: '19:30', dur: 45,  cat: 'math',   title: '自习室 1 · 数学' },
-  { time: '20:15', dur: 10,  cat: 'rest',   title: '休息 9' },
-  { time: '20:30', dur: 45,  cat: '408',    title: '自习室 2 · 408' },
-  { time: '21:15', dur: 10,  cat: 'rest',   title: '休息 10' },
-  { time: '21:30', dur: 45,  cat: 'eng',    title: '自习室 3 · 英语' },
-  { time: '22:15', dur: 10,  cat: 'rest',   title: '休息 11' },
-  { time: '22:30', dur: 45,  cat: '408',    title: '自习室 4 · 408' },
-  { time: '23:15', dur: 10,  cat: 'rest',   title: '休息 12' },
-  { time: '23:30', dur: 30,  cat: 'rest',   title: '睡前整理 · 洗漱' }
+  { time: '07:30', dur: 30, cat: 'break',   title: '起床洗漱' },
+  { time: '08:00', dur: 45, cat: 'math',    title: '学习 1' },
+  { time: '08:55', dur: 45, cat: 'ds',      title: '学习 2' },
+  { time: '09:50', dur: 45, cat: 'english', title: '学习 3' },
+  { time: '10:45', dur: 45, cat: 'os',      title: '学习 4' },
+  { time: '11:40', dur: 45, cat: 'cs',      title: '学习 5' },
+  { time: '12:30', dur: 80, cat: 'break',   title: '午饭 · 午休' },
+  { time: '13:50', dur: 45, cat: 'math',    title: '学习 6' },
+  { time: '14:45', dur: 45, cat: 'ds',      title: '学习 7' },
+  { time: '15:40', dur: 45, cat: 'english', title: '学习 8' },
+  { time: '16:35', dur: 45, cat: 'cn',      title: '学习 9' },
+  { time: '17:30', dur: 45, cat: 'review',  title: '学习 10' },
+  { time: '18:30', dur: 60, cat: 'break',   title: '晚饭 · 洗漱' },
+  { time: '19:30', dur: 45, cat: 'math',    title: '晚自习 1' },
+  { time: '20:25', dur: 45, cat: 'ds',      title: '晚自习 2' },
+  { time: '21:20', dur: 45, cat: 'cs',      title: '晚自习 3' },
+  { time: '22:15', dur: 45, cat: 'memory',  title: '晚自习 4' },
+  { time: '23:10', dur: 45, cat: 'review',  title: '晚自习 5' }
 ];
 
 // ===== 行内编辑：保存标题 =====
@@ -1051,17 +1070,22 @@ function render() {
   html += '</div>';
   
   // ===== 自定义时间表 =====
-  html += '<div class="sec"><div class="sec-title">⏰ 自定义时间表 <small>点击标题/时间/时长直接改，区间自动计算</small></div>';
+  var showDone = showDoneSessions;
+  var allSessions = data.sessions;
+  var doneCount = allSessions.filter(function(s){return s.done;}).length;
+  var visSessions = showDone ? allSessions : allSessions.filter(function(s){return !s.done;});
+  html += '<div class="sec"><div class="sec-title">⏰ 自定义时间表 <small>点击标题/时间/时长/标签直接改</small></div>';
   html += '<div class="sessions">';
   html += '<div class="routine-bar">';
   html += '<button onclick="window.__applyRoutine()">📅 生成今日作息框架</button>';
-  html += '<span class="rb-hint">7:30 起床 · 8:00 学习(45+10) · 12:30 午饭午休至 13:50 · 18:30 晚饭洗漱 · 19:30-24:00 自习室</span>';
+  html += '<button class="btn-report" onclick="window.__genDailyReport()">📊 生成今日日报</button>';
   html += '</div>';
-  if (!data.sessions.length) {
+  html += '<div class="rb-hint" style="margin:-2px 0 10px">7:30 起床 · 8:00 学习(45min+10min休息) · 12:30 午饭午休至 13:50 · 18:30 晚饭洗漱 · 19:30-24:00 自习室</div>';
+  if (!allSessions.length) {
     html += '<div class="rc-empty" style="padding:20px"><div class="big" style="font-size:32px">📅</div>今天还没安排时间表<br><small>点上方「📅 生成今日作息框架」一键生成，或下方手动添加</small></div>';
   } else {
     html += '<div class="session-list">';
-    data.sessions.forEach(function (s) {
+    visSessions.forEach(function (s) {
       var nowIs = false;
       if (s.time) {
         var parts = s.time.split(':');
@@ -1070,12 +1094,16 @@ function render() {
       }
       var cat = catById(s.cat);
       var endT = fmtClockEnd(s.time, s.duration);
-      var id = s.id.replace(/'/g, "\\'");
+      var id = String(s.id);
+      var catOpts = CATEGORIES.map(function (cc) {
+        return '<option value="' + cc.id + '"' + (cc.id === s.cat ? ' selected' : '') + '>' + cc.icon + ' ' + cc.name + '</option>';
+      }).join('');
       html += '<div class="session' + (nowIs ? ' now' : '') + (s.done ? ' done' : '') + '">';
       html += '<div class="session-icon">' + cat.icon + '</div>';
       html += '<div class="session-main">';
       html += '<div class="session-title" contenteditable="true" onblur="window.__saveTitle(\'' + id + '\', this.textContent)" onkeydown="if(event.key===\'Enter\'){event.preventDefault();this.blur();}">' + escapeHtml(s.title) + '</div>';
-      html += '<div class="session-meta"><span class="cat-badge cat-' + cat.id + '">' + cat.name + '</span>';
+      html += '<div class="session-meta">';
+      html += '<select class="cat-select cat-' + cat.id + '" onchange="window.__updateCat(\'' + id + '\', this.value)" title="点击改标签">' + catOpts + '</select>';
       if (nowIs) html += ' <span class="session-now-tag">进行中</span>';
       html += '</div>';
       html += '</div>';
@@ -1089,6 +1117,9 @@ function render() {
       html += '</div>';
     });
     html += '</div>';
+    if (doneCount > 0) {
+      html += '<div class="done-toggle" onclick="window.__toggleShowDone()">' + (showDone ? '🙈 隐藏已完成 (' + doneCount + ')' : '👁 显示已完成 (' + doneCount + ')') + '</div>';
+    }
   }
   html += '<div class="add-bar">';
   html += '<input type="time" id="add-time-quick" value="08:00" step="300">';
@@ -1289,6 +1320,69 @@ window.__quickAddSession = function() {
   addSession(time, duration, title, cat);
   var inp = document.getElementById('add-title-quick');
   if (inp) inp.value = '';
+};
+
+// 显示已完成时间表（默认隐藏）
+var showDoneSessions = false;
+window.__toggleShowDone = function() { showDoneSessions = !showDoneSessions; render(); };
+
+// 行内编辑：更新类别
+window.__updateCat = function(id, cat) {
+  var s = data.sessions.find(function (x) { return String(x.id) === id; });
+  if (!s) return;
+  s.cat = cat;
+  saveData();
+  render();
+};
+
+// 重置弹窗按钮
+window.__resetCancel = function() { document.getElementById('reset-modal').classList.remove('show'); };
+window.__resetConfirm = function() {
+  document.getElementById('reset-modal').classList.remove('show');
+  doClearAll();
+};
+
+// 生成今日日报（写入 localStorage + 弹窗显示）
+window.__genDailyReport = function() {
+  var today = getTodayStr();
+  var stats = getSprintStats();
+  var sessions = data.sessions.map(function (s) {
+    return { time: s.time, duration: s.duration, title: s.title, cat: s.cat, done: s.done };
+  });
+  var tasks = data.customTasks.map(function (t) {
+    return { text: t.text, done: t.done, isReview: isReviewTask(t.text), cat: t.inferredCat };
+  });
+  var dueCards = getDueFlashcards();
+  var reviewCards = dueCards.map(function (f) {
+    return { content: f.content, cat: f.category, attempt: f.attempts, due: f.nextReviewAt };
+  });
+  var report = {
+    date: today,
+    sprint: {
+      start: SPRINT_START_V2,
+      exam: EXAM_DATE_V2,
+      day: stats.dayIndex,
+      daysLeft: stats.daysLeft,
+      stage: stats.stage ? stats.stage.name : '冲刺准备期'
+    },
+    summary: {
+      totalSessions: sessions.length,
+      doneSessions: sessions.filter(function(s){return s.done;}).length,
+      totalTasks: tasks.length,
+      doneTasks: tasks.filter(function(t){return t.done;}).length,
+      dueReviews: dueCards.length
+    },
+    todaySessions: sessions,
+    todayTasks: tasks,
+    dueReviewCards: reviewCards,
+    generatedAt: new Date().toISOString()
+  };
+  // 存到 localStorage 供导出/查看
+  localStorage.setItem('kaoyan_daily_report_' + today, JSON.stringify(report));
+  // 写入导出框并打开
+  document.getElementById('export-content').textContent = JSON.stringify(report, null, 2);
+  document.getElementById('export-modal').classList.add('show');
+  showToast('今日日报已生成 · ' + report.summary.doneSessions + '/' + report.summary.totalSessions + ' 时段完成', 'success');
 };
 
 // 加载时恢复主题
