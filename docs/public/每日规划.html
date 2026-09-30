@@ -126,6 +126,16 @@ body.dark .cat-select.cat-break, body.dark .cat-select.cat-other { background: r
   font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit;
 }
 .btn-report:hover { filter: brightness(1.1); }
+.add-bar { justify-content: space-between; gap: 12px; padding: 10px 14px; }
+.ab-preview { font-size: 12px; color: var(--text2); flex: 1; }
+.ab-preview b { color: var(--brand); font-weight: 800; }
+.ab-add {
+  padding: 9px 18px; border-radius: 9px; border: 2px dashed var(--brand);
+  background: var(--brand-soft); color: var(--brand); font-size: 13px; font-weight: 700;
+  cursor: pointer; font-family: inherit; white-space: nowrap;
+}
+.ab-add:hover { background: var(--brand); color: white; }
+
 .done-toggle {
   font-size: 12px; color: var(--text3); cursor: pointer; padding: 6px 4px;
   text-align: center; user-select: none;
@@ -1266,12 +1276,17 @@ html += '</div>';
       html += '<div class="done-toggle" onclick="window.__toggleShowDone()">' + (showDone ? '🙈 隐藏已完成 (' + doneCount + ')' : '👁 显示已完成 (' + doneCount + ')') + '</div>';
     }
   }
+  // 添加栏：显示预览时间（最后时段结束+15min），点按钮直接生成新行
+  var lastEnd = '08:00';
+  var lastCat = 'math';
+  if (data.sessions.length > 0) {
+    var ls = data.sessions[data.sessions.length - 1];
+    lastEnd = fmtClockEnd(ls.time, ls.duration);
+    lastCat = ls.cat;
+  }
   html += '<div class="add-bar">';
-  html += '<input type="time" id="add-time-quick" value="08:00" step="300">';
-  html += '<input type="number" id="add-duration-quick" value="30" min="5" max="720" step="5">';
-  html += '<select id="add-cat-quick">' + CATEGORIES.map(function(c){return '<option value="'+c.id+'">'+c.icon+' '+c.name+'</option>';}).join('') + '</select>';
-  html += '<input type="text" id="add-title-quick" placeholder="今天学什么？" onkeydown="if(event.key===\'Enter\'){window.__quickAddSession();}">';
-  html += '<button onclick="window.__quickAddSession()">+ 添加</button>';
+  html += '<span class="ab-preview">⏰ 下一时段将自动排在 <b>' + lastEnd + '</b> · 默认 <b>45 分钟</b> · <b>' + (catById(lastCat) ? catById(lastCat).icon + ' ' + catById(lastCat).name : '数学') + '</b></span>';
+  html += '<button class="ab-add" onclick="window.__autoAddSession()">＋ 添加新时段</button>';
   html += '</div>';
   html += '</div></div>';
   
@@ -1428,14 +1443,35 @@ window.__hermesReport = hermesReport;
 window.__clearAll = clearAllConfirm;
 window.__doClearAll = doClearAll;
 window.__quickAddSession = function() {
-  var time = document.getElementById('add-time-quick').value;
-  var duration = parseInt(document.getElementById('add-duration-quick').value) || 30;
-  var cat = document.getElementById('add-cat-quick').value;
-  var title = document.getElementById('add-title-quick').value;
-  addSession(time, duration, title, cat);
-  var inp = document.getElementById('add-title-quick');
-  if (inp) inp.value = '';
+  // 兼容旧调用，转发到 autoAddSession
+  return window.__autoAddSession();
 };
+window.__autoAddSession = function() {
+  // 自动按最后时段结束时间+15min 生成新行，默认 45min，类别继承
+  var time = '08:00';
+  var duration = 45;
+  var cat = 'math';
+  if (data.sessions.length > 0) {
+    var ls = data.sessions[data.sessions.length - 1];
+    time = fmtClockEnd(ls.time, ls.duration);
+    // 往后推 15 分钟
+    var p = time.split(':');
+    var m = (parseInt(p[0]) || 0) * 60 + (parseInt(p[1]) || 0) + 15;
+    time = String(Math.floor(m / 60) % 24).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0');
+    cat = ls.cat;
+  }
+  var seq = data.sessions.length + 1;
+  var title = '学习 ' + seq;
+  addSession(time, duration, title, cat);
+  // 滚动到新行
+  setTimeout(function() {
+    var el = document.querySelector('.session-list .session:last-child');
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    var titleEl = el && el.querySelector('.session-title');
+    if (titleEl) titleEl.focus();
+  }, 50);
+  showToast('已添加 · ' + time + ' 起 ' + duration + ' 分钟', 'success');
+}
 
 // 显示已完成时间表（默认隐藏）
 var showDoneSessions = false;
