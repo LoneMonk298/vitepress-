@@ -1411,9 +1411,6 @@ function render() {
 
 
 
-  html += '</div>';  // 关闭 main-col
-  html += '<div class="side-col">';
-
 // ===== 周日自查 =====
   var isSunday = now.getDay() === 0;
   var wkIdx = getWeekIdx();
@@ -1456,7 +1453,10 @@ function render() {
   html += '</div>';  // 关闭 weekly
 
 
-  // ===== 关键节点倒计时 =====
+    html += '</div>';  // 关闭 main-col
+  html += '<div class="side-col">';
+
+// ===== 关键节点倒计时 =====
   html += '<div class="sec"><div class="sec-title">🎯 关键节点 <small>按你的里程碑排布</small></div>';
   html += '<div class="milestones"><div class="ms-list">';
   MILESTONES_V2.forEach(function (ms) {
