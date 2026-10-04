@@ -9,7 +9,7 @@
 :root {
   --bg: #f5f7fb; --card: #fff; --text: #1f2937; --text2: #4b5563; --text3: #9ca3af;
   --border: #e5e7eb; --brand: #667eea; --brand2: #764ba2;
-  --ok: #10b981; --warn: #f59e0b; --bad: #ef4444;
+  --ok: #10b981; --warn: #f59e0b; --bad: #ef4444; --done: #3b82f6;
 }
 body.dark {
   --bg: #0f172a; --card: #1e293b; --text: #e2e8f0; --text2: #cbd5e1; --text3: #64748b;
@@ -22,7 +22,6 @@ body {
 }
 .container { max-width: 1200px; margin: 0 auto; }
 
-/* header */
 .header {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: #fff; padding: 20px 26px; border-radius: 12px; margin-bottom: 16px;
@@ -41,20 +40,19 @@ body {
 }
 .theme-btn:hover { background: rgba(255,255,255,.3); }
 
-/* stats */
-.stats-bar { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 16px; }
+.stats-bar { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; margin-bottom: 16px; }
 .stat-card {
-  background: var(--card); border-radius: 10px; padding: 14px 16px;
+  background: var(--card); border-radius: 10px; padding: 12px 14px;
   box-shadow: 0 2px 8px rgba(0,0,0,.05); border: 1px solid var(--border);
 }
-.stat-card .label { font-size: 12px; color: var(--text3); margin-bottom: 5px; font-weight: 600; }
-.stat-card .value { font-size: 24px; font-weight: 800; line-height: 1.1; }
+.stat-card .label { font-size: 11px; color: var(--text3); margin-bottom: 4px; font-weight: 600; }
+.stat-card .value { font-size: 22px; font-weight: 800; line-height: 1.1; }
 .stat-card.must .value { color: var(--ok); }
 .stat-card.opt .value { color: var(--warn); }
 .stat-card.skip .value { color: var(--bad); }
+.stat-card.done .value { color: var(--done); }
 .stat-card.todo .value { color: var(--text3); }
 
-/* toolbar */
 .toolbar {
   background: var(--card); border-radius: 10px; padding: 14px 16px; margin-bottom: 16px;
   border: 1px solid var(--border); display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
@@ -80,7 +78,6 @@ body {
   font-size: 13px; font-weight: 700; font-family: inherit;
 }
 
-/* legend */
 .legend {
   background: var(--card); border-radius: 10px; padding: 12px 16px; margin-bottom: 16px;
   border: 1px solid var(--border); font-size: 12px; color: var(--text2);
@@ -89,7 +86,6 @@ body {
 .legend b { color: var(--text); }
 .legend .lg { display: flex; align-items: center; gap: 5px; }
 
-/* chapters */
 .chapter {
   background: var(--card); border-radius: 10px; margin-bottom: 12px;
   border: 1px solid var(--border); overflow: hidden;
@@ -126,7 +122,7 @@ td.title { color: var(--text); }
 .c1 { color: #cbd5e1; } .c2 { color: #f59e0b; } .c3-diff { color: var(--bad); }
 .c3-val { color: var(--ok); } .c3-listen { color: #3b82f6; } .c3-upd { color: #f97316; }
 
-.pick { display: flex; gap: 4px; }
+.pick { display: flex; gap: 4px; flex-wrap: wrap; }
 .pick button {
   padding: 4px 9px; border-radius: 6px; border: 1px solid var(--border);
   background: var(--card); color: var(--text3); font-size: 11px; font-weight: 700;
@@ -136,12 +132,13 @@ td.title { color: var(--text); }
 .pick button.on-must { background: var(--ok); border-color: var(--ok); color: #fff; }
 .pick button.on-opt { background: var(--warn); border-color: var(--warn); color: #fff; }
 .pick button.on-skip { background: var(--bad); border-color: var(--bad); color: #fff; }
+.pick button.on-done { background: var(--done); border-color: var(--done); color: #fff; }
 
 .empty { text-align: center; padding: 40px; color: var(--text3); font-size: 14px; }
 .footer { text-align: center; font-size: 11px; color: var(--text3); padding: 20px 0; }
 
 @media (max-width: 720px) {
-  .stats-bar { grid-template-columns: repeat(2, 1fr); }
+  .stats-bar { grid-template-columns: repeat(3, 1fr); }
   .header { padding: 16px; }
   .header h1 { font-size: 17px; }
   th:nth-child(1), td:nth-child(1) { display: none; }
@@ -162,10 +159,11 @@ td.title { color: var(--text); }
   </div>
 
   <div class="stats-bar">
-    <div class="stat-card"><div class="label">当前视图小节</div><div class="value" id="s-total">0</div></div>
+    <div class="stat-card"><div class="label">当前视图</div><div class="value" id="s-total">0</div></div>
     <div class="stat-card must"><div class="label">🟢 必做</div><div class="value" id="s-must">0</div></div>
     <div class="stat-card opt"><div class="label">🟡 选做</div><div class="value" id="s-opt">0</div></div>
     <div class="stat-card skip"><div class="label">🔴 放弃</div><div class="value" id="s-skip">0</div></div>
+    <div class="stat-card done"><div class="label">✅ 已掌握</div><div class="value" id="s-done">0</div></div>
     <div class="stat-card todo"><div class="label">⚪ 未判</div><div class="value" id="s-todo">0</div></div>
   </div>
 
@@ -191,7 +189,6 @@ td.title { color: var(--text); }
     <span class="lg"><b>难度</b> ★简单 ★★正常 ★★★较难</span>
     <span class="lg"><b>性价比</b> ★较低 ★★较高 ★★★很高（★★以上必学）</span>
     <span class="lg"><b>是否听课</b> ★可不听 ★★建议听 ★★★必听</span>
-    <span class="lg"><b>更新幅度</b> ★少 ★★中 ★★★大</span>
     <span class="lg" style="color:var(--text3)">难度★★★但性价比★ = 时间紧可先跳过，有余力再补</span>
   </div>
 
@@ -200,7 +197,7 @@ td.title { color: var(--text); }
 </div>
 
 <script>
-var MATH_DATA = [{"part": "", "num": "一", "name": "函数、极限、连续", "only": "", "items": [{"id": "1.1", "title": "函数定义及性质", "diff": 1, "value": 3, "listen": 1, "update": 3, "only": ""}, {"id": "1.2", "title": "极限定义及性质", "diff": 3, "value": 2, "listen": 3, "update": 3, "only": ""}]}, {"part": "高数", "num": "一", "name": "函数、极限、连续", "only": "", "items": [{"id": "1.1", "title": "函数定义及性质", "diff": 1, "value": 3, "listen": 1, "update": 3, "only": ""}, {"id": "1.2", "title": "极限定义及性质", "diff": 3, "value": 2, "listen": 3, "update": 3, "only": ""}, {"id": "1.3", "title": "函数极限计算", "diff": 2, "value": 3, "listen": 2, "update": 3, "only": ""}, {"id": "1.4", "title": "无穷小、无穷大、无界", "diff": 2, "value": 3, "listen": 3, "update": 2, "only": ""}, {"id": "1.5", "title": "函数的连续性与间断点", "diff": 1, "value": 3, "listen": 2, "update": 2, "only": ""}, {"id": "1.6", "title": "数列极限计算", "diff": 2, "value": 2, "listen": 2, "update": 2, "only": ""}, {"id": "1.7", "title": "数列极限证明专题", "diff": 3, "value": 1, "listen": 3, "update": 3, "only": ""}]}, {"part": "高数", "num": "二", "name": "一元微分学", "only": "", "items": [{"id": "2.1", "title": "导数定义", "diff": 2, "value": 3, "listen": 2, "update": 1, "only": ""}, {"id": "2.2", "title": "五类导数计算", "diff": 1, "value": 3, "listen": 1, "update": 1, "only": ""}, {"id": "2.3", "title": "求切线法线、渐近线、曲率", "diff": 1, "value": 3, "listen": 2, "update": 3, "only": ""}, {"id": "2.4", "title": "单调性、凹凸性、极值与拐点", "diff": 2, "value": 2, "listen": 2, "update": 1, "only": ""}, {"id": "2.5", "title": "方程的根、不等式证明", "diff": 3, "value": 2, "listen": 3, "update": 3, "only": ""}, {"id": "2.6", "title": "高阶导数", "diff": 2, "value": 3, "listen": 2, "update": 1, "only": ""}, {"id": "2.7", "title": "微分中值定理证明专题", "diff": 3, "value": 1, "listen": 3, "update": 3, "only": ""}, {"id": "2.8", "title": "泰勒中值定理证明专题", "diff": 3, "value": 2, "listen": 3, "update": 3, "only": ""}]}, {"part": "高数", "num": "三", "name": "一元积分学", "only": "", "items": [{"id": "3.1", "title": "原函数与可积", "diff": 2, "value": 1, "listen": 2, "update": 1, "only": ""}, {"id": "3.2", "title": "不定积分计算", "diff": 2, "value": 2, "listen": 1, "update": 1, "only": ""}, {"id": "3.3", "title": "定积分的定义与性质", "diff": 2, "value": 2, "listen": 3, "update": 3, "only": ""}, {"id": "3.4", "title": "定积分的计算（方法篇）", "diff": 2, "value": 3, "listen": 2, "update": 1, "only": ""}, {"id": "3.5", "title": "定积分的计算（实战篇）", "diff": 3, "value": 1, "listen": 3, "update": 1, "only": ""}, {"id": "3.6", "title": "定积分的几何应用", "diff": 2, "value": 3, "listen": 2, "update": 1, "only": ""}, {"id": "3.7", "title": "变限积分", "diff": 2, "value": 3, "listen": 2, "update": 3, "only": ""}, {"id": "3.8", "title": "反常积分", "diff": 2, "value": 2, "listen": 3, "update": 2, "only": ""}, {"id": "3.9", "title": "积分不等式证明专题", "diff": 3, "value": 1, "listen": 3, "update": 2, "only": ""}]}, {"part": "高数", "num": "四", "name": "向量代数与空间解析几何", "only": "仅数一", "items": [{"id": "4.1", "title": "向量的概念与计算", "diff": 1, "value": 1, "listen": 1, "update": 1, "only": ""}, {"id": "4.2", "title": "平面与直线", "diff": 1, "value": 1, "listen": 1, "update": 2, "only": ""}, {"id": "4.3", "title": "曲面、空间曲线", "diff": 2, "value": 2, "listen": 2, "update": 2, "only": ""}]}, {"part": "高数", "num": "五", "name": "多元微分学", "only": "", "items": [{"id": "5.1", "title": "多元微分学（概念篇）", "diff": 2, "value": 3, "listen": 3, "update": 3, "only": ""}, {"id": "5.2", "title": "复合函数求偏导数、全微分", "diff": 3, "value": 3, "listen": 3, "update": 3, "only": ""}, {"id": "5.3", "title": "隐函数求偏导数与全微分", "diff": 2, "value": 3, "listen": 2, "update": 2, "only": ""}, {"id": "5.4", "title": "偏导数等式、偏微分方程求解", "diff": 3, "value": 3, "listen": 2, "update": 3, "only": ""}, {"id": "5.5", "title": "多元函数极值与最值", "diff": 2, "value": 3, "listen": 3, "update": 3, "only": ""}]}, {"part": "高数", "num": "六", "name": "二重积分", "only": "", "items": [{"id": "6.1", "title": "函数图像绘制", "diff": 2, "value": 2, "listen": 2, "update": 2, "only": ""}, {"id": "6.2", "title": "二重积分定义及性质", "diff": 2, "value": 2, "listen": 3, "update": 3, "only": ""}, {"id": "6.3", "title": "二重积分计算（方法篇）", "diff": 2, "value": 3, "listen": 2, "update": 3, "only": ""}, {"id": "6.4", "title": "二重积分计算（实战篇）", "diff": 3, "value": 3, "listen": 3, "update": 3, "only": ""}, {"id": "6.5", "title": "二重积分综合题型", "diff": 3, "value": 2, "listen": 3, "update": 2, "only": ""}, {"id": "6.6", "title": "二重积分换元（番外篇）", "diff": 2, "value": 2, "listen": 3, "update": 2, "only": ""}]}, {"part": "高数", "num": "七", "name": "常微分方程", "only": "", "items": [{"id": "7.1", "title": "常见类型微分方程的计算", "diff": 2, "value": 3, "listen": 3, "update": 3, "only": ""}, {"id": "7.2", "title": "高阶线性微分方程", "diff": 2, "value": 2, "listen": 3, "update": 3, "only": ""}, {"id": "7.3", "title": "微分方程的综合应用", "diff": 3, "value": 2, "listen": 3, "update": 2, "only": ""}]}, {"part": "高数", "num": "八", "name": "无穷级数", "only": "仅数一、三", "items": [{"id": "8.1", "title": "无穷级数（概念篇）", "diff": 1, "value": 2, "listen": 2, "update": 2, "only": ""}, {"id": "8.2", "title": "正项级数的敛散性判别", "diff": 2, "value": 2, "listen": 2, "update": 2, "only": ""}, {"id": "8.3", "title": "任意项级数的敛散性判别", "diff": 3, "value": 3, "listen": 3, "update": 3, "only": ""}, {"id": "8.4", "title": "无穷级数结论总结及反例构造", "diff": 3, "value": 3, "listen": 3, "update": 3, "only": ""}, {"id": "8.5", "title": "收敛半径、收敛区间、收敛域", "diff": 2, "value": 2, "listen": 3, "update": 3, "only": ""}, {"id": "8.6", "title": "阿贝尔定理", "diff": 3, "value": 3, "listen": 3, "update": 2, "only": ""}, {"id": "8.7", "title": "级数求和", "diff": 3, "value": 3, "listen": 3, "update": 3, "only": ""}, {"id": "8.8", "title": "幂级数展开", "diff": 2, "value": 2, "listen": 3, "update": 2, "only": ""}, {"id": "8.9", "title": "无穷级数综合题型", "diff": 3, "value": 3, "listen": 3, "update": 2, "only": ""}]}, {"part": "高数", "num": "十", "name": "数一冷门考点专项", "only": "仅数一", "items": [{"id": "10.1", "title": "方向导数与梯度", "diff": 2, "value": 2, "listen": 2, "update": 2, "only": ""}, {"id": "10.2", "title": "空间曲面的切平面与法线", "diff": 1, "value": 2, "listen": 2, "update": 2, "only": ""}, {"id": "10.3", "title": "空间曲线的切线与法平面", "diff": 1, "value": 2, "listen": 2, "update": 2, "only": ""}, {"id": "10.4", "title": "欧拉方程", "diff": 1, "value": 2, "listen": 2, "update": 2, "only": ""}, {"id": "10.5", "title": "傅里叶级数", "diff": 2, "value": 2, "listen": 3, "update": 2, "only": ""}, {"id": "10.6", "title": "散度、旋度", "diff": 1, "value": 2, "listen": 1, "update": 1, "only": ""}, {"id": "10.7", "title": "二元函数的二阶泰勒公式", "diff": 2, "value": 1, "listen": 1, "update": 1, "only": ""}]}, {"part": "高数", "num": "十一", "name": "三重积分", "only": "仅数一", "items": [{"id": "11.1", "title": "三重积分的定义与性质", "diff": 1, "value": 1, "listen": 1, "update": 1, "only": ""}, {"id": "11.2", "title": "三重积分计算", "diff": 2, "value": 3, "listen": 2, "update": 2, "only": ""}]}, {"part": "高数", "num": "十二", "name": "线面积分", "only": "仅数一", "items": [{"id": "12.1", "title": "第一类曲线积分的计算", "diff": 2, "value": 3, "listen": 3, "update": 2, "only": ""}, {"id": "12.2", "title": "第二类曲线积分的计算", "diff": 3, "value": 3, "listen": 3, "update": 3, "only": ""}, {"id": "12.3", "title": "第一类曲面积分的计算", "diff": 3, "value": 3, "listen": 3, "update": 2, "only": ""}, {"id": "12.4", "title": "第二类曲面积分的计算", "diff": 3, "value": 3, "listen": 3, "update": 3, "only": ""}, {"id": "12.5", "title": "空间第二类曲线积分的计算", "diff": 3, "value": 3, "listen": 3, "update": 3, "only": ""}]}, {"part": "高数", "num": "十三", "name": "数三专项", "only": "仅数三", "items": [{"id": "13.1", "title": "差分方程", "diff": 1, "value": 1, "listen": 2, "update": 1, "only": ""}, {"id": "13.2", "title": "经济学专题", "diff": 2, "value": 2, "listen": 3, "update": 2, "only": ""}]}, {"part": "线代", "num": "一", "name": "行列式与矩阵", "only": "", "items": [{"id": "1.1", "title": "行列式复习课", "diff": 1, "value": 2, "listen": 2, "update": 3, "only": ""}, {"id": "补充专题", "title": "逆序数的应用", "diff": 1, "value": 1, "listen": 2, "update": 3, "only": ""}, {"id": "1.2", "title": "矩阵复习课", "diff": 1, "value": 3, "listen": 3, "update": 1, "only": ""}, {"id": "1.3", "title": "代数余子式与伴随矩阵", "diff": 2, "value": 3, "listen": 3, "update": 2, "only": ""}, {"id": "1.4", "title": "矩阵的逆", "diff": 2, "value": 3, "listen": 3, "update": 1, "only": ""}, {"id": "1.5", "title": "矩阵的高次幂", "diff": 1, "value": 2, "listen": 2, "update": 1, "only": ""}, {"id": "1.6", "title": "初等矩阵与初等变换", "diff": 2, "value": 3, "listen": 2, "update": 1, "only": ""}, {"id": "1.7", "title": "矩阵乘法的进阶认识", "diff": 2, "value": 3, "listen": 3, "update": 1, "only": ""}, {"id": "1.8", "title": "矩阵的秩", "diff": 3, "value": 3, "listen": 3, "update": 3, "only": ""}, {"id": "1.9", "title": "分块矩阵", "diff": 3, "value": 2, "listen": 3, "update": 1, "only": ""}]}, {"part": "线代", "num": "二", "name": "向量与方程组", "only": "", "items": [{"id": "2.1", "title": "向量复习课", "diff": 1, "value": 2, "listen": 2, "update": 1, "only": ""}, {"id": "2.2", "title": "向量组的线性相关性", "diff": 3, "value": 3, "listen": 3, "update": 3, "only": ""}, {"id": "2.3", "title": "极大线性无关组", "diff": 3, "value": 3, "listen": 3, "update": 3, "only": ""}, {"id": "2.4", "title": "向量组等价", "diff": 3, "value": 2, "listen": 3, "update": 2, "only": ""}, {"id": "2.5", "title": "向量空间", "diff": 1, "value": 2, "listen": 2, "update": 1, "only": "仅数一"}, {"id": "2.6", "title": "线性方程组解的判定", "diff": 1, "value": 3, "listen": 1, "update": 2, "only": ""}, {"id": "2.7", "title": "线性方程组的求解", "diff": 2, "value": 3, "listen": 2, "update": 2, "only": ""}, {"id": "2.8", "title": "线性方程组解的结构", "diff": 3, "value": 3, "listen": 3, "update": 2, "only": ""}, {"id": "2.9", "title": "公共解与同解问题", "diff": 3, "value": 2, "listen": 3, "update": 3, "only": ""}, {"id": "补充专题", "title": "线性方程组的几何意义", "diff": 1, "value": 2, "listen": 2, "update": 3, "only": "仅数一"}]}, {"part": "线代", "num": "三", "name": "矩阵相似", "only": "", "items": [{"id": "3.1", "title": "特征值与特征向量", "diff": 2, "value": 3, "listen": 3, "update": 3, "only": ""}, {"id": "3.2", "title": "秩为 1 矩阵专题", "diff": 2, "value": 3, "listen": 2, "update": 2, "only": ""}, {"id": "3.3", "title": "矩阵相似对角化", "diff": 3, "value": 3, "listen": 3, "update": 3, "only": ""}, {"id": "3.4", "title": "矩阵相似", "diff": 3, "value": 3, "listen": 3, "update": 3, "only": ""}, {"id": "3.5", "title": "正交矩阵、实对称矩阵", "diff": 3, "value": 3, "listen": 3, "update": 1, "only": ""}, {"id": "3.6", "title": "反求矩阵问题", "diff": 2, "value": 2, "listen": 3, "update": 1, "only": ""}, {"id": "补充专题", "title": "谱分解定理", "diff": 2, "value": 1, "listen": 3, "update": 1, "only": ""}, {"id": "3.7", "title": "两类特殊的相似问题", "diff": 3, "value": 1, "listen": 3, "update": 2, "only": ""}]}, {"part": "线代", "num": "四", "name": "二次型", "only": "", "items": [{"id": "4.1", "title": "二次型及其表示", "diff": 2, "value": 2, "listen": 3, "update": 1, "only": ""}, {"id": "4.2", "title": "二次型的标准形、规范形", "diff": 2, "value": 3, "listen": 3, "update": 1, "only": ""}, {"id": "4.3", "title": "矩阵合同、惯性定理", "diff": 2, "value": 3, "listen": 3, "update": 2, "only": ""}, {"id": "4.4", "title": "套皮二次型", "diff": 2, "value": 2, "listen": 2, "update": 1, "only": ""}, {"id": "4.5", "title": "平方和形式的二次型应用", "diff": 2, "value": 3, "listen": 3, "update": 1, "only": ""}, {"id": "4.6", "title": "二次型等于 0 的求解", "diff": 3, "value": 3, "listen": 3, "update": 2, "only": ""}, {"id": "4.7", "title": "二次型化成另一个二次型", "diff": 3, "value": 3, "listen": 3, "update": 2, "only": ""}, {"id": "4.8", "title": "二次型最值问题", "diff": 3, "value": 3, "listen": 3, "update": 1, "only": ""}, {"id": "4.9", "title": "正定二次型", "diff": 3, "value": 3, "listen": 3, "update": 2, "only": ""}, {"id": "4.10", "title": "矩阵等价、相似、合同", "diff": 2, "value": 2, "listen": 2, "update": 2, "only": ""}]}];
+var MATH_DATA = [{"part": "高数", "num": "一", "name": "函数、极限、连续", "only": "", "items": [{"id": "1.1", "title": "函数定义及性质", "diff": 1, "value": 3, "listen": 1, "update": 3, "only": ""}, {"id": "1.2", "title": "极限定义及性质", "diff": 3, "value": 2, "listen": 3, "update": 3, "only": ""}, {"id": "1.3", "title": "函数极限计算", "diff": 2, "value": 3, "listen": 2, "update": 3, "only": ""}, {"id": "1.4", "title": "无穷小、无穷大、无界", "diff": 2, "value": 3, "listen": 3, "update": 2, "only": ""}, {"id": "1.5", "title": "函数的连续性与间断点", "diff": 1, "value": 3, "listen": 2, "update": 2, "only": ""}, {"id": "1.6", "title": "数列极限计算", "diff": 2, "value": 2, "listen": 2, "update": 2, "only": ""}, {"id": "1.7", "title": "数列极限证明专题", "diff": 3, "value": 1, "listen": 3, "update": 3, "only": ""}]}, {"part": "高数", "num": "二", "name": "一元微分学", "only": "", "items": [{"id": "2.1", "title": "导数定义", "diff": 2, "value": 3, "listen": 2, "update": 1, "only": ""}, {"id": "2.2", "title": "五类导数计算", "diff": 1, "value": 3, "listen": 1, "update": 1, "only": ""}, {"id": "2.3", "title": "求切线法线、渐近线、曲率", "diff": 1, "value": 3, "listen": 2, "update": 3, "only": ""}, {"id": "2.4", "title": "单调性、凹凸性、极值与拐点", "diff": 2, "value": 2, "listen": 2, "update": 1, "only": ""}, {"id": "2.5", "title": "方程的根、不等式证明", "diff": 3, "value": 2, "listen": 3, "update": 3, "only": ""}, {"id": "2.6", "title": "高阶导数", "diff": 2, "value": 3, "listen": 2, "update": 1, "only": ""}, {"id": "2.7", "title": "微分中值定理证明专题", "diff": 3, "value": 1, "listen": 3, "update": 3, "only": ""}, {"id": "2.8", "title": "泰勒中值定理证明专题", "diff": 3, "value": 2, "listen": 3, "update": 3, "only": ""}]}, {"part": "高数", "num": "三", "name": "一元积分学", "only": "", "items": [{"id": "3.1", "title": "原函数与可积", "diff": 2, "value": 1, "listen": 2, "update": 1, "only": ""}, {"id": "3.2", "title": "不定积分计算", "diff": 2, "value": 2, "listen": 1, "update": 1, "only": ""}, {"id": "3.3", "title": "定积分的定义与性质", "diff": 2, "value": 2, "listen": 3, "update": 3, "only": ""}, {"id": "3.4", "title": "定积分的计算（方法篇）", "diff": 2, "value": 3, "listen": 2, "update": 1, "only": ""}, {"id": "3.5", "title": "定积分的计算（实战篇）", "diff": 3, "value": 1, "listen": 3, "update": 1, "only": ""}, {"id": "3.6", "title": "定积分的几何应用", "diff": 2, "value": 3, "listen": 2, "update": 1, "only": ""}, {"id": "3.7", "title": "变限积分", "diff": 2, "value": 3, "listen": 2, "update": 3, "only": ""}, {"id": "3.8", "title": "反常积分", "diff": 2, "value": 2, "listen": 3, "update": 2, "only": ""}, {"id": "3.9", "title": "积分不等式证明专题", "diff": 3, "value": 1, "listen": 3, "update": 2, "only": ""}]}, {"part": "高数", "num": "四", "name": "向量代数与空间解析几何", "only": "仅数一", "items": [{"id": "4.1", "title": "向量的概念与计算", "diff": 1, "value": 1, "listen": 1, "update": 1, "only": ""}, {"id": "4.2", "title": "平面与直线", "diff": 1, "value": 1, "listen": 1, "update": 2, "only": ""}, {"id": "4.3", "title": "曲面、空间曲线", "diff": 2, "value": 2, "listen": 2, "update": 2, "only": ""}]}, {"part": "高数", "num": "五", "name": "多元微分学", "only": "", "items": [{"id": "5.1", "title": "多元微分学（概念篇）", "diff": 2, "value": 3, "listen": 3, "update": 3, "only": ""}, {"id": "5.2", "title": "复合函数求偏导数、全微分", "diff": 3, "value": 3, "listen": 3, "update": 3, "only": ""}, {"id": "5.3", "title": "隐函数求偏导数与全微分", "diff": 2, "value": 3, "listen": 2, "update": 2, "only": ""}, {"id": "5.4", "title": "偏导数等式、偏微分方程求解", "diff": 3, "value": 3, "listen": 2, "update": 3, "only": ""}, {"id": "5.5", "title": "多元函数极值与最值", "diff": 2, "value": 3, "listen": 3, "update": 3, "only": ""}]}, {"part": "高数", "num": "六", "name": "二重积分", "only": "", "items": [{"id": "6.1", "title": "函数图像绘制", "diff": 2, "value": 2, "listen": 2, "update": 2, "only": ""}, {"id": "6.2", "title": "二重积分定义及性质", "diff": 2, "value": 2, "listen": 3, "update": 3, "only": ""}, {"id": "6.3", "title": "二重积分计算（方法篇）", "diff": 2, "value": 3, "listen": 2, "update": 3, "only": ""}, {"id": "6.4", "title": "二重积分计算（实战篇）", "diff": 3, "value": 3, "listen": 3, "update": 3, "only": ""}, {"id": "6.5", "title": "二重积分综合题型", "diff": 3, "value": 2, "listen": 3, "update": 2, "only": ""}, {"id": "6.6", "title": "二重积分换元（番外篇）", "diff": 2, "value": 2, "listen": 3, "update": 2, "only": ""}]}, {"part": "高数", "num": "七", "name": "常微分方程", "only": "", "items": [{"id": "7.1", "title": "常见类型微分方程的计算", "diff": 2, "value": 3, "listen": 3, "update": 3, "only": ""}, {"id": "7.2", "title": "高阶线性微分方程", "diff": 2, "value": 2, "listen": 3, "update": 3, "only": ""}, {"id": "7.3", "title": "微分方程的综合应用", "diff": 3, "value": 2, "listen": 3, "update": 2, "only": ""}]}, {"part": "高数", "num": "八", "name": "无穷级数", "only": "仅数一、三", "items": [{"id": "8.1", "title": "无穷级数（概念篇）", "diff": 1, "value": 2, "listen": 2, "update": 2, "only": ""}, {"id": "8.2", "title": "正项级数的敛散性判别", "diff": 2, "value": 2, "listen": 2, "update": 2, "only": ""}, {"id": "8.3", "title": "任意项级数的敛散性判别", "diff": 3, "value": 3, "listen": 3, "update": 3, "only": ""}, {"id": "8.4", "title": "无穷级数结论总结及反例构造", "diff": 3, "value": 3, "listen": 3, "update": 3, "only": ""}, {"id": "8.5", "title": "收敛半径、收敛区间、收敛域", "diff": 2, "value": 2, "listen": 3, "update": 3, "only": ""}, {"id": "8.6", "title": "阿贝尔定理", "diff": 3, "value": 3, "listen": 3, "update": 2, "only": ""}, {"id": "8.7", "title": "级数求和", "diff": 3, "value": 3, "listen": 3, "update": 3, "only": ""}, {"id": "8.8", "title": "幂级数展开", "diff": 2, "value": 2, "listen": 3, "update": 2, "only": ""}, {"id": "8.9", "title": "无穷级数综合题型", "diff": 3, "value": 3, "listen": 3, "update": 2, "only": ""}]}, {"part": "高数", "num": "十", "name": "数一冷门考点专项", "only": "仅数一", "items": [{"id": "10.1", "title": "方向导数与梯度", "diff": 2, "value": 2, "listen": 2, "update": 2, "only": ""}, {"id": "10.2", "title": "空间曲面的切平面与法线", "diff": 1, "value": 2, "listen": 2, "update": 2, "only": ""}, {"id": "10.3", "title": "空间曲线的切线与法平面", "diff": 1, "value": 2, "listen": 2, "update": 2, "only": ""}, {"id": "10.4", "title": "欧拉方程", "diff": 1, "value": 2, "listen": 2, "update": 2, "only": ""}, {"id": "10.5", "title": "傅里叶级数", "diff": 2, "value": 2, "listen": 3, "update": 2, "only": ""}, {"id": "10.6", "title": "散度、旋度", "diff": 1, "value": 2, "listen": 1, "update": 1, "only": ""}, {"id": "10.7", "title": "二元函数的二阶泰勒公式", "diff": 2, "value": 1, "listen": 1, "update": 1, "only": ""}]}, {"part": "高数", "num": "十一", "name": "三重积分", "only": "仅数一", "items": [{"id": "11.1", "title": "三重积分的定义与性质", "diff": 1, "value": 1, "listen": 1, "update": 1, "only": ""}, {"id": "11.2", "title": "三重积分计算", "diff": 2, "value": 3, "listen": 2, "update": 2, "only": ""}]}, {"part": "高数", "num": "十二", "name": "线面积分", "only": "仅数一", "items": [{"id": "12.1", "title": "第一类曲线积分的计算", "diff": 2, "value": 3, "listen": 3, "update": 2, "only": ""}, {"id": "12.2", "title": "第二类曲线积分的计算", "diff": 3, "value": 3, "listen": 3, "update": 3, "only": ""}, {"id": "12.3", "title": "第一类曲面积分的计算", "diff": 3, "value": 3, "listen": 3, "update": 2, "only": ""}, {"id": "12.4", "title": "第二类曲面积分的计算", "diff": 3, "value": 3, "listen": 3, "update": 3, "only": ""}, {"id": "12.5", "title": "空间第二类曲线积分的计算", "diff": 3, "value": 3, "listen": 3, "update": 3, "only": ""}]}, {"part": "高数", "num": "十三", "name": "数三专项", "only": "仅数三", "items": [{"id": "13.1", "title": "差分方程", "diff": 1, "value": 1, "listen": 2, "update": 1, "only": ""}, {"id": "13.2", "title": "经济学专题", "diff": 2, "value": 2, "listen": 3, "update": 2, "only": ""}]}, {"part": "线代", "num": "一", "name": "行列式与矩阵", "only": "", "items": [{"id": "1.1", "title": "行列式复习课", "diff": 1, "value": 2, "listen": 2, "update": 3, "only": ""}, {"id": "补充专题", "title": "逆序数的应用", "diff": 1, "value": 1, "listen": 2, "update": 3, "only": ""}, {"id": "1.2", "title": "矩阵复习课", "diff": 1, "value": 3, "listen": 3, "update": 1, "only": ""}, {"id": "1.3", "title": "代数余子式与伴随矩阵", "diff": 2, "value": 3, "listen": 3, "update": 2, "only": ""}, {"id": "1.4", "title": "矩阵的逆", "diff": 2, "value": 3, "listen": 3, "update": 1, "only": ""}, {"id": "1.5", "title": "矩阵的高次幂", "diff": 1, "value": 2, "listen": 2, "update": 1, "only": ""}, {"id": "1.6", "title": "初等矩阵与初等变换", "diff": 2, "value": 3, "listen": 2, "update": 1, "only": ""}, {"id": "1.7", "title": "矩阵乘法的进阶认识", "diff": 2, "value": 3, "listen": 3, "update": 1, "only": ""}, {"id": "1.8", "title": "矩阵的秩", "diff": 3, "value": 3, "listen": 3, "update": 3, "only": ""}, {"id": "1.9", "title": "分块矩阵", "diff": 3, "value": 2, "listen": 3, "update": 1, "only": ""}]}, {"part": "线代", "num": "二", "name": "向量与方程组", "only": "", "items": [{"id": "2.1", "title": "向量复习课", "diff": 1, "value": 2, "listen": 2, "update": 1, "only": ""}, {"id": "2.2", "title": "向量组的线性相关性", "diff": 3, "value": 3, "listen": 3, "update": 3, "only": ""}, {"id": "2.3", "title": "极大线性无关组", "diff": 3, "value": 3, "listen": 3, "update": 3, "only": ""}, {"id": "2.4", "title": "向量组等价", "diff": 3, "value": 2, "listen": 3, "update": 2, "only": ""}, {"id": "2.5", "title": "向量空间", "diff": 1, "value": 2, "listen": 2, "update": 1, "only": "仅数一"}, {"id": "2.6", "title": "线性方程组解的判定", "diff": 1, "value": 3, "listen": 1, "update": 2, "only": ""}, {"id": "2.7", "title": "线性方程组的求解", "diff": 2, "value": 3, "listen": 2, "update": 2, "only": ""}, {"id": "2.8", "title": "线性方程组解的结构", "diff": 3, "value": 3, "listen": 3, "update": 2, "only": ""}, {"id": "2.9", "title": "公共解与同解问题", "diff": 3, "value": 2, "listen": 3, "update": 3, "only": ""}, {"id": "补充专题", "title": "线性方程组的几何意义", "diff": 1, "value": 2, "listen": 2, "update": 3, "only": "仅数一"}]}, {"part": "线代", "num": "三", "name": "矩阵相似", "only": "", "items": [{"id": "3.1", "title": "特征值与特征向量", "diff": 2, "value": 3, "listen": 3, "update": 3, "only": ""}, {"id": "3.2", "title": "秩为 1 矩阵专题", "diff": 2, "value": 3, "listen": 2, "update": 2, "only": ""}, {"id": "3.3", "title": "矩阵相似对角化", "diff": 3, "value": 3, "listen": 3, "update": 3, "only": ""}, {"id": "3.4", "title": "矩阵相似", "diff": 3, "value": 3, "listen": 3, "update": 3, "only": ""}, {"id": "3.5", "title": "正交矩阵、实对称矩阵", "diff": 3, "value": 3, "listen": 3, "update": 1, "only": ""}, {"id": "3.6", "title": "反求矩阵问题", "diff": 2, "value": 2, "listen": 3, "update": 1, "only": ""}, {"id": "补充专题", "title": "谱分解定理", "diff": 2, "value": 1, "listen": 3, "update": 1, "only": ""}, {"id": "3.7", "title": "两类特殊的相似问题", "diff": 3, "value": 1, "listen": 3, "update": 2, "only": ""}]}, {"part": "线代", "num": "四", "name": "二次型", "only": "", "items": [{"id": "4.1", "title": "二次型及其表示", "diff": 2, "value": 2, "listen": 3, "update": 1, "only": ""}, {"id": "4.2", "title": "二次型的标准形、规范形", "diff": 2, "value": 3, "listen": 3, "update": 1, "only": ""}, {"id": "4.3", "title": "矩阵合同、惯性定理", "diff": 2, "value": 3, "listen": 3, "update": 2, "only": ""}, {"id": "4.4", "title": "套皮二次型", "diff": 2, "value": 2, "listen": 2, "update": 1, "only": ""}, {"id": "4.5", "title": "平方和形式的二次型应用", "diff": 2, "value": 3, "listen": 3, "update": 1, "only": ""}, {"id": "4.6", "title": "二次型等于 0 的求解", "diff": 3, "value": 3, "listen": 3, "update": 2, "only": ""}, {"id": "4.7", "title": "二次型化成另一个二次型", "diff": 3, "value": 3, "listen": 3, "update": 2, "only": ""}, {"id": "4.8", "title": "二次型最值问题", "diff": 3, "value": 3, "listen": 3, "update": 1, "only": ""}, {"id": "4.9", "title": "正定二次型", "diff": 3, "value": 3, "listen": 3, "update": 2, "only": ""}, {"id": "4.10", "title": "矩阵等价、相似、合同", "diff": 2, "value": 2, "listen": 2, "update": 2, "only": ""}]}];
 var KEY = 'kaoyan_math_pick_v1';
 var scope = 'shu2';
 var quick = '';
@@ -252,7 +249,7 @@ function render() {
   var picks = loadPicks();
   var kw = (document.getElementById('search').value || '').trim();
   var chs = visibleChapters();
-  var stats = { total: 0, must: 0, opt: 0, skip: 0, todo: 0 };
+  var stats = { total: 0, must: 0, opt: 0, skip: 0, done: 0, todo: 0 };
   var html = '';
   var anyCh = false;
 
@@ -283,7 +280,7 @@ function render() {
     html += '<span class="ch-progress">必做 ' + chMust + '/' + ch.items.length + '</span>';
     html += '<span class="ch-count">' + rows.length + ' 小节</span>';
     html += '</div><div class="ch-body"><table>';
-    html += '<thead><tr><th>序号</th><th>小节标题</th><th>难度</th><th>性价比</th><th>听课</th><th>更新</th><th>我选</th></tr></thead><tbody>';
+    html += '<thead><tr><th>序号</th><th>小节标题</th><th>难度</th><th>性价比</th><th>听课</th><th>我选</th></tr></thead><tbody>';
 
     for (var k2 = 0; k2 < rows.length; k2++) {
       var it2 = rows[k2];
@@ -291,7 +288,8 @@ function render() {
       var p = picks[key] || '';
       stats.total++;
       if (p === 'must') stats.must++; else if (p === 'opt') stats.opt++;
-      else if (p === 'skip') stats.skip++; else stats.todo++;
+      else if (p === 'skip') stats.skip++; else if (p === 'done') stats.done++;
+      else stats.todo++;
 
       html += '<tr>';
       html += '<td class="id">' + esc(it2.id) + '</td>';
@@ -299,11 +297,11 @@ function render() {
       html += '<td>' + stars(it2.diff, 'c3-diff') + '</td>';
       html += '<td>' + stars(it2.value, 'c3-val') + '</td>';
       html += '<td>' + stars(it2.listen, 'c3-listen') + '</td>';
-      html += '<td>' + stars(it2.update, 'c3-upd') + '</td>';
       html += '<td><div class="pick">'
         + '<button class="' + (p === 'must' ? 'on-must' : '') + '" onclick="pick(\'' + key + '\',\'must\')">必做</button>'
         + '<button class="' + (p === 'opt' ? 'on-opt' : '') + '" onclick="pick(\'' + key + '\',\'opt\')">选做</button>'
         + '<button class="' + (p === 'skip' ? 'on-skip' : '') + '" onclick="pick(\'' + key + '\',\'skip\')">放弃</button>'
+        + '<button class="' + (p === 'done' ? 'on-done' : '') + '" onclick="pick(\'' + key + '\',\'done\')">已掌握</button>'
         + '</div></td>';
       html += '</tr>';
     }
@@ -315,6 +313,7 @@ function render() {
   document.getElementById('s-must').textContent = stats.must;
   document.getElementById('s-opt').textContent = stats.opt;
   document.getElementById('s-skip').textContent = stats.skip;
+  document.getElementById('s-done').textContent = stats.done;
   document.getElementById('s-todo').textContent = stats.todo;
 }
 
@@ -323,7 +322,69 @@ function pick(key, val) {
   if (picks[key] === val) delete picks[key];
   else picks[key] = val;
   savePicks(picks);
-  render();
+  // 只更新统计，不重绘整表（避免 DOM 重建导致视觉"折叠"）
+  updatePickButtons(key, picks[key] || '');
+  updateStats();
+}
+function updatePickButtons(key, val) {
+  // 找所有含此 key 的按钮组
+  document.querySelectorAll('.pick').forEach(function (group) {
+    var onclicks = [];
+    group.querySelectorAll('button').forEach(function (b) {
+      onclicks.push(b.getAttribute('onclick'));
+    });
+    // 判断这组属于哪个 key（看 onclick 里的 key 参数）
+    var inKey = onclicks.some(function (oc) {
+      var m = oc && oc.match(/pick\('([^']+)',/);
+      return m && m[1] === key;
+    });
+    if (!inKey) return;
+    group.querySelectorAll('button').forEach(function (b) {
+      var on = b.getAttribute('onclick') || '';
+      var m = on.match(/,\'(\w+)\'\)/);
+      var btnVal = m ? m[1] : '';
+      b.classList.remove('on-must', 'on-opt', 'on-skip', 'on-done');
+      if (btnVal === val) b.classList.add('on-' + val);
+    });
+  });
+  // 同步章节头部的"必做 N/M"
+  updateChProgress();
+}
+function updateChProgress() {
+  var picks = loadPicks();
+  var chs = visibleChapters();
+  chs.forEach(function (ch, i) {
+    var cnt = 0;
+    ch.items.forEach(function (it) {
+      if (picks[iKey(ch.part, ch.num, it.id)] === 'must') cnt++;
+    });
+    var el = document.querySelector('.chapter[data-ch="' + i + '"] .ch-progress');
+    if (el) el.textContent = '必做 ' + cnt + '/' + ch.items.length;
+  });
+}
+function updateStats() {
+  var picks = loadPicks();
+  var stats = { total: 0, must: 0, opt: 0, skip: 0, done: 0, todo: 0 };
+  var kw = (document.getElementById('search').value || '').trim();
+  visibleChapters().forEach(function (ch) {
+    ch.items.forEach(function (it) {
+      if (kw && it.title.indexOf(kw) < 0 && it.id.indexOf(kw) < 0) return;
+      if (!matchQuick(it, quick)) return;
+      stats.total++;
+      var p = picks[iKey(ch.part, ch.num, it.id)] || '';
+      if (p === 'must') stats.must++;
+      else if (p === 'opt') stats.opt++;
+      else if (p === 'skip') stats.skip++;
+      else if (p === 'done') stats.done++;
+      else stats.todo++;
+    });
+  });
+  document.getElementById('s-total').textContent = stats.total;
+  document.getElementById('s-must').textContent = stats.must;
+  document.getElementById('s-opt').textContent = stats.opt;
+  document.getElementById('s-skip').textContent = stats.skip;
+  document.getElementById('s-done').textContent = stats.done;
+  document.getElementById('s-todo').textContent = stats.todo;
 }
 
 var openState = {};
@@ -356,7 +417,7 @@ function toggleTheme() {
 
 function exportPlan() {
   var picks = loadPicks();
-  var buckets = { must: [], opt: [], skip: [], todo: [] };
+  var buckets = { must: [], opt: [], skip: [], done: [], todo: [] };
   for (var i = 0; i < MATH_DATA.length; i++) {
     var ch = MATH_DATA[i];
     for (var j = 0; j < ch.items.length; j++) {
@@ -371,6 +432,7 @@ function exportPlan() {
   txt += '【必做 ' + buckets.must.length + '】\n' + (buckets.must.join('\n') || '  （空）') + '\n\n';
   txt += '【选做 ' + buckets.opt.length + '】\n' + (buckets.opt.join('\n') || '  （空）') + '\n\n';
   txt += '【放弃 ' + buckets.skip.length + '】\n' + (buckets.skip.join('\n') || '  （空）') + '\n\n';
+  txt += '【已掌握 ' + buckets.done.length + '】\n' + (buckets.done.join('\n') || '  （空）') + '\n\n';
   txt += '【未判 ' + buckets.todo.length + '】\n' + (buckets.todo.join('\n') || '  （空）') + '\n';
 
   var blob = new Blob([txt], { type: 'text/plain;charset=utf-8' });
@@ -381,16 +443,13 @@ function exportPlan() {
   setTimeout(function () { URL.revokeObjectURL(a.href); }, 2000);
 }
 
-// 倒计时
 (function () {
   var exam = new Date('2026-12-19T00:00:00');
   var days = Math.ceil((exam - new Date()) / 86400000);
   document.getElementById('countdown-days').textContent = days > 0 ? days : 0;
 })();
-// 主题恢复
 if (localStorage.getItem('kaoyan_math_theme') === 'dark') document.body.classList.add('dark');
 
-// 默认展开前 2 章
 openState[0] = true; openState[1] = true;
 render();
 </script>
