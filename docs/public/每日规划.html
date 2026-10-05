@@ -608,6 +608,7 @@ var DATA_KEY_V2 = 'kaoyan_408_v2';        // 主数据（sessions + tasks + rese
 var SPRINT_START_V2 = '2026-09-29';       // 冲刺开始（今天）
 var PLAN_END_V2 = '2026-12-18';           // 计划最后一天（公式背诵+调整心态）
 var EXAM_DATE_V2 = '2026-12-19';          // 考试日
+var API_BASE = 'https://web.lonemonk.xyz/api-review';  // 复习调度后端
 var DATA_KEY_V1 = 'kaoyan_408_study_data_v1'; // 408 考点表（保留）
 
 // 80 天冲刺 4 阶段（含冲刺准备期）
@@ -683,7 +684,6 @@ function initData() {
   if (data && data.date === getTodayStr()) return data;
   // 新的一天：尝试从昨日快照复用
   var snap = readJson(DATA_KEY_V2 + '_snapshot', null);
-  API_BASE = 'https://web.lonemonk.xyz/api-review';
   data = {
     date: getTodayStr(),
     sessions: [],
