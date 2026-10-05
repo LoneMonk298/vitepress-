@@ -1372,6 +1372,7 @@ function render() {
   html += '<span class="ab-preview">⏰ 下一时段将自动排在 <b>' + lastEnd + '</b> · 默认 <b>45 分钟</b> · <b>' + (catById(lastCat) ? catById(lastCat).icon + ' ' + catById(lastCat).name : '数学') + '</b></span>';
   html += '<button class="ab-add" onclick="window.__autoAddSession()">＋ 添加新时段</button>';
   html += '</div>';  // add-bar
+  html += '</div>';  // 关闭 sessions
   html += '</div>';  // 关闭时间表 sec
   html += '</div>';  // 关闭 main-col
   html += '<div class="side-col">';
