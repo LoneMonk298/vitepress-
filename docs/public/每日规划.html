@@ -46,10 +46,10 @@ body {
   content: ''; position: absolute; right: -60px; top: -60px; width: 220px; height: 220px;
   border-radius: 50%; background: rgba(255,255,255,0.08);
 }
-.hero-row { display: flex; align-items: center; justify-content: space-between; }
+.hero-row { display: flex; align-items: center; justify-content: space-between; max-width: 1180px; margin: 0 auto; padding: 0 24px; }
 .hero h1 { font-size: 22px; font-weight: 800; letter-spacing: 0.5px; }
 .hero-date { font-size: 13px; opacity: 0.9; margin-top: 4px; }
-.hero-stats { display: flex; gap: 12px; margin-top: 18px; flex-wrap: wrap; }
+.hero-stats { display: flex; gap: 12px; margin-top: 18px; flex-wrap: wrap; max-width: 1180px; margin-left: auto; margin-right: auto; padding: 0 24px; }
 .hero-chip {
   background: rgba(255,255,255,0.15); backdrop-filter: blur(4px);
   border-radius: 12px; padding: 10px 16px; min-width: 110px;
@@ -1449,8 +1449,7 @@ function render() {
   html += '</div>';
   
   document.getElementById('app').innerHTML = html;
-  // 异步加载复习数据
-  window.__loadReviews();
+  // 初始渲染不调用 __loadReviews（它定义在后面），由脚本末尾显式调用
 }
 
 // ===== AI 顾问：考点进度 =====
@@ -1659,11 +1658,6 @@ window.__genDailyReport = function() {
   });
 })();
 
-// 初始渲染
-render();
-// 每分钟刷新聚焦条
-setInterval(function() { render(); }, 60000);
-
 // ===== 复习调度 API 调用 =====
 window.__loadReviews = async function() {
   try {
@@ -1671,15 +1665,18 @@ window.__loadReviews = async function() {
     var data2 = await res.json();
     data.reviewToday = data2.items || [];
     document.getElementById('rv-count').textContent = data.reviewToday.length + ' 项';
-    // 更新每个 item 的状态（不用全渲染，只更新计数）
-    var statusEl = document.getElementById('rv-status');
-    if (statusEl) statusEl.textContent = '已同步 ' + data.reviewToday.length + ' 项待复习';
+    document.getElementById('rv-status').textContent = '已同步 ' + data.reviewToday.length + ' 项待复习';
   } catch(e) {
     console.warn('loadReviews failed:', e);
-    var statusEl = document.getElementById('rv-status');
-    if (statusEl) statusEl.textContent = '⚠️ 后端未连接（首次使用需等待服务就绪）';
+    document.getElementById('rv-status').textContent = '⚠️ 后端未连接（首次使用需等待服务就绪）';
   }
 };
+
+// 初始渲染 + 加载复习数据
+render();
+window.__loadReviews();
+// 每分钟刷新聚焦条
+setInterval(function() { render(); }, 60000);
 
 window.__logProgress = async function() {
   var subject = document.getElementById('rv-subject').value;
