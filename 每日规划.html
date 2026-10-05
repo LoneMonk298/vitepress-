@@ -1252,22 +1252,7 @@ function render() {
   html += '<span class="review-today-title">✅ 今日已登记</span>';
   html += '<span class="review-today-count" id="rv-logged-count">' + (data.todayLogs ? data.todayLogs.length : 0) + ' 条</span>';
   html += '</div>';
-  if (!data.todayLogs || data.todayLogs.length === 0) {
-    html += '<div class="review-empty">今天还没登记 —— 完成一段学习/背诵后点「📝 登记」，复习计划自动生成</div>';
-  } else {
-    data.todayLogs.slice().reverse().forEach(function(lg) {
-      var icons = {'计网':'🌐','数据结构':'📊','操作系统':'♙️','计组':'💻','数学':'📐','公式':'🧠','英语':'📚','政治':'📕'};
-      var icon = icons[lg.subject] || '📖';
-      html += '<div class="logged-item">';
-      html += '<span class="ri-icon">' + icon + '</span>';
-      html += '<div class="ri-info">';
-      html += '<div class="ri-title">' + escapeHtml(lg.subject + ' · ' + lg.chapter) + '</div>';
-      html += '<div class="ri-meta">' + escapeHtml(lg.log_type) + (lg.note ? ' · ' + escapeHtml(lg.note) : '') + ' · ' + (lg.created_at || '').slice(11,16) + '</div>';
-      html += '</div>';
-      html += '<button class="logged-del" onclick="window.__delLog(' + lg.id + ')" title="删除">✕</button>';
-      html += '</div>';
-    });
-  }
+  html += '<div id="rv-logged-list">' + renderLoggedItems(data.todayLogs) + '</div>';
   html += '</div>';  // review-logged
   html += '<div class="review-today">';
   html += '<div class="review-today-head">';
@@ -1705,17 +1690,40 @@ window.__loadReviews = async function() {
   }
 };
 
+// 今日已登记列表渲染（render 与局部刷新共用）
+function renderLoggedItems(arr) {
+  if (!arr || arr.length === 0) {
+    return '<div class="review-empty">今天还没登记 —— 完成一段学习/背诵后点「📝 登记」，复习计划自动生成</div>';
+  }
+  var icons = {'计网':'🌐','数据结构':'📊','操作系统':'⚙️','计组':'💻','数学':'📐','公式':'🧠','英语':'📚','政治':'📕'};
+  var html = '';
+  arr.slice().reverse().forEach(function(lg) {
+    var icon = icons[lg.subject] || '📖';
+    html += '<div class="logged-item">';
+    html += '<span class="ri-icon">' + icon + '</span>';
+    html += '<div class="ri-info">';
+    html += '<div class="ri-title">' + escapeHtml(lg.subject + ' · ' + lg.chapter) + '</div>';
+    html += '<div class="ri-meta">' + escapeHtml(lg.log_type) + (lg.note ? ' · ' + escapeHtml(lg.note) : '') + ' · ' + (lg.created_at || '').slice(11,16) + '</div>';
+    html += '</div>';
+    html += '<button class="logged-del" onclick="window.__delLog(' + lg.id + ')" title="删除">✕</button>';
+    html += '</div>';
+  });
+  return html;
+}
+
 // 加载今日已登记日志（当天立即可见，不等卡片到期）
 window.__loadTodayLogs = async function() {
   try {
     var res = await fetch(API_BASE + '/logs?limit=50&log_date=' + getTodayStr());
     var arr = await res.json();
     data.todayLogs = Array.isArray(arr) ? arr : [];
-    var cnt = document.getElementById('rv-logged-count');
-    if (cnt) cnt.textContent = data.todayLogs.length + ' 条';
   } catch(e) {
     console.warn('loadTodayLogs failed:', e);
   }
+  var cnt = document.getElementById('rv-logged-count');
+  if (cnt) cnt.textContent = data.todayLogs.length + ' 条';
+  var list = document.getElementById('rv-logged-list');
+  if (list) list.innerHTML = renderLoggedItems(data.todayLogs);
 };
 
 // 删除一条日志（连带其复习卡）
@@ -1735,6 +1743,7 @@ window.__delLog = async function(logId) {
 // 初始渲染 + 加载复习数据
 render();
 try { window.__loadReviews(); } catch(e) { console.warn('init loadReviews:', e); }
+try { window.__loadTodayLogs(); } catch(e) { console.warn('init loadTodayLogs:', e); }
 // 每分钟刷新聚焦条
 setInterval(function() { render(); }, 60000);
 
