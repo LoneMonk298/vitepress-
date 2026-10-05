@@ -541,6 +541,10 @@ body.dark .cat-badge.cat-pol { background: rgba(190,24,93,0.2); color: #fbcfe8; 
   display: flex; align-items: center; justify-content: center; flex-shrink: 0;
 }
 .theme-btn:hover { border-color: var(--brand); }
+
+/* ===== 空状态 ===== */
+.rc-empty { text-align: center; padding: 14px; color: var(--text3); font-size: 13px; line-height: 1.6; }
+.rc-empty .big { font-size: 28px; margin-bottom: 6px; }
 </style>
 </head>
 <body>
@@ -1318,6 +1322,9 @@ function render() {
   html += '<button onclick="window.__addSession()" title="中途插入新时段">➕ 添加时间表</button>';
   html += '</div>';
   html += '<div class="rb-hint" style="margin:-2px 0 10px">7:30 起床 · 8:00 学习(45min+10min休息) · 12:30 午饭午休至 13:50 · 18:30 晚饭洗漱 · 19:30-24:00 自习室</div>';
+  var allSessions = data.sessions;
+  var doneCount = allSessions.filter(function(s){return s.done;}).length;
+  var visSessions = allSessions.filter(function(s){return !s.done;});
   if (!allSessions.length) {
     html += '<div class="rc-empty" style="padding:20px"><div class="big" style="font-size:32px">📅</div>今天还没安排时间表<br><small>点上方「📅 生成今日作息框架」一键生成，或下方手动添加</small></div>';
   } else {
