@@ -518,10 +518,8 @@ body.dark .cat-badge.cat-pol { background: rgba(190,24,93,0.2); color: #fbcfe8; 
 .review-log-form button { padding: 8px 16px; border-radius: 8px; border: none; background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; font-size: 14px; font-weight: 600; cursor: pointer; }
 .review-log-form button:hover { opacity: 0.9; }
 .review-log-form button:disabled { opacity: 0.5; cursor: not-allowed; }
-.review-logged { margin-top: 10px; padding: 10px 12px; border-radius: 8px; background: rgba(16,185,129,.05); border: 1px solid rgba(16,185,129,.15); }
-.review-logged-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
-.review-logged-title { font-size: 11px; color: var(--text2); }
-.review-logged-count { font-size: 11px; color: var(--text2); }
+.review-logged-btn { font-size: 12px; padding: 8px 14px; border-radius: 8px; border: 1px dashed var(--border); background: var(--bg); color: var(--text2); cursor: pointer; margin-top: 10px; transition: all 0.15s; font-family: inherit; }
+.review-logged-btn:hover { border-color: #10b981; color: #10b981; }
 .review-today { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); }
 .review-today-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
 .review-today-title { font-size: 14px; font-weight: 600; color: var(--text); }
@@ -553,11 +551,11 @@ body.dark .cat-badge.cat-pol { background: rgba(190,24,93,0.2); color: #fbcfe8; 
 .logged-modal-body { padding: 10px 14px; overflow-y: auto; flex: 1; }
 .logged-empty { padding: 24px; text-align: center; color: var(--text2); font-size: 12px; }
 /* 列表条目 - 缩小字号 */
-.logged-item { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 6px; background: var(--bg); margin-bottom: 4px; }
+.logged-item { display: flex; align-items: center; gap: 6px; padding: 5px 7px; border-radius: 5px; background: var(--bg); margin-bottom: 4px; }
 .logged-item:last-child { margin-bottom: 0; }
 .logged-item .logged-icon { font-size: 14px; width: 20px; flex-shrink: 0; text-align: center; }
 .logged-item .logged-info { flex: 1; min-width: 0; overflow: hidden; }
-.logged-item .logged-title { font-size: 12px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.logged-item .logged-title { font-size: 11px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .logged-item .logged-meta { font-size: 10px; color: var(--text2); margin-top: 1px; }
 .logged-item .logged-del { border: none; background: transparent; color: var(--text2); font-size: 12px; cursor: pointer; padding: 3px 6px; border-radius: 5px; flex-shrink: 0; opacity: 0.4; transition: opacity 0.15s; }
 .logged-item .logged-del:hover { background: rgba(239,68,68,.12); color: #ef4444; opacity: 1; }
@@ -1270,13 +1268,7 @@ function render() {
   html += '</div>';
   html += '<div class="review-status" id="rv-status"></div>';
   // 今日已登记（当天可见，不用等卡片到期）
-  html += '<div class="review-logged">';
-  html += '<div class="review-logged-head">';
-  html += '<span class="review-logged-title">✅ 今日已登记</span>';
-  html += '<span class="review-logged-count" id="rv-logged-count">' + (data.todayLogs ? data.todayLogs.length : 0) + ' 条</span>';
-  html += '</div>';
-  html += '<div id="rv-logged-list">' + renderLoggedItems(data.todayLogs) + '</div>';
-  html += '</div>';
+  html += '<button class="review-logged-btn" onclick="window.__openLoggedModal()">📋 今日提交数据 (' + (data.todayLogs ? data.todayLogs.length : 0) + ' 条)</button>';
   html += '<div class="review-today">';
   html += '<div class="review-today-head">';
   html += '<span class="review-today-title">🔔 今日待复习</span>';
@@ -1292,7 +1284,7 @@ function render() {
       html += '<span class="ri-icon">' + icon + '</span>';
       html += '<div class="ri-info">';
       html += '<div class="ri-title">' + escapeHtml(item.subject + ' · ' + item.chapter) + '</div>';
-      html += '<div class="ri-meta">第 ' + (item.stage + 1) + ' 次 · ' + (item.next_date || '').slice(5) + ' 到期 · ' + (item.duration || 15) + 'min</div>';
+      html += '<div class="ri-meta">第 ' + (item.stage + 1) + ' 次</div>';
       html += '</div>';
       html += '<div class="ri-actions">';
       html += '<button class="ri-btn ri-done" onclick="window.__markDone(' + item.id + ')">✓ 完成</button>';
@@ -1743,8 +1735,9 @@ window.__loadTodayLogs = async function() {
   } catch(e) {
     console.warn('loadTodayLogs failed:', e);
   }
-  var cnt = document.getElementById('rv-logged-count');
-  if (cnt) cnt.textContent = data.todayLogs.length + ' 条';
+  // 更新按钮计数
+  var btn = document.querySelector('.review-logged-btn');
+  if (btn) btn.textContent = '📋 今日提交数据 (' + (data.todayLogs ? data.todayLogs.length : 0) + ' 条)';
   var list = document.getElementById('rv-logged-list');
   if (list) list.innerHTML = renderLoggedItems(data.todayLogs);
 };
