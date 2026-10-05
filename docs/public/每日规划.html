@@ -553,7 +553,7 @@ body.dark .cat-badge.cat-pol { background: rgba(190,24,93,0.2); color: #fbcfe8; 
 /* 列表条目 - 缩小字号 */
 .logged-item { display: flex; align-items: center; gap: 6px; padding: 5px 7px; border-radius: 5px; background: var(--bg); margin-bottom: 4px; }
 .logged-item:last-child { margin-bottom: 0; }
-.logged-item .logged-icon { font-size: 14px; width: 20px; flex-shrink: 0; text-align: center; }
+.logged-item .logged-icon { font-size: 9px; padding: 2px 4px; flex-shrink: 0; border-radius: 3px; background: rgba(16,185,129,.12); color: #10b981; }
 .logged-item .logged-info { flex: 1; min-width: 0; overflow: hidden; }
 .logged-item .logged-title { font-size: 11px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .logged-item .logged-meta { font-size: 10px; color: var(--text2); margin-top: 1px; }
@@ -1264,22 +1264,22 @@ function render() {
   html += '<div class="field"><label>章节/内容</label><input type="text" id="rv-chapter" placeholder="如：物理层" style="flex:1;min-width:140px;"></div>';
   html += '<div class="field"><label>类型</label><select id="rv-type"><option value="学习">学习</option><option value="背诵">背诵</option><option value="复盘">复盘</option></select></div>';
   html += '<div class="field"><label>备注(可选)</label><input type="text" id="rv-note" placeholder="备注"></div>';
-  html += '<button onclick="window.__logProgress()" id="rv-submit">📝 登记</button>';
+  html += '<button onclick="window.__logProgress()" id="rv-submit">登记</button>';
   html += '</div>';
   html += '<div class="review-status" id="rv-status"></div>';
   // 今日已登记（当天可见，不用等卡片到期）
-  html += '<button class="review-logged-btn" onclick="window.__openLoggedModal()">📋 今日提交数据 (' + (data.todayLogs ? data.todayLogs.length : 0) + ' 条)</button>';
+  html += '<button class="review-logged-btn" onclick="window.__openLoggedModal()">今日提交数据 (' + (data.todayLogs ? data.todayLogs.length : 0) + ' 条)</button>';
   html += '<div class="review-today">';
   html += '<div class="review-today-head">';
-  html += '<span class="review-today-title">🔔 今日待复习</span>';
+  html += '<span class="review-today-title">今日待复习</span>';
   html += '<span class="review-today-count" id="rv-count">0 项</span>';
   html += '</div>';
   if (data.reviewToday.length === 0) {
     html += '<div class="review-empty">暂无待复习项 —— 登记进度后自动生成复习计划</div>';
   } else {
     data.reviewToday.forEach(function(item) {
-      var icons = {'计网':'🌐','数据结构':'📊','操作系统':'⚙️','计组':'💻','数学':'📐','公式':'🧠','英语':'📚','政治':'📕'};
-      var icon = icons[item.subject] || '📖';
+      var icons = {'计网':'计网','数据结构':'数结','操作系统':'系统','计组':'计组','数学':'数学','公式':'公式','英语':'英语','政治':'政治'};
+      var icon = icons[item.subject] || '';
       html += '<div class="review-item" id="rv-item-' + item.id + '">';
       html += '<span class="ri-icon">' + icon + '</span>';
       html += '<div class="ri-info">';
@@ -1701,7 +1701,7 @@ window.__loadReviews = async function() {
   } catch(e) {
     console.warn('loadReviews failed:', e);
     var st = document.getElementById('rv-status');
-    if (st) { st.className = 'review-status err'; st.textContent = '⚠️ 后端未连接，稍后自动重试'; }
+    if (st) { st.className = 'review-status err'; st.textContent = '后端未连接，稍后自动重试'; }
   }
 };
 
@@ -1710,10 +1710,10 @@ function renderLoggedItems(arr) {
   if (!arr || arr.length === 0) {
     return '<div class="logged-empty">今天还没登记</div>';
   }
-  var icons = {'计网':'🌐','数据结构':'📊','操作系统':'⚙️','计组':'💻','数学':'📐','公式':'🧠','英语':'📚','政治':'📕'};
+  var icons = {'计网':'计网','数据结构':'数结','操作系统':'系统','计组':'计组','数学':'数学','公式':'公式','英语':'英语','政治':'政治'};
   var html = '';
   arr.slice().reverse().forEach(function(lg) {
-    var icon = icons[lg.subject] || '📖';
+    var icon = icons[lg.subject] || '';
     html += '<div class="logged-item">';
     html += '<span class="logged-icon">' + icon + '</span>';
     html += '<div class="logged-info">';
@@ -1737,7 +1737,7 @@ window.__loadTodayLogs = async function() {
   }
   // 更新按钮计数
   var btn = document.querySelector('.review-logged-btn');
-  if (btn) btn.textContent = '📋 今日提交数据 (' + (data.todayLogs ? data.todayLogs.length : 0) + ' 条)';
+  if (btn) btn.textContent = '今日提交数据 (' + (data.todayLogs ? data.todayLogs.length : 0) + ' 条)';
   var list = document.getElementById('rv-logged-list');
   if (list) list.innerHTML = renderLoggedItems(data.todayLogs);
 };
@@ -1750,7 +1750,7 @@ window.__openLoggedModal = function(highlightId) {
       var d = document.createElement('div');
       d.id = 'logged-modal-overlay';
       d.className = 'logged-modal-overlay';
-      d.innerHTML = '<div class="logged-modal"><div class="logged-modal-head"><h3>📋 今日提交数据</h3><button class="logged-modal-close" onclick="window.__closeLoggedModal()">×</button></div><div class="logged-modal-body" id="logged-modal-body"></div></div>';
+      d.innerHTML = '<div class="logged-modal"><div class="logged-modal-head"><h3>今日提交数据</h3><button class="logged-modal-close" onclick="window.__closeLoggedModal()">×</button></div><div class="logged-modal-body" id="logged-modal-body"></div></div>';
       d.onclick = function(e) { if (e.target === d) window.__closeLoggedModal(); };
       document.body.appendChild(d);
     }
@@ -1763,11 +1763,11 @@ window.__closeLoggedModal = function() {
 };
 window.__renderModalLogged = function(highlightId) {
   var arr = data.todayLogs || [];
-  if (!arr.length) return '<div class="logged-empty">今天还没登记 —— 完成一段学习/背诵后点「📝 登记」，复习计划自动生成</div>';
-  var icons = {'计网':'🌐','数据结构':'📊','操作系统':'⚙️','计组':'💻','数学':'📐','公式':'🧠','英语':'📚','政治':'📕'};
+  if (!arr.length) return '<div class="logged-empty">今天还没登记 —— 完成一段学习/背诵后点「登记」，复习计划自动生成</div>';
+  var icons = {'计网':'计网','数据结构':'数结','操作系统':'系统','计组':'计组','数学':'数学','公式':'公式','英语':'英语','政治':'政治'};
   var html = '';
   arr.slice().reverse().forEach(function(lg) {
-    var icon = icons[lg.subject] || '📖';
+    var icon = icons[lg.subject] || '';
     var hl = (highlightId && lg.id === highlightId) ? ' logged-item-highlight' : '';
     html += '<div class="logged-item' + hl + '">';
     html += '<span class="logged-icon">' + icon + '</span>';
@@ -1841,12 +1841,12 @@ window.__logProgress = async function() {
           var plan = result.review_plan || [];
           var planTxt = plan.length ? plan.join('、') : '';
           statusEl.className = 'review-status ok';
-          statusEl.innerHTML = '✅ 已登记「' + escapeHtml(subject + ' · ' + chapter) + '」— 自动生成 ' + result.cards_created + ' 张复习卡<span class="rs-detail">下次复习：' + escapeHtml(planTxt) + '（第 1 次 ' + (result.first_review || '') + '）</span>';
+          statusEl.innerHTML = '已登记「' + escapeHtml(subject + ' · ' + chapter) + '」— 自动生成 ' + result.cards_created + ' 张复习卡<span class="rs-detail">下次复习：' + escapeHtml(planTxt) + '（第 1 次 ' + (result.first_review || '') + '）</span>';
           // 提交后弹窗反馈
           window.__openLoggedModal(result.log_id);
         } else {
           statusEl.className = 'review-status ok';
-          statusEl.textContent = '✅ 已记录「' + subject + ' · ' + chapter + '」（复盘不生成复习卡）';
+          statusEl.textContent = '已记录「' + subject + ' · ' + chapter + '」（复盘不生成复习卡）';
         }
       }
     } else {
@@ -1856,10 +1856,10 @@ window.__logProgress = async function() {
   } catch(e) {
     console.warn('logProgress failed:', e);
     var statusEl = document.getElementById('rv-status');
-    if (statusEl) { statusEl.className = 'review-status err'; statusEl.textContent = '⚠️ 提交失败：' + e.message; }
+    if (statusEl) { statusEl.className = 'review-status err'; statusEl.textContent = '提交失败：' + e.message; }
   } finally {
     btn.disabled = false;
-    btn.textContent = '📝 登记';
+    btn.textContent = '登记';
   }
 };
 
