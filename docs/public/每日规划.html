@@ -1674,7 +1674,7 @@ window.__loadReviews = async function() {
 
 // 初始渲染 + 加载复习数据
 render();
-window.__loadReviews();
+try { window.__loadReviews(); } catch(e) { console.warn('init loadReviews:', e); }
 // 每分钟刷新聚焦条
 setInterval(function() { render(); }, 60000);
 
