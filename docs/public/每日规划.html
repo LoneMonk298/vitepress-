@@ -390,41 +390,6 @@ body.dark .cat-badge.cat-pol { background: rgba(190,24,93,0.2); color: #fbcfe8; 
 .ms-countdown.soon { color: var(--warn); }
 .ms-countdown small { font-size: 10px; font-weight: 600; opacity: 0.8; }
 
-/* ===== 待复习卡片 ===== */
-.review-cards {
-  background: var(--card); border: 1px solid var(--border); border-radius: 14px;
-  padding: 14px 16px;
-}
-.rc-head {
-  display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;
-}
-.rc-title { font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 6px; }
-.rc-count { font-size: 12px; color: var(--brand); font-weight: 700; }
-.rc-list { display: flex; flex-direction: column; gap: 6px; }
-.rc-item {
-  display: flex; align-items: center; gap: 10px; padding: 8px 10px;
-  border: 1px solid var(--border); border-left: 3px solid var(--brand);
-  border-radius: 10px; background: var(--bg);
-}
-.rc-item.overdue { border-left-color: var(--danger); }
-.rc-item.today { border-left-color: var(--warn); }
-.rc-cb {
-  width: 20px; height: 20px; border-radius: 6px; border: 1.5px solid var(--border);
-  flex-shrink: 0; cursor: pointer; display: flex; align-items: center; justify-content: center;
-  font-size: 12px; color: transparent; background: transparent; transition: all 0.15s;
-}
-.rc-cb:hover { border-color: var(--ok); }
-.rc-main { flex: 1; min-width: 0; }
-.rc-name { font-size: 13.5px; font-weight: 500; word-break: break-word; }
-.rc-meta { font-size: 11px; color: var(--text3); margin-top: 2px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-.rc-del {
-  width: 24px; height: 24px; border-radius: 6px; border: none; background: transparent;
-  color: var(--text3); cursor: pointer; font-size: 14px; flex-shrink: 0;
-}
-.rc-del:hover { color: var(--danger); background: rgba(239,68,68,0.1); }
-.rc-empty { text-align: center; padding: 14px; color: var(--text3); font-size: 13px; }
-.rc-empty .big { font-size: 28px; margin-bottom: 6px; }
-
 /* ===== AI 顾问 ===== */
 .ai-advisor {
   background: var(--card); border: 1px solid var(--border); border-radius: 14px;
@@ -543,32 +508,32 @@ body.dark .cat-badge.cat-pol { background: rgba(190,24,93,0.2); color: #fbcfe8; 
 }
 
 /* ===== 进度登记 + 今晚待复习 ===== */
-.review-section { background: linear-gradient(135deg, #1a1d2e, #2d2438); border-radius: 14px; padding: 16px; margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.08); }
+.review-section { background: var(--card); border-radius: 14px; padding: 16px; margin-bottom: 20px; border: 1px solid var(--border); }
 .review-log-form { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
 .review-log-form .field { display: flex; flex-direction: column; gap: 4px; }
-.review-log-form .field label { font-size: 12px; color: rgba(255,255,255,0.6); }
-.review-log-form select, .review-log-form input { padding: 8px 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.06); color: #fff; font-size: 14px; }
+.review-log-form .field label { font-size: 12px; color: var(--text2); }
+.review-log-form select, .review-log-form input { padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font-size: 14px; }
 .review-log-form select { min-width: 100px; }
 .review-log-form input[type=text] { flex: 1; min-width: 120px; }
 .review-log-form button { padding: 8px 16px; border-radius: 8px; border: none; background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; font-size: 14px; font-weight: 600; cursor: pointer; }
 .review-log-form button:hover { opacity: 0.9; }
 .review-log-form button:disabled { opacity: 0.5; cursor: not-allowed; }
-.review-today { margin-top: 14px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.08); }
+.review-today { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); }
 .review-today-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-.review-today-title { font-size: 14px; font-weight: 600; color: #fff; }
-.review-today-count { font-size: 13px; color: rgba(255,255,255,0.7); }
-.review-item { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 8px; background: rgba(255,255,255,0.04); margin-bottom: 6px; }
+.review-today-title { font-size: 14px; font-weight: 600; color: var(--text); }
+.review-today-count { font-size: 13px; color: var(--text2); }
+.review-item { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 8px; background: var(--bg); margin-bottom: 6px; }
 .review-item .ri-icon { font-size: 16px; flex-shrink: 0; }
 .review-item .ri-info { flex: 1; min-width: 0; }
-.review-item .ri-title { font-size: 13px; color: #fff; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.review-item .ri-meta { font-size: 11px; color: rgba(255,255,255,0.5); }
+.review-item .ri-title { font-size: 13px; color: var(--text); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.review-item .ri-meta { font-size: 11px; color: var(--text2); }
 .review-item .ri-actions { display: flex; gap: 6px; flex-shrink: 0; }
 .review-item .ri-btn { padding: 4px 10px; border-radius: 6px; border: none; font-size: 12px; cursor: pointer; }
 .review-item .ri-done { background: #10b981; color: #fff; }
-.review-item .ri-skip { background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.7); }
-.review-empty { padding: 16px; text-align: center; color: rgba(255,255,255,0.5); font-size: 13px; }
-.review-loading { padding: 16px; text-align: center; color: rgba(255,255,255,0.5); font-size: 13px; }
-.review-status { font-size: 11px; color: rgba(255,255,255,0.4); margin-top: 6px; }
+.review-item .ri-skip { background: var(--bg); color: var(--text2); border: 1px solid var(--border); }
+.review-empty { padding: 16px; text-align: center; color: var(--text2); font-size: 13px; }
+.review-loading { padding: 16px; text-align: center; color: var(--text2); font-size: 13px; }
+.review-status { font-size: 11px; color: var(--text2); margin-top: 6px; }
 </style>
 </head>
 <body>
@@ -630,7 +595,6 @@ var DATA_KEY_V2 = 'kaoyan_408_v2';        // 主数据（sessions + tasks + rese
 var SPRINT_START_V2 = '2026-09-29';       // 冲刺开始（今天）
 var PLAN_END_V2 = '2026-12-18';           // 计划最后一天（公式背诵+调整心态）
 var EXAM_DATE_V2 = '2026-12-19';          // 考试日
-var FLASHCARDS_KEY = 'kaoyan_flashcards_v1';  // 背诵卡片（保留）
 var DATA_KEY_V1 = 'kaoyan_408_study_data_v1'; // 408 考点表（保留）
 
 // 80 天冲刺 4 阶段（含冲刺准备期）
@@ -672,11 +636,6 @@ var CATEGORIES = [
   { id: 'politics',name: '政治',   icon: '📜', color: '#ec4899' },
   { id: 'other',   name: '其他',  icon: '✨', color: '#94a3b8' }
 ];
-
-// 背诵/默写关键词（用于任务完成时自动建复习卡片）
-var KEYWORDS_REVIEW = ['背诵','默写','背过','记忆','复述','熟记','记住','背下来','默背'];
-
-var REVIEW_INTERVALS = [1, 2, 4, 7, 15, 30];
 
 // ===== 工具 =====
 function pad(n) { return String(n).padStart(2, '0'); }
@@ -746,20 +705,6 @@ function saveData() {
   }));
 }
 
-// ===== 关键词检测 =====
-function isReviewTask(text) {
-  if (!text) return false;
-  return KEYWORDS_REVIEW.some(function (k) { return text.indexOf(k) >= 0; });
-}
-function inferCategory(text) {
-  if (!text) return '其他';
-  if (/英语|单词|真题|阅读/.test(text)) return '英语真题单词';
-  if (/公式|积分|行列式|特征值|导数|微分/.test(text)) return '数学公式';
-  if (/408|计组|操作|OS|计网|Cache|进程|线程|路由|TCP/.test(text)) return '408口诀';
-  if (/政治|马原|毛中特|史纲|思修|时政/.test(text)) return '政治口诀';
-  return '其他';
-}
-
 // ===== 清空数据 =====
 function doClearAll() {
   localStorage.removeItem(DATA_KEY_V2);
@@ -767,7 +712,6 @@ function doClearAll() {
   localStorage.removeItem('kaoyan_408_activity_log');
   localStorage.removeItem('kaoyan_schedule_v1');
   localStorage.removeItem('kaoyan_hermes_history');
-  localStorage.removeItem(FLASHCARDS_KEY);
   // 保留 kaoyan_408_study_data_v1（考点表）
   data = { date: getTodayStr(), sessions: [], customTasks: [], resetV1: true };
   saveData();
@@ -840,14 +784,6 @@ function fmtClockEnd(startStr, duration) {
   var mm = m % 60;
   return String(h).padStart(2, '0') + ':' + String(mm).padStart(2, '0');
 }
-function getDueFlashcards() {
-  var fcs = readJson(FLASHCARDS_KEY, []);
-  var today = getTodayStr();
-  return fcs.filter(function (f) {
-    return f.status === 'active' && f.nextReviewAt <= today;
-  });
-}
-
 // ===== 时间表操作 =====
 function addSession(time, duration, title, catId) {
   if (!title || !title.trim()) {
@@ -892,8 +828,7 @@ function addTask(text) {
     id: 't_' + Date.now(),
     text: text.trim(),
     done: false,
-    addedAt: getTodayStr(),
-    inferredCat: isReviewTask(text) ? inferCategory(text) : null
+    addedAt: getTodayStr()
   });
   saveData();
   render();
@@ -905,70 +840,8 @@ function deleteTask(idx) {
 }
 function toggleTask(idx) {
   if (!data.customTasks[idx]) return;
-  var t = data.customTasks[idx];
-  t.done = !t.done;
-  if (t.done && isReviewTask(t.text)) {
-    // 创建/更新 flashcard
-    var fcs = readJson(FLASHCARDS_KEY, []);
-    var existing = fcs.find(function (f) {
-      return f.status === 'active' && f.sourceCustom === t.id;
-    });
-    var today = getTodayStr();
-    if (existing) {
-      existing.attempts = (existing.attempts || 0) + 1;
-      existing.lastReviewedAt = today;
-      var i2 = Math.min(existing.attempts, REVIEW_INTERVALS.length - 1);
-      existing.nextReviewAt = addDays(today, REVIEW_INTERVALS[i2]);
-      localStorage.setItem(FLASHCARDS_KEY, JSON.stringify(fcs));
-      t.reviews = existing.attempts;
-    } else {
-      var fc = {
-        id: 'fc_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
-        category: t.inferredCat || '其他',
-        content: t.text,
-        sourceCustom: t.id,
-        learnedAt: today,
-        attempts: 1,
-        lastReviewedAt: today,
-        nextReviewAt: addDays(today, REVIEW_INTERVALS[0]),
-        status: 'active'
-      };
-      fcs.push(fc);
-      localStorage.setItem(FLASHCARDS_KEY, JSON.stringify(fcs));
-      t.reviews = 1;
-    }
-  }
+  data.customTasks[idx].done = !data.customTasks[idx].done;
   saveData();
-  render();
-}
-
-// ===== 复习卡片操作 =====
-function toggleFlashcard(id) {
-  var fcs = readJson(FLASHCARDS_KEY, []);
-  var fc = fcs.find(function (f) { return f.id === id; });
-  if (!fc) return;
-  fc.attempts = (fc.attempts || 0) + 1;
-  fc.lastReviewedAt = getTodayStr();
-  var idx2 = Math.min(fc.attempts, REVIEW_INTERVALS.length - 1);
-  fc.nextReviewAt = addDays(getTodayStr(), REVIEW_INTERVALS[idx2]);
-  localStorage.setItem(FLASHCARDS_KEY, JSON.stringify(fcs));
-  // 同步 customTask
-  if (data.customTasks) {
-    data.customTasks.forEach(function (t) {
-      if (isReviewTask(t.text)) {
-        var fc2 = readJson(FLASHCARDS_KEY, []).find(function (f) { return f.id === id; });
-        if (fc2 && fc2.sourceCustom === t.id) {
-          t.reviews = fc2.attempts;
-        }
-      }
-    });
-    saveData();
-  }
-  render();
-}
-function deleteFlashcard(id) {
-  var fcs = readJson(FLASHCARDS_KEY, []);
-  localStorage.setItem(FLASHCARDS_KEY, JSON.stringify(fcs.filter(function (f) { return f.id !== id; })));
   render();
 }
 
@@ -1204,10 +1077,7 @@ function exportToday() {
     };
   });
   var tasks = data.customTasks.map(function (t) {
-    return { text: t.text, done: t.done, isReview: isReviewTask(t.text), cat: t.inferredCat };
-  });
-  var reviewCards = getDueFlashcards().map(function (f) {
-    return { content: f.content, cat: f.category, attempt: f.attempts, due: f.nextReviewAt };
+    return { text: t.text, done: t.done };
   });
   var report = {
     date: today,
@@ -1220,7 +1090,6 @@ function exportToday() {
     },
     todaySessions: sessions,
     todayTasks: tasks,
-    todayReviewCards: reviewCards
   };
   document.getElementById('export-content').textContent = JSON.stringify(report, null, 2);
   document.getElementById('export-modal').classList.add('show');
@@ -1273,7 +1142,7 @@ function render() {
   html += '<div class="hero">';
   html += '<div class="hero-row">';
   html += '<div><h1>📅 每日规划</h1><div class="hero-date">' + dateTxt + ' · 80 天冲刺</div></div>';
-  html += '<button class="theme-btn" onclick="window.__toggleTheme()" title="切换主题" style="background:rgba(255,255,255,0.18);border:none;color:white;width:36px;height:36px;border-radius:10px;font-size:16px;cursor:pointer;">' + (isDark ? '☀️' : '🌙') + '</button>';
+  html += '<button class="theme-btn" onclick="window.__toggleTheme()" title="切换主题" style="background:var(--bg);border:1px solid var(--border);color:var(--text);width:36px;height:36px;border-radius:10px;font-size:16px;cursor:pointer;">' + (isDark ? '☀️' : '🌙') + '</button>';
   html += '</div>';
   html += '<div class="hero-stats">';
   html += '<div class="hero-chip"><div class="num">Day ' + (stats.dayIndex + 1) + '<small>/' + stats.totalDays + '</small></div><div class="lbl">总天数</div></div>';
@@ -1384,7 +1253,7 @@ function render() {
   html += '</div>';  // review-section
 
 // ===== 自定义任务 =====
-  html += '<div class="sec"><div class="sec-title">📝 自定义任务 <small>含「背诵/默写」字样的任务完成时自动创建复习</small></div>';
+  html += '<div class="sec"><div class="sec-title">📝 自定义任务</div>';
   html += '<div class="tasks">';
   if (!data.customTasks.length) {
     html += '<div class="rc-empty" style="padding:10px"><div class="big" style="font-size:22px">📋</div>今日无自定义任务，在下方添加</div>';
@@ -1392,18 +1261,11 @@ function render() {
     html += '<div class="task-list">';
     data.customTasks.forEach(function (t, idx) {
       var done = !!t.done;
-      var isRv = isReviewTask(t.text);
       html += '<div class="task' + (done ? ' done' : '') + '">';
       html += '<button class="task-cb' + (done ? ' on' : '') + '" onclick="window.__toggleTask(' + idx + ')">✓</button>';
       html += '<div class="task-main">';
       html += '<div class="task-title">' + escapeHtml(t.text) + '</div>';
-      if (isRv) {
-        html += '<div class="task-meta">🔁 ' + (done ? '已生成复习 · 第 ' + (t.reviews || 0) + ' 次完成' : '完成时自动安排复习') + '</div>';
-      }
       html += '</div>';
-      if (isRv) {
-        html += '<span class="cat-badge cat-en">🔁 ' + escapeHtml(t.inferredCat) + '</span>';
-      }
       html += '<button class="task-del" onclick="window.__deleteTask(' + idx + ')">✕</button>';
       html += '</div>';
     });
@@ -1553,37 +1415,6 @@ function render() {
   html += '</div></div></div>';
 
   // ===== 今日待复习卡片 =====
-  var dueCards = getDueFlashcards();
-  html += '<div class="review-cards">';
-  html += '<div class="rc-head">';
-  html += '<div class="rc-title">🔔 今日待复习 <small style="font-weight:400;color:var(--text3);font-size:11px">（按遗忘曲线 1/2/4/7/15/30 天）</small></div>';
-  html += '<span class="rc-count">' + dueCards.length + ' 项</span>';
-  html += '</div>';
-  if (!dueCards.length) {
-    html += '<div class="rc-empty"><div class="big">🎉</div>今日无到期复习任务<br><small>完成含「背诵/默写」字样的自定义任务会自动生成复习</small></div>';
-  } else {
-    html += '<div class="rc-list">';
-    dueCards.forEach(function (fc) {
-      var overdue = fc.nextReviewAt < today;
-      var cls = overdue ? 'overdue' : (fc.nextReviewAt === today ? 'today' : '');
-      var catCls = { '英语真题单词': 'cat-en', '数学公式': 'cat-math', '408口诀': 'cat-408', '政治口诀': 'cat-pol' }[fc.category] || 'cat-other';
-      html += '<div class="rc-item ' + cls + '">';
-      html += '<button class="rc-cb" onclick="window.__toggleFlashcard(\'' + fc.id + '\')" title="标记完成">✓</button>';
-      html += '<div class="rc-main">';
-      html += '<div class="rc-name">' + escapeHtml(fc.content) + '</div>';
-      html += '<div class="rc-meta">';
-      html += '<span class="cat-badge ' + catCls + '">' + escapeHtml(fc.category) + '</span>';
-      html += '<span>第 ' + (fc.attempts + 1) + ' 次复习</span>';
-      html += '<span>' + (overdue ? '⚠️ 已逾期 ' + daysBetween(fc.nextReviewAt, today) + ' 天' : '📌 今日到期') + '</span>';
-      html += '<span>首学: ' + fc.learnedAt.slice(5).replace('-', '.') + '</span>';
-      html += '</div></div>';
-      html += '<button class="rc-del" onclick="window.__deleteFlashcard(\'' + fc.id + '\')" title="移除">✕</button>';
-      html += '</div>';
-    });
-    html += '</div>';
-  }
-  html += '</div>';
-  
   // ===== AI 顾问 =====
   html += '<div class="sec"><div class="sec-title">🤖 AI 顾问 <small>每天可问 AI 怎么调整</small></div>';
   html += '<div class="ai-advisor">';
@@ -1673,8 +1504,7 @@ window.__addTask = function() {
 };
 window.__toggleTask = toggleTask;
 window.__deleteTask = deleteTask;
-window.__toggleFlashcard = toggleFlashcard;
-window.__deleteFlashcard = deleteFlashcard;
+
 window.__openModal = openModal;
 window.__closeModal = closeModal;
 window.__modalClose = closeModal;  // 别名：HTML 里用的是 __modalClose
@@ -1766,11 +1596,7 @@ window.__genDailyReport = function() {
     return { time: s.time, duration: s.duration, title: s.title, cat: s.cat, done: s.done };
   });
   var tasks = data.customTasks.map(function (t) {
-    return { text: t.text, done: t.done, isReview: isReviewTask(t.text), cat: t.inferredCat };
-  });
-  var dueCards = getDueFlashcards();
-  var reviewCards = dueCards.map(function (f) {
-    return { content: f.content, cat: f.category, attempt: f.attempts, due: f.nextReviewAt };
+    return { text: t.text, done: t.done };
   });
   var report = {
     date: today,
@@ -1786,11 +1612,9 @@ window.__genDailyReport = function() {
       doneSessions: sessions.filter(function(s){return s.done;}).length,
       totalTasks: tasks.length,
       doneTasks: tasks.filter(function(t){return t.done;}).length,
-      dueReviews: dueCards.length
     },
     todaySessions: sessions,
     todayTasks: tasks,
-    dueReviewCards: reviewCards,
     generatedAt: new Date().toISOString()
   };
   // 存到 localStorage 供导出/查看
@@ -1804,7 +1628,7 @@ window.__genDailyReport = function() {
 // 加载时恢复主题
 (function() {
   var theme = localStorage.getItem('kaoyan_408_theme');
-  if (theme === 'dark') document.body.classList.add('dark');
+  if (theme === 'dark' || !theme) document.body.classList.add('dark');
 })();
 
 // 模态框点击遮罩关闭
