@@ -1264,12 +1264,7 @@ function render() {
   html += '</div>';  // review-today
   html += '</div>';  // review-section
 
-  html += '<div class="add-bar">';
-  html += '<span class="ab-preview">⏰ 下一时段将自动排在 <b>' + lastEnd + '</b> · 默认 <b>45 分钟</b> · <b>' + (catById(lastCat) ? catById(lastCat).icon + ' ' + catById(lastCat).name : '数学') + '</b></span>';
-  html += '<button class="ab-add" onclick="window.__autoAddSession()">＋ 添加新时段</button>';
-  html += '</div>';
-  html += '</div></div>';
-  
+  // ===== 周日自查 =====
 
 
 
@@ -1314,8 +1309,7 @@ function render() {
   if (!isSunday) html += '<div class="weekly-hint">周日会自动高亮 · 平时可提前勾选</div>';
   html += '</div>';  // 关闭 weekly
 
-
-    html += '</div>';  // 关闭 main-col
+  // ===== 自定义时间表 =====
   html += '<div class="sec"><div class="sec-title">⏰ 自定义时间表 <small>点击标题/时间/时长/标签直接改</small></div>';
   html += '<div class="sessions">';
   html += '<div class="routine-bar">';
@@ -1374,6 +1368,12 @@ function render() {
     lastEnd = fmtClockEnd(ls.time, ls.duration);
     lastCat = ls.cat;
   }
+  html += '<div class="add-bar">';
+  html += '<span class="ab-preview">⏰ 下一时段将自动排在 <b>' + lastEnd + '</b> · 默认 <b>45 分钟</b> · <b>' + (catById(lastCat) ? catById(lastCat).icon + ' ' + catById(lastCat).name : '数学') + '</b></span>';
+  html += '<button class="ab-add" onclick="window.__autoAddSession()">＋ 添加新时段</button>';
+  html += '</div>';  // add-bar
+  html += '</div>';  // 关闭时间表 sec
+  html += '</div>';  // 关闭 main-col
   html += '<div class="side-col">';
 
 
