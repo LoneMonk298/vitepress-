@@ -534,6 +534,13 @@ body.dark .cat-badge.cat-pol { background: rgba(190,24,93,0.2); color: #fbcfe8; 
 .review-empty { padding: 16px; text-align: center; color: var(--text2); font-size: 13px; }
 .review-loading { padding: 16px; text-align: center; color: var(--text2); font-size: 13px; }
 .review-status { font-size: 11px; color: var(--text2); margin-top: 6px; }
+.review-status.ok { font-size: 13px; font-weight: 600; color: #10b981; }
+.review-status.err { font-size: 13px; font-weight: 600; color: #ef4444; }
+.review-status .rs-detail { display: block; margin-top: 3px; font-size: 11px; font-weight: 400; color: var(--text2); }
+.review-logged { margin-top: 14px; }
+.logged-item { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 8px; background: var(--bg); margin-bottom: 6px; }
+.logged-item .logged-del { border: none; background: transparent; color: var(--text2); font-size: 14px; cursor: pointer; padding: 4px 8px; border-radius: 6px; flex-shrink: 0; }
+.logged-item .logged-del:hover { background: rgba(239,68,68,.12); color: #ef4444; }
 
 /* ===== 主题切换按钮 ===== */
 .theme-btn {
@@ -690,6 +697,7 @@ function initData() {
     customTasks: [],
     resetV1: false,
     reviewToday: [],
+    todayLogs: [],
     reviewStats: {logs:0,active:0,done:0,skipped:0,stale:0}
   };
   if (snap && (Array.isArray(snap.sessions) || Array.isArray(snap.customTasks))) {
@@ -1238,6 +1246,29 @@ function render() {
   html += '<button onclick="window.__logProgress()" id="rv-submit">📝 登记</button>';
   html += '</div>';
   html += '<div class="review-status" id="rv-status"></div>';
+  // 今日已登记（当天可见，不用等卡片到期）
+  html += '<div class="review-today review-logged">';
+  html += '<div class="review-today-head">';
+  html += '<span class="review-today-title">✅ 今日已登记</span>';
+  html += '<span class="review-today-count" id="rv-logged-count">' + (data.todayLogs ? data.todayLogs.length : 0) + ' 条</span>';
+  html += '</div>';
+  if (!data.todayLogs || data.todayLogs.length === 0) {
+    html += '<div class="review-empty">今天还没登记 —— 完成一段学习/背诵后点「📝 登记」，复习计划自动生成</div>';
+  } else {
+    data.todayLogs.slice().reverse().forEach(function(lg) {
+      var icons = {'计网':'🌐','数据结构':'📊','操作系统':'♙️','计组':'💻','数学':'📐','公式':'🧠','英语':'📚','政治':'📕'};
+      var icon = icons[lg.subject] || '📖';
+      html += '<div class="logged-item">';
+      html += '<span class="ri-icon">' + icon + '</span>';
+      html += '<div class="ri-info">';
+      html += '<div class="ri-title">' + escapeHtml(lg.subject + ' · ' + lg.chapter) + '</div>';
+      html += '<div class="ri-meta">' + escapeHtml(lg.log_type) + (lg.note ? ' · ' + escapeHtml(lg.note) : '') + ' · ' + (lg.created_at || '').slice(11,16) + '</div>';
+      html += '</div>';
+      html += '<button class="logged-del" onclick="window.__delLog(' + lg.id + ')" title="删除">✕</button>';
+      html += '</div>';
+    });
+  }
+  html += '</div>';  // review-logged
   html += '<div class="review-today">';
   html += '<div class="review-today-head">';
   html += '<span class="review-today-title">🔔 今日待复习</span>';
@@ -1665,11 +1696,39 @@ window.__loadReviews = async function() {
     var res = await fetch(API_BASE + '/today');
     var data2 = await res.json();
     data.reviewToday = data2.items || [];
-    document.getElementById('rv-count').textContent = data.reviewToday.length + ' 项';
-    document.getElementById('rv-status').textContent = '已同步 ' + data.reviewToday.length + ' 项待复习';
+    var cnt = document.getElementById('rv-count');
+    if (cnt) cnt.textContent = data.reviewToday.length + ' 项';
   } catch(e) {
     console.warn('loadReviews failed:', e);
-    document.getElementById('rv-status').textContent = '⚠️ 后端未连接（首次使用需等待服务就绪）';
+    var st = document.getElementById('rv-status');
+    if (st) { st.className = 'review-status err'; st.textContent = '⚠️ 后端未连接，稍后自动重试'; }
+  }
+};
+
+// 加载今日已登记日志（当天立即可见，不等卡片到期）
+window.__loadTodayLogs = async function() {
+  try {
+    var res = await fetch(API_BASE + '/logs?limit=50&log_date=' + getTodayStr());
+    var arr = await res.json();
+    data.todayLogs = Array.isArray(arr) ? arr : [];
+    var cnt = document.getElementById('rv-logged-count');
+    if (cnt) cnt.textContent = data.todayLogs.length + ' 条';
+  } catch(e) {
+    console.warn('loadTodayLogs failed:', e);
+  }
+};
+
+// 删除一条日志（连带其复习卡）
+window.__delLog = async function(logId) {
+  if (!confirm('删除这条登记记录及其复习计划？')) return;
+  try {
+    await fetch(API_BASE + '/log/' + logId, { method: 'DELETE' });
+    data.todayLogs = (data.todayLogs || []).filter(function(l) { return l.id !== logId; });
+    render();
+    window.__loadReviews();
+  } catch(e) {
+    console.warn('delLog failed:', e);
+    alert('删除失败：' + e.message);
   }
 };
 
@@ -1701,14 +1760,28 @@ window.__logProgress = async function() {
     if (result.log_id) {
       document.getElementById('rv-chapter').value = '';
       document.getElementById('rv-note').value = '';
+      window.__loadTodayLogs();
       window.__loadReviews();
       var statusEl = document.getElementById('rv-status');
-      if (statusEl) statusEl.textContent = '✅ 已登记：' + subject + ' · ' + chapter + '（' + result.cards_created + ' 张复习卡）';
+      if (statusEl) {
+        if (result.cards_created > 0) {
+          var plan = result.review_plan || [];
+          var planTxt = plan.length ? plan.join('、') : '';
+          statusEl.className = 'review-status ok';
+          statusEl.innerHTML = '✅ 已登记「' + escapeHtml(subject + ' · ' + chapter) + '」— 自动生成 ' + result.cards_created + ' 张复习卡<span class="rs-detail">下次复习：' + escapeHtml(planTxt) + '（第 1 次 ' + (result.first_review || '') + '）</span>';
+        } else {
+          statusEl.className = 'review-status ok';
+          statusEl.textContent = '✅ 已记录「' + subject + ' · ' + chapter + '」（复盘不生成复习卡）';
+        }
+      }
+    } else {
+      var st2 = document.getElementById('rv-status');
+      if (st2) { st2.className = 'review-status err'; st2.textContent = '⚠️ 提交失败：服务返回异常'; }
     }
   } catch(e) {
     console.warn('logProgress failed:', e);
     var statusEl = document.getElementById('rv-status');
-    if (statusEl) statusEl.textContent = '⚠️ 提交失败：' + e.message;
+    if (statusEl) { statusEl.className = 'review-status err'; statusEl.textContent = '⚠️ 提交失败：' + e.message; }
   } finally {
     btn.disabled = false;
     btn.textContent = '📝 登记';
