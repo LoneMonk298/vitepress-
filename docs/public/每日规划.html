@@ -541,6 +541,34 @@ body.dark .cat-badge.cat-pol { background: rgba(190,24,93,0.2); color: #fbcfe8; 
   .add-bar input[type="time"] { flex: 1; min-width: 0; }
   .session-duration, .session-time { font-size: 10px; padding: 1px 6px; }
 }
+
+/* ===== 进度登记 + 今晚待复习 ===== */
+.review-section { background: linear-gradient(135deg, #1a1d2e, #2d2438); border-radius: 14px; padding: 16px; margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.08); }
+.review-log-form { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
+.review-log-form .field { display: flex; flex-direction: column; gap: 4px; }
+.review-log-form .field label { font-size: 12px; color: rgba(255,255,255,0.6); }
+.review-log-form select, .review-log-form input { padding: 8px 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.06); color: #fff; font-size: 14px; }
+.review-log-form select { min-width: 100px; }
+.review-log-form input[type=text] { flex: 1; min-width: 120px; }
+.review-log-form button { padding: 8px 16px; border-radius: 8px; border: none; background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; font-size: 14px; font-weight: 600; cursor: pointer; }
+.review-log-form button:hover { opacity: 0.9; }
+.review-log-form button:disabled { opacity: 0.5; cursor: not-allowed; }
+.review-today { margin-top: 14px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.08); }
+.review-today-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.review-today-title { font-size: 14px; font-weight: 600; color: #fff; }
+.review-today-count { font-size: 13px; color: rgba(255,255,255,0.7); }
+.review-item { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 8px; background: rgba(255,255,255,0.04); margin-bottom: 6px; }
+.review-item .ri-icon { font-size: 16px; flex-shrink: 0; }
+.review-item .ri-info { flex: 1; min-width: 0; }
+.review-item .ri-title { font-size: 13px; color: #fff; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.review-item .ri-meta { font-size: 11px; color: rgba(255,255,255,0.5); }
+.review-item .ri-actions { display: flex; gap: 6px; flex-shrink: 0; }
+.review-item .ri-btn { padding: 4px 10px; border-radius: 6px; border: none; font-size: 12px; cursor: pointer; }
+.review-item .ri-done { background: #10b981; color: #fff; }
+.review-item .ri-skip { background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.7); }
+.review-empty { padding: 16px; text-align: center; color: rgba(255,255,255,0.5); font-size: 13px; }
+.review-loading { padding: 16px; text-align: center; color: rgba(255,255,255,0.5); font-size: 13px; }
+.review-status { font-size: 11px; color: rgba(255,255,255,0.4); margin-top: 6px; }
 </style>
 </head>
 <body>
@@ -683,11 +711,14 @@ function initData() {
   if (data && data.date === getTodayStr()) return data;
   // 新的一天：尝试从昨日快照复用
   var snap = readJson(DATA_KEY_V2 + '_snapshot', null);
+  API_BASE = 'https://web.lonemonk.xyz/api-review';
   data = {
     date: getTodayStr(),
     sessions: [],
     customTasks: [],
-    resetV1: false
+    resetV1: false,
+    reviewToday: [],
+    reviewStats: {logs:0,active:0,done:0,skipped:0,stale:0}
   };
   if (snap && (Array.isArray(snap.sessions) || Array.isArray(snap.customTasks))) {
     // 沿用昨日计划：done 全部重置为 false
@@ -1311,6 +1342,47 @@ function render() {
   html += '<div class="layout">';
   html += '<div class="main-col">';
 
+// ===== 今日进度登记 + 今晚待复习 =====
+  html += '<div class="review-section">';
+  html += '<div class="review-log-form">';
+  html += '<div class="field"><label>科目</label><select id="rv-subject">';
+  ['计网','数据结构','操作系统','计组','数学','公式','英语','政治'].forEach(function(s) {
+    html += '<option value="' + s + '">' + s + '</option>';
+  });
+  html += '</select></div>';
+  html += '<div class="field"><label>章节/内容</label><input type="text" id="rv-chapter" placeholder="如：物理层" style="flex:1;min-width:140px;"></div>';
+  html += '<div class="field"><label>类型</label><select id="rv-type"><option value="学习">学习</option><option value="背诵">背诵</option><option value="复盘">复盘</option></select></div>';
+  html += '<div class="field"><label>备注(可选)</label><input type="text" id="rv-note" placeholder="备注"></div>';
+  html += '<button onclick="window.__logProgress()" id="rv-submit">📝 登记</button>';
+  html += '</div>';
+  html += '<div class="review-status" id="rv-status"></div>';
+  html += '<div class="review-today">';
+  html += '<div class="review-today-head">';
+  html += '<span class="review-today-title">🔔 今日待复习</span>';
+  html += '<span class="review-today-count" id="rv-count">0 项</span>';
+  html += '</div>';
+  if (data.reviewToday.length === 0) {
+    html += '<div class="review-empty">暂无待复习项 —— 登记进度后自动生成复习计划</div>';
+  } else {
+    data.reviewToday.forEach(function(item) {
+      var icons = {'计网':'🌐','数据结构':'📊','操作系统':'⚙️','计组':'💻','数学':'📐','公式':'🧠','英语':'📚','政治':'📕'};
+      var icon = icons[item.subject] || '📖';
+      html += '<div class="review-item" id="rv-item-' + item.id + '">';
+      html += '<span class="ri-icon">' + icon + '</span>';
+      html += '<div class="ri-info">';
+      html += '<div class="ri-title">' + escapeHtml(item.subject + ' · ' + item.chapter) + '</div>';
+      html += '<div class="ri-meta">第 ' + (item.stage + 1) + ' 次 · ' + (item.next_date || '').slice(5) + ' 到期 · ' + (item.duration || 15) + 'min</div>';
+      html += '</div>';
+      html += '<div class="ri-actions">';
+      html += '<button class="ri-btn ri-done" onclick="window.__markDone(' + item.id + ')">✓ 完成</button>';
+      html += '<button class="ri-btn ri-skip" onclick="window.__markSkip(' + item.id + ')">跳过</button>';
+      html += '</div>';
+      html += '</div>';
+    });
+  }
+  html += '</div>';  // review-today
+  html += '</div>';  // review-section
+
 // ===== 自定义任务 =====
   html += '<div class="sec"><div class="sec-title">📝 自定义任务 <small>含「背诵/默写」字样的任务完成时自动创建复习</small></div>';
   html += '<div class="tasks">';
@@ -1534,6 +1606,8 @@ function render() {
   html += '</div>';
   
   document.getElementById('app').innerHTML = html;
+  // 异步加载复习数据
+  window.__loadReviews();
 }
 
 // ===== AI 顾问：考点进度 =====
@@ -1753,6 +1827,77 @@ window.__genDailyReport = function() {
 render();
 // 每分钟刷新聚焦条
 setInterval(function() { render(); }, 60000);
+
+// ===== 复习调度 API 调用 =====
+window.__loadReviews = async function() {
+  try {
+    var res = await fetch(API_BASE + '/today');
+    var data2 = await res.json();
+    data.reviewToday = data2.items || [];
+    document.getElementById('rv-count').textContent = data.reviewToday.length + ' 项';
+    // 更新每个 item 的状态（不用全渲染，只更新计数）
+    var statusEl = document.getElementById('rv-status');
+    if (statusEl) statusEl.textContent = '已同步 ' + data.reviewToday.length + ' 项待复习';
+  } catch(e) {
+    console.warn('loadReviews failed:', e);
+    var statusEl = document.getElementById('rv-status');
+    if (statusEl) statusEl.textContent = '⚠️ 后端未连接（首次使用需等待服务就绪）';
+  }
+};
+
+window.__logProgress = async function() {
+  var subject = document.getElementById('rv-subject').value;
+  var chapter = document.getElementById('rv-chapter').value.trim();
+  var log_type = document.getElementById('rv-type').value;
+  var note = document.getElementById('rv-note').value.trim();
+  if (!chapter) {
+    alert('请填写章节/内容');
+    return;
+  }
+  var btn = document.getElementById('rv-submit');
+  btn.disabled = true;
+  btn.textContent = '提交中...';
+  try {
+    var res = await fetch(API_BASE + '/log', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({subject: subject, chapter: chapter, log_type: log_type, note: note})
+    });
+    var result = await res.json();
+    if (result.log_id) {
+      document.getElementById('rv-chapter').value = '';
+      document.getElementById('rv-note').value = '';
+      window.__loadReviews();
+      var statusEl = document.getElementById('rv-status');
+      if (statusEl) statusEl.textContent = '✅ 已登记：' + subject + ' · ' + chapter + '（' + result.cards_created + ' 张复习卡）';
+    }
+  } catch(e) {
+    console.warn('logProgress failed:', e);
+    var statusEl = document.getElementById('rv-status');
+    if (statusEl) statusEl.textContent = '⚠️ 提交失败：' + e.message;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '📝 登记';
+  }
+};
+
+window.__markDone = async function(cardId) {
+  try {
+    await fetch(API_BASE + '/done/' + cardId, {method: 'POST'});
+    window.__loadReviews();
+  } catch(e) {
+    console.warn('markDone failed:', e);
+  }
+};
+
+window.__markSkip = async function(cardId) {
+  try {
+    await fetch(API_BASE + '/skip/' + cardId, {method: 'POST'});
+    window.__loadReviews();
+  } catch(e) {
+    console.warn('markSkip failed:', e);
+  }
+};
 </script>
 </body>
 </html>
