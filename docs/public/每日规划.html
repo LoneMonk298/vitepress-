@@ -1843,12 +1843,12 @@ window.__logProgress = async function() {
           var planTxt = plan.length ? plan.join('、') : '';
           statusEl.className = 'review-status ok';
           statusEl.innerHTML = '已登记「' + escapeHtml(subject + ' · ' + chapter) + '」— 自动生成 ' + result.cards_created + ' 张复习卡<span class="rs-detail">下次复习：' + escapeHtml(planTxt) + '（第 1 次 ' + (result.first_review || '') + '）</span>';
-          // 提交后弹窗反馈
-          window.__openLoggedModal(result.log_id);
         } else {
           statusEl.className = 'review-status ok';
           statusEl.textContent = '已记录「' + subject + ' · ' + chapter + '」（复盘不生成复习卡）';
         }
+        // 提交后弹窗反馈（无条件）
+        window.__openLoggedModal(result.log_id);
       }
     } else {
       var st2 = document.getElementById('rv-status');
