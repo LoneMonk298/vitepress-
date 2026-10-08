@@ -23,6 +23,28 @@ body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei
 .note .n-meta{font-size:11px;color:var(--text2);white-space:nowrap}
 .note .n-del{border:none;background:transparent;color:var(--text2);cursor:pointer;padding:2px 6px;font-size:14px;border-radius:4px}
 .note .n-del:hover{background:rgba(239,68,68,.12);color:#ef4444}
+.folder{margin-bottom:2px}
+.f-head{display:flex;align-items:center;gap:4px;padding:8px 10px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;user-select:none}
+.f-head:hover{background:var(--bg)}
+.f-arrow{font-size:10px;color:var(--text2);width:10px;flex:none;transition:transform .15s}
+.folder.collapsed .f-arrow{transform:rotate(-90deg)}
+.folder.collapsed .f-notes{display:none}
+.f-icon{font-size:13px;flex:none}
+.f-count{font-size:11px;color:var(--text2);font-weight:400;margin-left:auto}
+.f-notes{padding-left:14px}
+.f-act{padding:2px 6px;border:none;background:transparent;cursor:pointer;font-size:13px;color:var(--text2);border-radius:4px;opacity:0}
+.f-head:hover .f-act{opacity:1}
+.f-act:hover{background:rgba(239,68,68,.12);color:#ef4444}
+.tag-row{padding:6px 10px 10px;border-top:1px solid var(--bd);margin-top:6px}
+.tag-title{font-size:11px;color:var(--text2);margin-bottom:4px}
+.tags{display:flex;flex-wrap:wrap;gap:4px}
+.tag{font-size:11px;padding:3px 7px;border-radius:10px;background:rgba(16,185,129,.1);color:#0d9488;cursor:pointer;border:1px solid transparent}
+.tag:hover{border-color:#10b981}
+.tag.on{background:#10b981;color:#fff}
+.tag-empty{font-size:11px;color:var(--text2);opacity:.7}
+.note-move{padding:2px 6px;border:none;background:transparent;cursor:pointer;font-size:13px;color:var(--text2);border-radius:4px;opacity:0}
+.note:hover .note-move{opacity:1}
+.note-move:hover{color:#667eea;background:rgba(102,126,234,.1)}
 .empty-tip{padding:20px;text-align:center;color:var(--text2);font-size:13px;line-height:1.8}
 .main{flex:1;display:flex;flex-direction:column;position:relative;min-width:0}
 .topbar{height:52px;background:var(--card);border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:8px;padding:0 14px;flex:none}
@@ -166,7 +188,7 @@ html.dark .mm-hint code{background:rgba(255,255,255,.08)}
 <script>
 (function(){
 var LS_LIST='mm_notes_list', LS_PFX='mm_notes:';
-var mind=null, curNote=null, notes=[], timer=null, lastHit=null;
+var mind=null, curNote=null, notes=[], timer=null, lastHit=null, curFolder=null, curTag=null;
 
 function $(id){ return document.getElementById(id); }
 function isDark(){ return document.documentElement.classList.contains('dark')||window.matchMedia('(prefers-color-scheme:dark)').matches; }
@@ -310,7 +332,22 @@ function mdToNodeData(md){
 
 /* ===== 笔记管理 ===== */
 function loadNotes(){
-  try{ return JSON.parse(localStorage.getItem(LS_LIST)||'[]'); }catch(e){ return []; }
+  var arr;
+  try{ arr = JSON.parse(localStorage.getItem(LS_LIST)||'[]'); }catch(e){ arr = []; }
+  for(var i=0;i<arr.length;i++){ if(!arr[i].folder) arr[i].folder = '未分类'; }
+  return arr;
+}
+
+function collectTags(data){
+  var tags = {};
+  (function walk(n){
+    if(!n) return;
+    var t = String(n.topic||'');
+    var m = t.match(/#([\u4e00-\u9fa5A-Za-z0-9_\-]+)/g);
+    if(m) for(var i=0;i<m.length;i++) tags[m[i].slice(1)] = 1;
+    (n.children||[]).forEach(walk);
+  })(data.nodeData);
+  return Object.keys(tags).sort();
 }
 function saveNotes(arr){
   localStorage.setItem(LS_LIST, JSON.stringify(arr));
@@ -344,44 +381,142 @@ function renderList(){
     list.innerHTML = '<div class="empty-tip">还没有笔记<br><br>点下方「新建」或「导入」开始</div>';
     return;
   }
-  var h = '';
-  for(var i=0;i<notes.length;i++){
-    var n = notes[i];
-    h += '<div class="note'+(curNote&&curNote.id===n.id?' on':'')+'" data-id="'+n.id+'">'
-      +'<span class="n-name">'+escapeHtml(n.name)+'</span>'
-      +'<span class="n-meta">'+new Date(n.created).toLocaleDateString('zh-CN',{month:'numeric',day:'numeric'})+'</span>'
-      +'<button class="n-del" data-id="'+n.id+'" title="删除">×</button>'
-      +'</div>';
+  var k, q;
+  var folders = {}, order = [];
+  for(k=0;k<notes.length;k++){
+    var f = notes[k].folder || '未分类';
+    if(!folders[f]){ folders[f] = []; order.push(f); }
+    folders[f].push(notes[k]);
   }
+  order.sort(function(a,b){
+    if(a==='未分类') return 1;
+    if(b==='未分类') return -1;
+    return a.localeCompare(b,'zh-CN');
+  });
+  var h = '';
+  for(var fi=0;fi<order.length;fi++){
+    var fname = order[fi], arr = folders[fname];
+    h += '<div class="folder" data-folder="'+escapeHtml(fname)+'">';
+    h += '<div class="f-head" data-folder="'+escapeHtml(fname)+'">';
+    h += '<span class="f-arrow">▾</span>';
+    h += '<span class="f-icon">'+(fname==='未分类'?'📥':'📁')+'</span>';
+    h += '<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+escapeHtml(fname)+'</span>';
+    h += '<span class="f-count">'+arr.length+'</span>';
+    h += '<button class="f-act" data-folder="'+escapeHtml(fname)+'" title="删除文件夹">×</button>';
+    h += '</div><div class="f-notes">';
+    for(var ni=0;ni<arr.length;ni++){
+      var n = arr[ni];
+      h += '<div class="note'+(curNote&&curNote.id===n.id?' on':'')+'" data-id="'+n.id+'">';
+      h += '<span class="n-name">'+escapeHtml(n.name)+'</span>';
+      h += '<button class="note-move" data-id="'+n.id+'" title="移动文件夹">📁</button>';
+      h += '<button class="n-del" data-id="'+n.id+'" title="删除">×</button>';
+      h += '</div>';
+    }
+    h += '</div></div>';
+  }
+  var allTags = {};
+  for(k=0;k<notes.length;k++){
+    var d;
+    try{ d = JSON.parse(localStorage.getItem(LS_PFX+notes[k].id)||'null'); }catch(e){ d = null; }
+    if(d && d.nodeData){
+      var ts = collectTags(d);
+      for(var ti=0;ti<ts.length;ti++){
+        if(!allTags[ts[ti]]) allTags[ts[ti]] = [];
+        allTags[ts[ti]].push(notes[k].id);
+      }
+    }
+  }
+  var tagNames = Object.keys(allTags).sort();
+  h += '<div class="tag-row"><div class="tag-title">标签</div>';
+  if(tagNames.length){
+    h += '<div class="tags">';
+    for(k=0;k<tagNames.length;k++){
+      h += '<span class="tag'+(curTag===tagNames[k]?' on':'')+'" data-tag="'+escapeHtml(tagNames[k])+'">#'+escapeHtml(tagNames[k])+'</span>';
+    }
+    h += '</div>';
+  } else {
+    h += '<div class="tag-empty">节点内写 #标签 即可添加</div>';
+  }
+  h += '</div>';
   list.innerHTML = h;
-  var els = list.querySelectorAll('.note');
-  for(i=0;i<els.length;i++){
+
+  var fheads = list.querySelectorAll('.f-head');
+  for(k=0;k<fheads.length;k++){
     (function(el){
       el.onclick = function(ev){
-        if(ev.target.classList.contains('n-del')) return;
-        var id = el.dataset.id;
-        for(var k=0;k<notes.length;k++) if(notes[k].id===id) loadNote(notes[k]);
+        if(ev.target.classList.contains('f-act')){
+          var fn = ev.target.getAttribute('data-folder');
+          if(confirm('删除文件夹「'+fn+'」？笔记会移到「未分类」。')){
+            notes = loadNotes();
+            for(var z=0;z<notes.length;z++) if(notes[z].folder===fn) notes[z].folder = '未分类';
+            saveNotes(notes); renderList();
+          }
+          ev.stopPropagation(); return;
+        }
+        el.parentNode.classList.toggle('collapsed');
       };
-    })(els[i]);
+    })(fheads[k]);
+  }
+  var els = list.querySelectorAll('.note');
+  for(k=0;k<els.length;k++){
+    (function(el){
+      el.onclick = function(ev){
+        if(ev.target.classList.contains('n-del')||ev.target.classList.contains('note-move')) return;
+        var id = el.dataset.id;
+        for(var z=0;z<notes.length;z++) if(notes[z].id===id){ curFolder = notes[z].folder; loadNote(notes[z]); }
+      };
+    })(els[k]);
   }
   var dels = list.querySelectorAll('.n-del');
-  for(i=0;i<dels.length;i++){
+  for(k=0;k<dels.length;k++){
     (function(btn){
       btn.onclick = function(ev){
         ev.stopPropagation();
         var id = btn.dataset.id;
-        for(var k=0;k<notes.length;k++) if(notes[k].id===id){
-          if(confirm('删除「'+notes[k].name+'」？此操作不可撤销。')){
-            notes.splice(k,1);
-            saveNotes(notes);
-            localStorage.removeItem(LS_PFX+id);
-            renderList();
-            setStatus('已删除', true);
+        for(var z=0;z<notes.length;z++) if(notes[z].id===id){
+          if(confirm('删除「'+notes[z].name+'」？此操作不可撤销。')){
+            notes.splice(z,1); saveNotes(notes); localStorage.removeItem(LS_PFX+id);
+            renderList(); setStatus('已删除', true);
           }
           return;
         }
       };
-    })(dels[i]);
+    })(dels[k]);
+  }
+  var moves = list.querySelectorAll('.note-move');
+  for(k=0;k<moves.length;k++){
+    (function(btn){
+      btn.onclick = function(ev){
+        ev.stopPropagation();
+        var id = btn.dataset.id, n = null;
+        for(var z=0;z<notes.length;z++) if(notes[z].id===id) n = notes[z];
+        if(!n) return;
+        var opts = order.slice();
+        var menu = opts.map(function(o,i){ return (i+1)+'. '+o; }).join('\n');
+        var choice = prompt('移到哪个文件夹？\n\n'+menu+'\n\n输入编号或新文件夹名（留空=未分类）', '');
+        if(choice === null) return;
+        choice = choice.trim();
+        if(choice === '') n.folder = '未分类';
+        else if(/^\d+$/.test(choice) && +choice>=1 && +choice<=opts.length) n.folder = opts[+choice-1];
+        else n.folder = choice;
+        saveNotes(notes); renderList(); setStatus('已移到「'+n.folder+'」', true);
+      };
+    })(moves[k]);
+  }
+  var tags = list.querySelectorAll('.tag');
+  for(k=0;k<tags.length;k++){
+    (function(el){
+      el.onclick = function(){
+        var t = el.getAttribute('data-tag');
+        if(curTag === t) curTag = null;
+        else {
+          curTag = t;
+          var ids = allTags[t] || [];
+          if(ids.length) loadNote(findNoteById(ids[0]));
+        }
+        renderList();
+      };
+    })(tags[k]);
   }
 }
 
@@ -556,7 +691,9 @@ function focusNodeElement(nodeId){
 function exportNote(){
   if(!curNote||!mind) return;
   var data = mind.getData();
-  var blob = new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  var exp = { _note: curNote ? { name:curNote.name, folder:curNote.folder||'未分类' } : {} };
+  for(var kk in data) exp[kk] = data[kk];
+  var blob = new Blob([JSON.stringify(exp,null,2)],{type:'application/json'});
   var url = URL.createObjectURL(blob);
   var a = document.createElement('a');
   a.href = url;
@@ -712,8 +849,12 @@ document.addEventListener('DOMContentLoaded', function(){
   };
   $('btnNewConfirm').onclick = function(){
     var name = $('new-name').value.trim() || '未命名笔记';
+    var folder = prompt('放到哪个文件夹？', curFolder || '未分类');
+    if(folder === null) return;
+    folder = folder.trim() || '未分类';
+    curFolder = folder;
     var id = 'n'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
-    var note = { id:id, name:name, created:Date.now() };
+    var note = { id:id, name:name, folder:folder, created:Date.now() };
     notes = loadNotes();
     notes.unshift(note);
     saveNotes(notes);
@@ -767,8 +908,12 @@ document.addEventListener('DOMContentLoaded', function(){
         loadNote(curNote);
         setStatus('已保存「'+name+'」', true);
       } else {
+        var folder = prompt('放到哪个文件夹？', curFolder || '未分类');
+        if(folder === null){ $('modalImport').classList.remove('show'); return; }
+        folder = folder.trim() || '未分类';
+        curFolder = folder;
         var id = 'n'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
-        var note = { id:id, name:name, created:Date.now() };
+        var note = { id:id, name:name, folder:folder, created:Date.now() };
         notes = loadNotes();
         notes.unshift(note);
         saveNotes(notes);
