@@ -37,6 +37,7 @@ button.ok:hover{opacity:.9;color:#fff}
 #find{padding:6px 10px;border:1px solid var(--bd);border-radius:7px;background:var(--bg);color:var(--text);font-size:12.5px;font-family:inherit;width:140px}
 #map{flex:1;min-height:0;background:var(--bg)}
   .katex{font-size:1.02em}
+  #map a[data-note]{pointer-events:auto}
   .mind-elixir .katex-display{margin:0}
 .status{position:absolute;left:14px;bottom:12px;font-size:12px;color:var(--text2);background:var(--card);padding:6px 12px;border-radius:20px;box-shadow:0 2px 8px #0001;max-width:70%}
 .modal{position:fixed;inset:0;background:#0007;display:none;align-items:center;justify-content:center;z-index:99;padding:16px}
@@ -84,8 +85,10 @@ html.dark .mm-hint code{background:rgba(255,255,255,.08)}
     <div class="topbar">
       <button class="ico" id="btnSide">&#9776;</button>
       <span class="t" id="cur">请选择或新建笔记</span>
+      <button id="btnBack" title="返回上一个笔记">返回</button>
       <input id="find" placeholder="搜索节点…">
       <button id="btnRename">改名</button>
+      <button id="btnEditSrc">编辑源</button>
       <button id="btnExport">导出</button>
       <button id="btnReset">重置</button>
       <button id="btnSync">云同步</button>
@@ -97,9 +100,9 @@ html.dark .mm-hint code{background:rgba(255,255,255,.08)}
 
 <div class="modal" id="modalImport">
   <div class="mbox">
-    <h3>从 Markdown 导入</h3>
-    <p>粘贴 AI 生成的 Markdown 大纲，自动转成思维导图。<br>
-    第一行 <code style="background:rgba(0,0,0,.06);padding:1px 5px;border-radius:3px;font-family:monospace">## 标题</code> 作为笔记名（可选）。</p>
+    <h3 id="imp-title">从 Markdown 导入</h3>
+    <p id="imp-desc">粘贴 AI 生成的 Markdown 大纲，自动转成思维导图。<br>
+    第一个节点作为根，缩进自动识别。</p>
     <label>笔记名</label>
     <input id="imp-name" placeholder="留空则用 Markdown 第一行">
     <label>Markdown 内容</label>
@@ -113,7 +116,9 @@ html.dark .mm-hint code{background:rgba(255,255,255,.08)}
       <br>• <code>- / * / +</code> 列表
       <br>• <code>1.</code> 有序列表
       <br>• <code>[[空格]]</code> 缩进嵌套
-      <br>• <code>[链接文字](https://...)</code> 可点击链接
+      <br>• <code>[文字](https://...)</code> 外链
+      <br>• <code>[[目标笔记名]]</code> 跳到另一篇笔记
+      <br>• <code>[文字](note:目标笔记名)</code> 同上（可改显示文字）
     </div>
     <div class="row">
       <button id="btnImpCancel">取消</button>
@@ -183,13 +188,26 @@ function loadScript(src){
 
 /* ===== Markdown → nodeData ===== */
 /* 行内 HTML：Markdown 链接 + 裸 URL + LaTeX，占位符保护后转义 */
+function noteLinkHtml(target, label){
+  var t = String(target==null?'':target).replace(/"/g,'&quot;');
+  var l = String(label==null?'':label).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  return '<a data-note="'+t+'" style="color:#f59e0b;text-decoration:underline;cursor:pointer;font-weight:600">'+l+'</a>';
+}
+
 function inlineHtml(text){
   text = String(text==null?'':text);
   var ph = [];
   function put(html){ ph.push(html); return '\u0000'+(ph.length-1)+'\u0000'; }
   var escL = function(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); };
-  /* Markdown 链接 [text](url) */
+  /* 笔记跳转 [[目标笔记名]] */
+  text = text.replace(/\[\[([^\]]+)\]\]/g, function(_, nm){
+    nm = nm.trim();
+    return put(noteLinkHtml(nm, nm));
+  });
+  /* Markdown 链接 [text](url)：note: 前缀 → 笔记跳转 */
   text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, function(_, t, u){
+    var uu = String(u).trim();
+    if(/^note:/.test(uu)) return put(noteLinkHtml(uu.slice(5).trim(), t));
     return put('<a href="'+u.replace(/"/g,'&quot;')+'" target="_blank" rel="noopener" style="color:#667eea;text-decoration:underline">'+escL(t)+'</a>');
   });
   /* 裸 URL */
@@ -371,6 +389,47 @@ function applyInlineHtml(data){
     else if(n.dangerouslySetInnerHTML) delete n.dangerouslySetInnerHTML;
     (n.children||[]).forEach(walk);
   })(data.nodeData);
+}
+
+/* nodeData → Markdown（保留原始 topic 文本，含链接与公式语法） */
+function nodeDataToMd(data){
+  var root = data.nodeData || {};
+  var out = ['# ' + String(root.topic||'')];
+  (function walk(n, lvl){
+    (n.children||[]).forEach(function(c){
+      out.push('  '.repeat(lvl) + '- ' + String(c.topic||''));
+      walk(c, lvl+1);
+    });
+  })(root, 0);
+  return out.join('\n');
+}
+
+/* 笔记查找 / 跳转 / 返回 */
+var navStack = [];
+function allNotes(){ try{ return JSON.parse(localStorage.getItem(LS_LIST)||'[]'); }catch(e){ return []; } }
+function findNoteByName(name){
+  var ns = allNotes(); name = String(name||'').trim();
+  if(!name) return null;
+  for(var i=0;i<ns.length;i++) if(ns[i].name === name) return ns[i];
+  for(var j=0;j<ns.length;j++) if(ns[j].name.indexOf(name)>=0 || name.indexOf(ns[j].name)>=0) return ns[j];
+  return null;
+}
+function findNoteById(id){
+  var ns = allNotes();
+  for(var i=0;i<ns.length;i++) if(ns[i].id === id) return ns[i];
+  return null;
+}
+function goToNote(name){
+  var t = findNoteByName(name);
+  if(!t){ setStatus('未找到笔记「'+name+'」'); return; }
+  if(curNote && curNote.id !== t.id) navStack.push(curNote.id);
+  loadNote(t);
+}
+function goBack(){
+  var id = navStack.pop();
+  if(!id){ setStatus('没有可返回的笔记'); return; }
+  var t = findNoteById(id);
+  if(t) loadNote(t); else setStatus('上一个笔记已不存在');
 }
 
 function initMind(data){
@@ -635,12 +694,31 @@ document.addEventListener('DOMContentLoaded', function(){
   };
   $('btnNewCancel').onclick = function(){ $('modalNew').classList.remove('show'); };
 
+  var editMode = false;
   $('btnImport').onclick = function(){
+    editMode = false;
+    $('imp-title').textContent = '从 Markdown 导入';
+    $('imp-desc').innerHTML = '粘贴 AI 生成的 Markdown 大纲，自动转成思维导图。<br>第一个节点作为根，缩进自动识别。';
+    $('btnImpConfirm').textContent = '导入';
     $('imp-name').value = '';
     $('imp-md').value = '';
     $('modalImport').classList.add('show');
     setTimeout(function(){ $('imp-md').focus(); }, 50);
   };
+
+  $('btnEditSrc').onclick = function(){
+    if(!curNote || !mind){ setStatus('请先选择笔记'); return; }
+    editMode = true;
+    $('imp-title').textContent = '编辑 Markdown 源';
+    $('imp-desc').innerHTML = '直接修改本笔记的 Markdown 源，保存后覆盖当前导图。<br>修改会同时更新笔记名。';
+    $('btnImpConfirm').textContent = '保存';
+    $('imp-name').value = curNote.name || '';
+    $('imp-md').value = nodeDataToMd(mind.getData());
+    $('modalImport').classList.add('show');
+    setTimeout(function(){ $('imp-md').focus(); }, 50);
+  };
+
+  $('btnBack').onclick = goBack;
   $('btnImpCancel').onclick = function(){ $('modalImport').classList.remove('show'); };
   $('btnImpConfirm').onclick = function(){
     var md = $('imp-md').value.trim();
@@ -648,18 +726,31 @@ document.addEventListener('DOMContentLoaded', function(){
     try{
       var result = mdToNodeData(md);
       var name = $('imp-name').value.trim() || result.firstH1 || ('笔记 '+(notes.length+1));
-      var id = 'n'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
-      var note = { id:id, name:name, created:Date.now() };
-      notes = loadNotes();
-      notes.unshift(note);
-      saveNotes(notes);
-      localStorage.setItem(LS_PFX+id, JSON.stringify(result));
-      renderList();
-      loadNote(note);
-      $('modalImport').classList.remove('show');
-      setStatus('已导入「'+name+'」', true);
+      if(editMode && curNote){
+        /* 覆盖当前笔记 */
+        curNote.name = name;
+        notes = loadNotes();
+        for(var i=0;i<notes.length;i++) if(notes[i].id===curNote.id) notes[i].name = name;
+        saveNotes(notes);
+        localStorage.setItem(LS_PFX+curNote.id, JSON.stringify(result));
+        $('modalImport').classList.remove('show');
+        renderList();
+        loadNote(curNote);
+        setStatus('已保存「'+name+'」', true);
+      } else {
+        var id = 'n'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+        var note = { id:id, name:name, created:Date.now() };
+        notes = loadNotes();
+        notes.unshift(note);
+        saveNotes(notes);
+        localStorage.setItem(LS_PFX+id, JSON.stringify(result));
+        renderList();
+        loadNote(note);
+        $('modalImport').classList.remove('show');
+        setStatus('已导入「'+name+'」', true);
+      }
     }catch(e){
-      alert('导入失败: '+e.message);
+      alert('操作失败: '+e.message);
     }
   };
 
@@ -686,6 +777,13 @@ document.addEventListener('DOMContentLoaded', function(){
   $('btnCloseSync').onclick = function(){ $('modalSync').classList.remove('show'); };
   $('btnUp').onclick = syncPush;
   $('btnDown').onclick = syncPull;
+
+  document.addEventListener('click', function(e){
+    var el = e.target && e.target.closest ? e.target.closest('[data-note]') : null;
+    if(!el) return;
+    e.preventDefault(); e.stopPropagation();
+    goToNote(el.getAttribute('data-note'));
+  }, true);
 
   $('find').addEventListener('keydown', function(e){
     if(e.key !== 'Enter') return;
