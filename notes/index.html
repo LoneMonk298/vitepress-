@@ -182,36 +182,42 @@ function loadScript(src){
 }
 
 /* ===== Markdown → nodeData ===== */
+/* 行内 HTML：Markdown 链接 + 裸 URL + LaTeX，占位符保护后转义 */
+function inlineHtml(text){
+  text = String(text==null?'':text);
+  var ph = [];
+  function put(html){ ph.push(html); return '\u0000'+(ph.length-1)+'\u0000'; }
+  var escL = function(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); };
+  /* Markdown 链接 [text](url) */
+  text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, function(_, t, u){
+    return put('<a href="'+u.replace(/"/g,'&quot;')+'" target="_blank" rel="noopener" style="color:#667eea;text-decoration:underline">'+escL(t)+'</a>');
+  });
+  /* 裸 URL */
+  text = text.replace(/(https?:\/\/[^\s<>"\'\)\]]+)/g, function(_, u){
+    return put('<a href="'+u.replace(/"/g,'&quot;')+'" target="_blank" rel="noopener" style="color:#667eea;text-decoration:underline">'+escL(u)+'</a>');
+  });
+  /* LaTeX */
+  text = text.replace(/\$\$([\s\S]+?)\$\$|\$([^$\n]+?)\$/g, function(_, disp, inl){
+    var tex = disp!==undefined ? disp : inl;
+    var isDisp = disp!==undefined;
+    try{ return put(window.katex ? katex.renderToString(tex,{throwOnError:false,displayMode:isDisp}) : escL('$'+tex+'$')); }
+    catch(e){ return put(escL('$'+tex+'$')); }
+  });
+  text = escL(text);
+  text = text.replace(/\u0000(\d+)\u0000/g, function(_, i){ return ph[+i]||''; });
+  return text;
+}
+
 function mdToNodeData(md){
   var counter = 0;
   function gid(){ counter++; return 'n'+counter; }
   function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
-  /* LaTeX: $...$ / $$...$$ → KaTeX HTML；无公式返回 null */
-  function texHtml(text){
-    text = String(text||'');
-    if(text.indexOf('$') < 0) return null;
-    var re = /\$\$([\s\S]+?)\$\$|\$([^$\n]+?)\$/g;
-    var out='', last=0, m, found=false;
-    while((m = re.exec(text)) !== null){
-      found = true;
-      out += esc(text.slice(last, m.index));
-      var tex = (m[1] !== undefined) ? m[1] : m[2];
-      var disp = (m[1] !== undefined);
-      try{
-        out += (window.katex ? katex.renderToString(tex, {throwOnError:false, displayMode:disp}) : esc(m[0]));
-      }catch(e){ out += esc(m[0]); }
-      last = re.lastIndex;
-    }
-    if(!found) return null;
-    out += esc(text.slice(last));
-    return out;
-  }
   function mkNode(text){
     text = String(text==null?'':text).trim();
     var n = { id: gid(), topic: text, expanded: true, children: [] };
-    var h = texHtml(text);
-    if(h) n.dangerouslySetInnerHTML = h;
+    var h = inlineHtml(text);
+    if(h && h !== text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')) n.dangerouslySetInnerHTML = h;
     return n;
   }
 
@@ -354,8 +360,22 @@ function renderList(){
 function escapeHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
 /* ===== 导图 ===== */
+/* 递归为每个节点根据 topic 重新生成 dangerouslySetInnerHTML（编辑后 HTML 不丢失） */
+function applyInlineHtml(data){
+  (function walk(n){
+    if(!n) return;
+    var raw = String(n.topic||'');
+    var h = inlineHtml(raw);
+    var plain = raw.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    if(h && h !== plain) n.dangerouslySetInnerHTML = h;
+    else if(n.dangerouslySetInnerHTML) delete n.dangerouslySetInnerHTML;
+    (n.children||[]).forEach(walk);
+  })(data.nodeData);
+}
+
 function initMind(data){
   if(mind){ try{ mind.destroy(); }catch(e){} }
+  applyInlineHtml(data);
   mind = new MindElixir({
     el:'#map', direction:MindElixir.RIGHT, draggable:true, editable:true,
     contextMenu:true, toolBar:true, keypress:true, overflowHidden:false,
