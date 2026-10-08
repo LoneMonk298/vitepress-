@@ -518,8 +518,6 @@ body.dark .cat-badge.cat-pol { background: rgba(190,24,93,0.2); color: #fbcfe8; 
 .review-log-form button { padding: 8px 16px; border-radius: 8px; border: none; background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; font-size: 14px; font-weight: 600; cursor: pointer; }
 .review-log-form button:hover { opacity: 0.9; }
 .review-log-form button:disabled { opacity: 0.5; cursor: not-allowed; }
-.review-logged-btn { font-size: 12px; padding: 8px 14px; border-radius: 8px; border: 1px dashed var(--border); background: var(--bg); color: var(--text2); cursor: pointer; margin-top: 10px; transition: all 0.15s; font-family: inherit; }
-.review-logged-btn:hover { border-color: #10b981; color: #10b981; }
 .review-today { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); }
 .review-today-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
 .review-today-title { font-size: 14px; font-weight: 600; color: var(--text); }
@@ -541,15 +539,7 @@ body.dark .cat-badge.cat-pol { background: rgba(190,24,93,0.2); color: #fbcfe8; 
 .review-status .rs-detail { display: block; margin-top: 3px; font-size: 11px; font-weight: 400; color: var(--text2); }
 .review-logged { margin-top: 14px; }
 /* 今日提交数据 按钮 */
-/* 弹窗 */
-.logged-modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,.5); z-index: 9999; display: flex; align-items: center; justify-content: center; animation: fade-in 0.2s; }
-.logged-modal { background: var(--card); border: 1px solid var(--border); border-radius: 12px; max-width: 500px; width: 90%; max-height: 75vh; display: flex; flex-direction: column; box-shadow: 0 8px 32px rgba(0,0,0,.3); }
-.logged-modal-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; border-bottom: 1px solid var(--border); }
-.logged-modal-head h3 { margin: 0; font-size: 14px; color: var(--text); }
-.logged-modal-close { border: none; background: transparent; color: var(--text2); font-size: 20px; cursor: pointer; padding: 4px 10px; border-radius: 6px; line-height: 1; }
-.logged-modal-close:hover { background: rgba(255,255,255,.08); color: var(--text); }
-.logged-modal-body { padding: 10px 14px; overflow-y: auto; flex: 1; }
-.logged-empty { padding: 24px; text-align: center; color: var(--text2); font-size: 12px; }
+
 /* 列表条目 - 缩小字号 */
 .logged-item { display: flex; align-items: center; gap: 6px; padding: 5px 7px; border-radius: 5px; background: var(--bg); margin-bottom: 4px; }
 .logged-item:last-child { margin-bottom: 0; }
@@ -559,8 +549,7 @@ body.dark .cat-badge.cat-pol { background: rgba(190,24,93,0.2); color: #fbcfe8; 
 .logged-item .logged-meta { font-size: 10px; color: var(--text2); margin-top: 1px; }
 .logged-item .logged-del { border: none; background: transparent; color: var(--text2); font-size: 12px; cursor: pointer; padding: 3px 6px; border-radius: 5px; flex-shrink: 0; opacity: 0.4; transition: opacity 0.15s; }
 .logged-item .logged-del:hover { background: rgba(239,68,68,.12); color: #ef4444; opacity: 1; }
-.logged-item-highlight { animation: highlight-flash 1.5s ease-out; }
-@keyframes highlight-flash { 0% { background: rgba(16,185,129,.2); } 100% { background: var(--bg); } }
+
 @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
 
 /* ===== 主题切换按钮 ===== */
@@ -1269,7 +1258,13 @@ function render() {
   html += '</div>';
   html += '<div class="review-status" id="rv-status"></div>';
   // 今日已登记（当天可见，不用等卡片到期）
-  html += '<button class="review-logged-btn" onclick="window.__openLoggedModal()">今日提交数据 (' + (data.todayLogs ? data.todayLogs.length : 0) + ' 条)</button>';
+  html += '<div class="review-logged">';
+  html += '<div class="review-logged-head">';
+  html += '<span class="review-logged-title">今日已登记</span>';
+  html += '<span class="review-logged-count" id="rv-logged-count">' + (data.todayLogs ? data.todayLogs.length : 0) + ' 条</span>';
+  html += '</div>';
+  html += '<div id="rv-logged-list">' + renderLoggedItems(data.todayLogs) + '</div>';
+  html += '</div>';
   html += '<div class="review-today">';
   html += '<div class="review-today-head">';
   html += '<span class="review-today-title">今日待复习</span>';
@@ -1735,51 +1730,12 @@ window.__loadTodayLogs = async function() {
   } catch(e) {
     console.warn('loadTodayLogs failed:', e);
   }
-  // 更新按钮计数
-  var btn = document.querySelector('.review-logged-btn');
-  if (btn) btn.textContent = '今日提交数据 (' + (data.todayLogs ? data.todayLogs.length : 0) + ' 条)';
+    var cnt = document.getElementById('rv-logged-count');
+  if (cnt) cnt.textContent = (data.todayLogs ? data.todayLogs.length : 0) + ' 条';
   var list = document.getElementById('rv-logged-list');
   if (list) list.innerHTML = renderLoggedItems(data.todayLogs);
 };
 
-// 弹窗：今日提交数据
-window.__openLoggedModal = function(highlightId) {
-  return window.__loadTodayLogs().then(function() {
-    var overlay = document.getElementById('logged-modal-overlay');
-    if (!overlay) {
-      var d = document.createElement('div');
-      d.id = 'logged-modal-overlay';
-      d.className = 'logged-modal-overlay';
-      d.innerHTML = '<div class="logged-modal"><div class="logged-modal-head"><h3>今日提交数据</h3><button class="logged-modal-close" onclick="window.__closeLoggedModal()">×</button></div><div class="logged-modal-body" id="logged-modal-body"></div></div>';
-      d.onclick = function(e) { if (e.target === d) window.__closeLoggedModal(); };
-      document.body.appendChild(d);
-    }
-    document.getElementById('logged-modal-body').innerHTML = window.__renderModalLogged(highlightId);
-  });
-};
-window.__closeLoggedModal = function() {
-  var o = document.getElementById('logged-modal-overlay');
-  if (o) o.remove();
-};
-window.__renderModalLogged = function(highlightId) {
-  var arr = data.todayLogs || [];
-  if (!arr.length) return '<div class="logged-empty">今天还没登记 —— 完成一段学习/背诵后点「登记」，复习计划自动生成</div>';
-  var icons = {'计网':'计网','数据结构':'数结','操作系统':'系统','计组':'计组','数学':'数学','公式':'公式','英语':'英语','政治':'政治'};
-  var html = '';
-  arr.slice().reverse().forEach(function(lg) {
-    var icon = icons[lg.subject] || '';
-    var hl = (highlightId && lg.id === highlightId) ? ' logged-item-highlight' : '';
-    html += '<div class="logged-item' + hl + '">';
-    html += '<span class="logged-icon">' + icon + '</span>';
-    html += '<div class="logged-info">';
-    html += '<div class="logged-title">' + escapeHtml(lg.subject + ' · ' + escapeHtml(lg.chapter)) + '</div>';
-    html += '<div class="logged-meta">' + escapeHtml(lg.log_type) + (lg.note ? ' · ' + escapeHtml(lg.note) : '') + '</div>';
-    html += '</div>';
-    html += '<button class="logged-del" onclick="event.stopPropagation();window.__delLog(' + lg.id + ')" title="删除">✕</button>';
-    html += '</div>';
-  });
-  return html;
-};
 
 // 删除一条日志（连带其复习卡）
 window.__delLog = async function(logId) {
@@ -1789,15 +1745,7 @@ window.__delLog = async function(logId) {
     data.todayLogs = (data.todayLogs || []).filter(function(l) { return l.id !== logId; });
     render();
     window.__loadReviews();
-    // 弹窗如果开着，刷新列表
-    var overlay = document.getElementById('logged-modal-overlay');
-    if (overlay) {
-      var body = document.getElementById('logged-modal-body');
-      body.innerHTML = window.__renderModalLogged(null);
-      if (!data.todayLogs || data.todayLogs.length === 0) {
-        window.__closeLoggedModal();
-      }
-    }
+
   } catch(e) {
     console.warn('delLog failed:', e);
     alert('删除失败：' + e.message);
@@ -1843,12 +1791,12 @@ window.__logProgress = async function() {
           var planTxt = plan.length ? plan.join('、') : '';
           statusEl.className = 'review-status ok';
           statusEl.innerHTML = '已登记「' + escapeHtml(subject + ' · ' + chapter) + '」— 自动生成 ' + result.cards_created + ' 张复习卡<span class="rs-detail">下次复习：' + escapeHtml(planTxt) + '（第 1 次 ' + (result.first_review || '') + '）</span>';
+          // 提交后弹窗反馈
+          window.__openLoggedModal(result.log_id);
         } else {
           statusEl.className = 'review-status ok';
           statusEl.textContent = '已记录「' + subject + ' · ' + chapter + '」（复盘不生成复习卡）';
         }
-        // 提交后弹窗反馈（无条件）
-        window.__openLoggedModal(result.log_id);
       }
     } else {
       var st2 = document.getElementById('rv-status');
