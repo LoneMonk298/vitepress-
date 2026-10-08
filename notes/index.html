@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>笔记导图</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#f5f6f8;--card:#fff;--text:#1f2937;--text2:#6b7280;--bd:#e5e7eb;--pri:#667eea;--ok:#10b981;--err:#ef4444}
+html.dark{--bg:#16171a;--card:#202127;--text:#e5e7eb;--text2:#9ca3af;--bd:#33353d}
+body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--text);height:100vh;overflow:hidden}
+.app{display:flex;height:100vh}
+.sidebar{width:260px;background:var(--card);border-right:1px solid var(--bd);display:flex;flex-direction:column;transition:margin-left .2s}
+.sidebar.hide{margin-left:-260px}
+.side-h{padding:16px;font-weight:700;font-size:15px;border-bottom:1px solid var(--bd);display:flex;justify-content:space-between;align-items:center}
+.side-h small{font-weight:400;color:var(--text2);font-size:11px}
+.side-list{flex:1;overflow-y:auto;padding:8px}
+.note{padding:10px;border-radius:8px;cursor:pointer;font-size:13.5px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;gap:6px;border:1px solid transparent}
+.note:hover{background:var(--bg)}
+.note.on{background:linear-gradient(135deg,#667eea22,#764ba222);color:var(--pri);font-weight:600;border-color:var(--pri)}
+.note .n-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.note .n-meta{font-size:11px;color:var(--text2);white-space:nowrap}
+.note .n-del{border:none;background:transparent;color:var(--text2);cursor:pointer;padding:2px 6px;font-size:14px;border-radius:4px}
+.note .n-del:hover{background:rgba(239,68,68,.12);color:#ef4444}
+.empty-tip{padding:20px;text-align:center;color:var(--text2);font-size:13px;line-height:1.8}
+.main{flex:1;display:flex;flex-direction:column;position:relative;min-width:0}
+.topbar{height:52px;background:var(--card);border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:8px;padding:0 14px;flex:none}
+.topbar .t{font-weight:600;font-size:14px;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+button{font-family:inherit;font-size:12.5px;padding:7px 12px;border-radius:7px;border:1px solid var(--bd);background:var(--card);color:var(--text);cursor:pointer}
+button:hover{border-color:var(--pri);color:var(--pri)}
+button.pri{background:var(--pri);color:#fff;border-color:var(--pri)}
+button.pri:hover{opacity:.9;color:#fff}
+button.ok{background:var(--ok);color:#fff;border-color:var(--ok)}
+button.ok:hover{opacity:.9;color:#fff}
+.ico{padding:7px 10px;font-size:15px}
+#find{padding:6px 10px;border:1px solid var(--bd);border-radius:7px;background:var(--bg);color:var(--text);font-size:12.5px;font-family:inherit;width:140px}
+#map{flex:1;min-height:0;background:var(--bg)}
+.status{position:absolute;left:14px;bottom:12px;font-size:12px;color:var(--text2);background:var(--card);padding:6px 12px;border-radius:20px;box-shadow:0 2px 8px #0001;max-width:70%}
+.modal{position:fixed;inset:0;background:#0007;display:none;align-items:center;justify-content:center;z-index:99;padding:16px}
+.modal.show{display:flex}
+.mbox{background:var(--card);border-radius:12px;padding:22px;width:100%;max-width:520px;max-height:90vh;display:flex;flex-direction:column}
+.mbox h3{font-size:16px;margin-bottom:6px}
+.mbox p{font-size:12.5px;color:var(--text2);margin-bottom:14px;line-height:1.6}
+.mbox label{display:block;font-size:12px;color:var(--text2);margin:10px 0 4px}
+.mbox input,.mbox textarea{width:100%;padding:8px 10px;border:1px solid var(--bd);border-radius:7px;background:var(--bg);color:var(--text);font-size:13px;font-family:inherit}
+.mbox textarea{min-height:280px;font-family:"SF Mono","Consolas","Monaco",monospace;font-size:12.5px;resize:vertical;line-height:1.5;white-space:pre}
+.mbox .row{display:flex;gap:8px;margin-top:18px}
+.mbox .row button{flex:1;padding:9px}
+.mm-status{padding:10px 12px;border-radius:8px;margin-bottom:14px;font-size:13px;line-height:1.5;word-break:break-word;display:none}
+.mm-status.show{display:block}
+.mm-status.info{background:#e6f0fb;color:#1b6fb8;border:1px solid #b6d6f2}
+.mm-status.success{background:#e7f6ec;color:#137a3e;border:1px solid #a8dfbd}
+.mm-status.error{background:#fdeaea;color:#c0392b;border:1px solid #f3c0c0}
+[data-theme="dark"] .mm-status.info{background:#152838;color:#7fb8e8;border-color:#254a68}
+[data-theme="dark"] .mm-status.success{background:#15301f;color:#6fce93;border-color:#2a5a3c}
+[data-theme="dark"] .mm-status.error{background:#331616;color:#f0908a;border-color:#5e2b2b}
+.mm-hint{font-size:12px;color:var(--text2);line-height:1.7;margin:10px 0 0;padding:10px;background:var(--bg);border-radius:8px;border:1px solid var(--bd)}
+.mm-hint code{background:rgba(0,0,0,.06);padding:1px 5px;border-radius:3px;font-family:monospace;font-size:11.5px}
+html.dark .mm-hint code{background:rgba(255,255,255,.08)}
+@media(max-width:768px){
+  .sidebar{position:absolute;z-index:20;height:100%;box-shadow:4px 0 16px #0002}
+  .topbar .t{font-size:13px}
+  #find{width:100px}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar hide" id="sidebar">
+    <div class="side-h">
+      <span>笔记导图</span>
+      <small id="cnt"></small>
+    </div>
+    <div class="side-list" id="list"></div>
+    <div style="padding:10px;border-top:1px solid var(--bd);display:flex;gap:6px">
+      <button id="btnNew" style="flex:1">新建</button>
+      <button id="btnImport" style="flex:1">导入</button>
+    </div>
+  </aside>
+  <main class="main">
+    <div class="topbar">
+      <button class="ico" id="btnSide">&#9776;</button>
+      <span class="t" id="cur">请选择或新建笔记</span>
+      <input id="find" placeholder="搜索节点…">
+      <button id="btnRename">改名</button>
+      <button id="btnExport">导出</button>
+      <button id="btnReset">重置</button>
+      <button id="btnSync">云同步</button>
+    </div>
+    <div id="map"></div>
+    <div class="status" id="status">新建笔记开始</div>
+  </main>
+</div>
+
+<div class="modal" id="modalImport">
+  <div class="mbox">
+    <h3>从 Markdown 导入</h3>
+    <p>粘贴 AI 生成的 Markdown 大纲，自动转成思维导图。<br>
+    第一行 <code style="background:rgba(0,0,0,.06);padding:1px 5px;border-radius:3px;font-family:monospace">## 标题</code> 作为笔记名（可选）。</p>
+    <label>笔记名</label>
+    <input id="imp-name" placeholder="留空则用 Markdown 第一行">
+    <label>Markdown 内容</label>
+    <textarea id="imp-md" placeholder="## 第一章
+- 知识点1
+- 知识点2
+  - 子点1
+  - 子点2"></textarea>
+    <div class="mm-hint">支持：
+      <br>• <code>## / ### / ####</code> 层级
+      <br>• <code>- / * / +</code> 列表
+      <br>• <code>1.</code> 有序列表
+      <br>• <code>[[空格]]</code> 缩进嵌套
+      <br>• <code>[链接文字](https://...)</code> 可点击链接
+    </div>
+    <div class="row">
+      <button id="btnImpCancel">取消</button>
+      <button class="pri" id="btnImpConfirm">导入</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="modalNew">
+  <div class="mbox">
+    <h3>新建笔记</h3>
+    <label>笔记名</label>
+    <input id="new-name" placeholder="例如：线性代数第一章">
+    <div class="row">
+      <button id="btnNewCancel">取消</button>
+      <button class="pri" id="btnNewConfirm">创建</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="modalSync">
+  <div class="mbox">
+    <h3>云同步</h3>
+    <p>使用 jsonbin.io 多设备同步。<br>
+    <b>请用独立的 Bin</b>，勿与 408 导图表共用。</p>
+    <div id="sync-status" class="mm-status"></div>
+    <label>Access Key ID</label>
+    <input autocomplete="off" data-lpignore="true" spellcheck="false" type="text" id="sync-key-id" placeholder="输入你的 Access Key ID">
+    <label>X-Access-Key</label>
+    <input autocomplete="off" data-lpignore="true" spellcheck="false" type="password" id="sync-access-key" placeholder="输入你的 X-Access-Key">
+    <label>Bin ID（第一次使用留空，推送后自动创建）</label>
+    <input autocomplete="off" data-lpignore="true" spellcheck="false" type="text" id="sync-bin-id" placeholder="已有 Bin ID 则填入">
+    <div class="row">
+      <button id="btnDown">从云端拉取</button>
+      <button class="pri" id="btnUp">推送到云端</button>
+    </div>
+    <div id="sync-last-time" style="font-size:12px;color:var(--text2);margin-top:12px"></div>
+    <div class="row"><button id="btnCloseSync">关闭</button></div>
+  </div>
+</div>
+
+<script src="./vendor/mind-elixir.global.js"></script>
+<script>
+(function(){
+var LS_LIST='mm_notes_list', LS_PFX='mm_notes:';
+var mind=null, curNote=null, notes=[], timer=null, lastHit=null;
+
+function $(id){ return document.getElementById(id); }
+function isDark(){ return document.documentElement.classList.contains('dark')||window.matchMedia('(prefers-color-scheme:dark)').matches; }
+if(isDark()) document.documentElement.classList.add('dark');
+
+function setStatus(t,keep){
+  $('status').textContent=t;
+  if(keep) return;
+  clearTimeout(timer); timer=setTimeout(function(){ $('status').textContent=''; },4000);
+}
+
+function loadScript(src){
+  return new Promise(function(res,rej){
+    var s=document.createElement('script');
+    s.src=src; s.onload=function(){ if(s.parentNode) s.parentNode.removeChild(s); res(); };
+    s.onerror=function(){ rej(new Error('无法加载 '+src)); };
+    document.head.appendChild(s);
+  });
+}
+
+/* ===== Markdown → nodeData ===== */
+function mdToNodeData(md){
+  function id(s){ return 'n'+Math.random().toString(36).slice(2,9); }
+  function mkNode(topic, expanded, children){
+    return { id:id(topic+Math.random()), topic:topic, expanded:expanded!==false, children:children||[] };
+  }
+  function parseLink(text){
+    var m = String(text||'').match(/\[([^\]]+)\]\(([^)]+)\)/);
+    if(m) return { topic:m[1], html:'<a href="'+m[2].replace(/"/g,'&quot;')+'" target="_blank" style="color:#667eea;text-decoration:underline">'+escapeHtml(m[1])+'</a>' };
+    return null;
+  }
+  function escapeHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function cleanInline(s){
+    return String(s||'')
+      .replace(/\*\*([^*]+)\*\*/g,'<b>$1</b>')
+      .replace(/\*([^*]+)\*/g,'<i>$1</i>')
+      .replace(/`([^`]+)`/g,'<code style="background:rgba(0,0,0,.06);padding:1px 4px;border-radius:3px;font-family:monospace;font-size:11px">$1</code>');
+  }
+  function hasLink(text){ return /\[[^\]]+\]\([^)]+\)/.test(String(text||'')); }
+  function buildNodeText(raw, depth){
+    if(hasLink(raw)){
+      var lm = raw.match(/\[([^\]]+)\]\(([^)]+)\)/);
+      var before = raw.slice(0, lm.index);
+      var after = raw.slice(lm.index + lm[0].length);
+      var html = escapeHtml(cleanInline(before));
+      html += '<a href="'+lm[2].replace(/"/g,'&quot;')+'" target="_blank" style="color:#667eea;text-decoration:underline">'+escapeHtml(lm[1])+'</a>';
+      html += escapeHtml(cleanInline(after));
+      return { topic: String(raw).replace(/\s/g,' ').trim().slice(0,40), html: html };
+    }
+    return null;
+  }
+  function makeNode(raw, depth){
+    var clean = cleanInline(raw);
+    var n = mkNode(clean.replace(/<[^>]+>/g,'').trim(), depth<2);
+    var nodeHtml = buildNodeText(raw, depth);
+    if(nodeHtml) n.dangerouslySetInnerHTML = nodeHtml.html;
+    return n;
+  }
+
+  var lines = String(md||'').split(/\r?\n/);
+  var root = { id:id('root'), topic:'笔记', expanded:true, children:[] };
+  var stack = [{ depth:-1, node:root }];
+  var firstH1 = '';
+  var i;
+  for(i=0;i<lines.length;i++){
+    var line = lines[i];
+    if(!line || !line.trim()) continue;
+    if(/^\s*<!--/.test(line)) continue;
+    var m = line.match(/^(\s*)(#+)\s+(.+)$/);
+    if(m){
+      var d = m[2].length;
+      var t = m[3].trim();
+      var node = makeNode(t, d);
+      while(stack.length>1 && stack[stack.length-1].depth>=d) stack.pop();
+      var parent = stack[stack.length-1].node;
+      parent.children.push(node);
+      stack.push({ depth:d, node:node });
+      if(d===1 && !firstH1) firstH1 = t;
+      continue;
+    }
+    var ml = line.match(/^(\s*)[-*+]\s+(.+)$/);
+    var mo = line.match(/^(\s*)\d+\.\s+(.+)$/);
+    var m2 = ml || mo;
+    if(m2){
+      var rawIndent = m2[1];
+      var d2 = Math.floor(rawIndent.length/2);
+      var t2 = m2[2].trim();
+      var node2 = makeNode(t2, d2);
+      while(stack.length>1 && stack[stack.length-1].depth>d2) stack.pop();
+      var parent2 = stack[stack.length-1].node;
+      parent2.children.push(node2);
+      stack.push({ depth:d2, node:node2 });
+      continue;
+    }
+  }
+  return { nodeData:root, firstH1:firstH1 };
+}
+
+/* ===== 笔记管理 ===== */
+function loadNotes(){
+  try{ return JSON.parse(localStorage.getItem(LS_LIST)||'[]'); }catch(e){ return []; }
+}
+function saveNotes(arr){
+  localStorage.setItem(LS_LIST, JSON.stringify(arr));
+}
+function newNodeData(){
+  return { nodeData:{ id:'n'+Math.random().toString(36).slice(2,9), topic:'新笔记', expanded:true, children:[] } };
+}
+function loadNote(note){
+  curNote = note;
+  var data = null;
+  try{
+    var local = localStorage.getItem(LS_PFX + note.id);
+    if(local) data = JSON.parse(local);
+  }catch(e){}
+  if(!data) data = newNodeData();
+  $('cur').textContent = note.name;
+  var els = document.querySelectorAll('.note');
+  for(var i=0;i<els.length;i++) els[i].classList.toggle('on', els[i].dataset.id===note.id);
+  $('sidebar').classList.add('hide');
+  try{ if(location.hash !== '#'+note.id) history.replaceState(null,'', '#'+note.id); }catch(e){}
+  setStatus('加载中…', true);
+  initMind(data);
+  setStatus('已载入「'+note.name+'」', true);
+}
+
+function renderList(){
+  var list = $('list');
+  notes = loadNotes();
+  $('cnt').textContent = notes.length ? notes.length+' 篇' : '';
+  if(!notes.length){
+    list.innerHTML = '<div class="empty-tip">还没有笔记<br><br>点下方「新建」或「导入」开始</div>';
+    return;
+  }
+  var h = '';
+  for(var i=0;i<notes.length;i++){
+    var n = notes[i];
+    h += '<div class="note'+(curNote&&curNote.id===n.id?' on':'')+'" data-id="'+n.id+'">'
+      +'<span class="n-name">'+escapeHtml(n.name)+'</span>'
+      +'<span class="n-meta">'+new Date(n.created).toLocaleDateString('zh-CN',{month:'numeric',day:'numeric'})+'</span>'
+      +'<button class="n-del" data-id="'+n.id+'" title="删除">×</button>'
+      +'</div>';
+  }
+  list.innerHTML = h;
+  var els = list.querySelectorAll('.note');
+  for(i=0;i<els.length;i++){
+    (function(el){
+      el.onclick = function(ev){
+        if(ev.target.classList.contains('n-del')) return;
+        var id = el.dataset.id;
+        for(var k=0;k<notes.length;k++) if(notes[k].id===id) loadNote(notes[k]);
+      };
+    })(els[i]);
+  }
+  var dels = list.querySelectorAll('.n-del');
+  for(i=0;i<dels.length;i++){
+    (function(btn){
+      btn.onclick = function(ev){
+        ev.stopPropagation();
+        var id = btn.dataset.id;
+        for(var k=0;k<notes.length;k++) if(notes[k].id===id){
+          if(confirm('删除「'+notes[k].name+'」？此操作不可撤销。')){
+            notes.splice(k,1);
+            saveNotes(notes);
+            localStorage.removeItem(LS_PFX+id);
+            renderList();
+            setStatus('已删除', true);
+          }
+          return;
+        }
+      };
+    })(dels[i]);
+  }
+}
+
+function escapeHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+/* ===== 导图 ===== */
+function initMind(data){
+  if(mind){ try{ mind.destroy(); }catch(e){} }
+  mind = new MindElixir({
+    el:'#map', direction:MindElixir.RIGHT, draggable:true, editable:true,
+    contextMenu:true, toolBar:true, keypress:true, overflowHidden:false,
+    theme: isDark()? MindElixir.DARK_THEME : MindElixir.THEME
+  });
+  mind.init(data);
+  if(mind.toCenter) mind.toCenter();
+  mind.bus.addListener('operation', function(){ queueSave(); });
+}
+function queueSave(){
+  if(!curNote) return;
+  clearTimeout(queueSave._t);
+  queueSave._t = setTimeout(function(){
+    try{
+      localStorage.setItem(LS_PFX + curNote.id, JSON.stringify(mind.getData()));
+      setStatus('已自动保存', true);
+    }catch(e){ setStatus('保存失败：'+e.message); }
+  }, 800);
+}
+
+/* ===== 模糊匹配（同 408） ===== */
+function norm(s){
+  return String(s||'').replace(/[\s\u3000]/g,'').replace(/[·、，,。.：:；;()（）\[\]【】《》"'\/\\-—_]/g,'').toLowerCase();
+}
+function matchScore(topic, kw, loose){
+  var a=norm(topic), b=norm(kw);
+  if(!a||!b) return 0;
+  if(a===b) return 1000;
+  if(a.indexOf(b)>=0) return 600 + Math.min(b.length,40)*4;
+  if(b.indexOf(a)>=0) return 450 + Math.min(a.length,40)*4;
+  var set={}, i, hit=0;
+  for(i=0;i<b.length;i++) set[b[i]]=1;
+  for(i=0;i<a.length;i++) if(set[a[i]]) hit++;
+  var r = hit/Math.max(a.length,b.length);
+  if(r>=0.55) return Math.round(400*r);
+  if(loose && b.length>=4){
+    var all=true;
+    for(i=0;i<b.length;i++){ if(a.indexOf(b[i])<0){ all=false; break; } }
+    if(all) return 250 + Math.min(b.length,20)*3;
+  }
+  return 0;
+}
+function splitKeywords(kw){
+  return String(kw||'').split(/[\u548c\u4e0e\u53ca\u3001,+;\uff1b]/).map(function(s){ return s.trim(); }).filter(function(s){ return norm(s).length>=3; });
+}
+function locateOne(rootNode, kw, loose){
+  var best=null;
+  (function walk(n, path){
+    if(!n) return;
+    var sc=matchScore(n.topic, kw, loose);
+    if(sc>0){
+      var cand={node:n, path:path.concat([n]), score:sc, depth:path.length};
+      if(!best || cand.score>best.score || (cand.score>=best.score*0.95 && cand.depth>best.depth)) best=cand;
+    }
+    var ch=n.children||[];
+    for(var i=0;i<ch.length;i++) walk(ch[i], path.concat([n]));
+  })(rootNode, []);
+  return best;
+}
+function locateInData(rootNode, keyword){
+  var full=locateOne(rootNode, keyword, false);
+  if(full) return full;
+  var best=null, subs=splitKeywords(keyword);
+  for(var i=0;i<subs.length;i++){
+    var r=locateOne(rootNode, subs[i], true);
+    if(r && (!best || r.score>best.score)) best=r;
+  }
+  return best;
+}
+function applyFocus(rootNode, hit){
+  var onPath={};
+  for(var i=0;i<hit.path.length;i++) onPath[hit.path[i].id]=1;
+  (function walk(n, depth){
+    if(n.children && n.children.length) n.expanded = (depth<2) || !!onPath[n.id];
+    var ch=n.children||[];
+    for(var j=0;j<ch.length;j++) walk(ch[j], depth+1);
+  })(rootNode, 0);
+  hit.node.style = Object.assign({}, hit.node.style||{}, { background:'#fde047', color:'#1f2937', fontWeight:'600', border:'2px solid #eab308' });
+}
+function focusNodeElement(nodeId){
+  setTimeout(function(){
+    var el=document.querySelector('[data-nodeid="'+nodeId+'"]');
+    if(!el) return;
+    try{ el.scrollIntoView({block:'center', inline:'center', behavior:'smooth'}); }catch(e){}
+    el.classList.add('mm-hit');
+  }, 500);
+}
+
+/* ===== 导出 ===== */
+function exportNote(){
+  if(!curNote||!mind) return;
+  var data = mind.getData();
+  var blob = new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = (curNote.name||'note')+'.json';
+  a.click();
+  URL.revokeObjectURL(url);
+  setStatus('已导出 JSON', true);
+}
+
+/* ===== 云同步 ===== */
+var SYNC_CONFIG_KEY='mm_notes_sync_config';
+var syncConfig = { keyId:'', accessKey:'', binId:'' };
+function loadSyncConfig(){
+  var saved = localStorage.getItem(SYNC_CONFIG_KEY);
+  if(saved) try{ syncConfig = JSON.parse(saved); }catch(e){}
+}
+function saveSyncConfigLocal(){ localStorage.setItem(SYNC_CONFIG_KEY, JSON.stringify(syncConfig)); }
+function updateSyncStatus(type, msg){
+  var el=$('sync-status');
+  el.className='mm-status'+(type?' '+type:'');
+  if(msg){ el.textContent=msg; el.classList.add('show'); }
+  else{ el.textContent=''; el.classList.remove('show'); }
+}
+
+function buildSyncPayload(){
+  var payload={}, n=0;
+  for(var k in localStorage){
+    if(k.indexOf(LS_PFX)===0){
+      try{ payload[k.slice(LS_PFX.length)] = JSON.parse(localStorage.getItem(k)); n++; }catch(e){}
+    }
+  }
+  return { payload:payload, count:n };
+}
+
+async function syncPush(){
+  saveSyncConfig();
+  if(!syncConfig.keyId || !syncConfig.accessKey){
+    updateSyncStatus('error','请先填写两个 Key');
+    return;
+  }
+  var p = buildSyncPayload();
+  if(!p.count){
+    updateSyncStatus('error','本机还没有任何笔记数据');
+    return;
+  }
+  updateSyncStatus('info','正在推送…');
+  try{
+    var response;
+    if(syncConfig.binId){
+      response = await fetch('https://api.jsonbin.io/v3/b/'+syncConfig.binId,{
+        method:'PUT',
+        headers:{ 'X-Access-Key':syncConfig.accessKey, 'Content-Type':'application/json' },
+        body: JSON.stringify(p.payload)
+      });
+    } else {
+      response = await fetch('https://api.jsonbin.io/v3/b',{
+        method:'POST',
+        headers:{
+          'X-Access-Key':syncConfig.accessKey,
+          'Content-Type':'application/json',
+          'X-Bin-Name':'mm_notes_data',
+          'X-Bin-Private':'true'
+        },
+        body: JSON.stringify(p.payload)
+      });
+    }
+    if(!response.ok) throw new Error('失败: '+response.status);
+    if(!syncConfig.binId){
+      var result = await response.json();
+      syncConfig.binId = result.metadata.id;
+      $('sync-bin-id').value = syncConfig.binId;
+      saveSyncConfigLocal();
+      updateSyncStatus('success','创建成功！Bin ID: '+syncConfig.binId+'（请保存）');
+    } else {
+      updateSyncStatus('success','推送成功！'+p.count+' 篇笔记已同步');
+    }
+    var now = new Date().toLocaleString('zh-CN');
+    localStorage.setItem('mm_notes_last_sync', now);
+    $('sync-last-time').textContent = '上次同步: '+now;
+  }catch(e){
+    console.error(e);
+    updateSyncStatus('error','推送失败: '+e.message);
+  }
+}
+
+async function syncPull(){
+  saveSyncConfig();
+  if(!syncConfig.keyId || !syncConfig.accessKey){
+    updateSyncStatus('error','请先填写两个 Key');
+    return;
+  }
+  if(!syncConfig.binId){
+    updateSyncStatus('error','请先填写 Bin ID（首次使用请先推送）');
+    return;
+  }
+  updateSyncStatus('info','正在拉取…');
+  try{
+    var response = await fetch('https://api.jsonbin.io/v3/b/'+syncConfig.binId+'/latest',{
+      method:'GET',
+      headers:{ 'X-Access-Key':syncConfig.accessKey }
+    });
+    if(!response.ok) throw new Error('拉取失败: '+response.status);
+    var result = await response.json();
+    if(!result.record) throw new Error('数据格式不正确');
+    if(!confirm('用云端数据覆盖本地？此操作不可撤销。')){
+      updateSyncStatus('info','已取消');
+      return;
+    }
+    var n=0;
+    for(var f in result.record){
+      localStorage.setItem(LS_PFX+f, JSON.stringify(result.record[f]));
+      n++;
+    }
+    updateSyncStatus('success','拉取成功！已载入 '+n+' 篇笔记');
+    renderList();
+    if(curNote) loadNote(curNote);
+    var now = new Date().toLocaleString('zh-CN');
+    localStorage.setItem('mm_notes_last_sync', now);
+    $('sync-last-time').textContent = '上次同步: '+now;
+  }catch(e){
+    console.error(e);
+    updateSyncStatus('error','拉取失败: '+e.message);
+  }
+}
+
+function openSyncModal(){
+  loadSyncConfig();
+  $('sync-key-id').value = syncConfig.keyId || '';
+  $('sync-access-key').value = syncConfig.accessKey || '';
+  $('sync-bin-id').value = syncConfig.binId || '';
+  updateSyncStatus('','');
+  var lastSync = localStorage.getItem('mm_notes_last_sync');
+  $('sync-last-time').textContent = lastSync ? '上次同步: '+lastSync : '';
+  $('modalSync').classList.add('show');
+}
+function saveSyncConfig(){
+  syncConfig.keyId = $('sync-key-id').value.trim();
+  syncConfig.accessKey = $('sync-access-key').value.trim();
+  syncConfig.binId = $('sync-bin-id').value.trim();
+  saveSyncConfigLocal();
+}
+
+/* ===== 初始化 ===== */
+document.addEventListener('DOMContentLoaded', function(){
+  $('btnSide').onclick = function(){
+    $('sidebar').classList.toggle('hide');
+  };
+
+  $('btnNew').onclick = function(){
+    $('new-name').value = '';
+    $('modalNew').classList.add('show');
+    setTimeout(function(){ $('new-name').focus(); }, 50);
+  };
+  $('btnNewConfirm').onclick = function(){
+    var name = $('new-name').value.trim() || '未命名笔记';
+    var id = 'n'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+    var note = { id:id, name:name, created:Date.now() };
+    notes = loadNotes();
+    notes.unshift(note);
+    saveNotes(notes);
+    renderList();
+    loadNote(note);
+    $('modalNew').classList.remove('show');
+  };
+  $('btnNewCancel').onclick = function(){ $('modalNew').classList.remove('show'); };
+
+  $('btnImport').onclick = function(){
+    $('imp-name').value = '';
+    $('imp-md').value = '';
+    $('modalImport').classList.add('show');
+    setTimeout(function(){ $('imp-md').focus(); }, 50);
+  };
+  $('btnImpCancel').onclick = function(){ $('modalImport').classList.remove('show'); };
+  $('btnImpConfirm').onclick = function(){
+    var md = $('imp-md').value.trim();
+    if(!md){ alert('请粘贴 Markdown 内容'); return; }
+    try{
+      var result = mdToNodeData(md);
+      var name = $('imp-name').value.trim() || result.firstH1 || '导入笔记';
+      var id = 'n'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+      var note = { id:id, name:name, created:Date.now() };
+      notes = loadNotes();
+      notes.unshift(note);
+      saveNotes(notes);
+      localStorage.setItem(LS_PFX+id, JSON.stringify(result));
+      renderList();
+      loadNote(note);
+      $('modalImport').classList.remove('show');
+      setStatus('已导入「'+name+'」', true);
+    }catch(e){
+      alert('导入失败: '+e.message);
+    }
+  };
+
+  $('btnRename').onclick = function(){
+    if(!curNote) return;
+    var name = prompt('新名称', curNote.name);
+    if(name && name !== curNote.name){
+      curNote.name = name;
+      notes = loadNotes();
+      for(var i=0;i<notes.length;i++) if(notes[i].id===curNote.id) notes[i].name=name;
+      saveNotes(notes);
+      $('cur').textContent = curNote.name;
+      renderList();
+    }
+  };
+  $('btnExport').onclick = exportNote;
+  $('btnReset').onclick = function(){
+    if(!curNote) return;
+    if(!confirm('放弃本机修改，重置为空？')) return;
+    localStorage.removeItem(LS_PFX+curNote.id);
+    loadNote(curNote);
+  };
+  $('btnSync').onclick = openSyncModal;
+  $('btnCloseSync').onclick = function(){ $('modalSync').classList.remove('show'); };
+  $('btnUp').onclick = syncPush;
+  $('btnDown').onclick = syncPull;
+
+  $('find').addEventListener('keydown', function(e){
+    if(e.key !== 'Enter') return;
+    var kw = this.value.trim();
+    if(!kw || !mind || !curNote){ setStatus('请先选择笔记'); return; }
+    var hit = locateInData(mind.getData().nodeData, kw);
+    if(!hit){ setStatus('未找到「'+kw+'」'); return; }
+    var d = mind.getData();
+    applyFocus(d.nodeData, hit);
+    initMind(d);
+    focusNodeElement(hit.node.id);
+    setStatus('已定位「'+String(hit.node.topic).slice(0,20)+'」', true);
+  });
+
+  renderList();
+  if(!notes.length){
+    setStatus('点左侧「新建」或「导入」开始', true);
+    return;
+  }
+  var want = decodeURIComponent((location.hash||'').replace('#',''));
+  if(want){
+    for(var i=0;i<notes.length;i++){
+      if(notes[i].id===want){ loadNote(notes[i]); break; }
+    }
+  } else {
+    loadNote(notes[0]);
+  }
+  if(window.innerWidth>768) $('sidebar').classList.remove('hide');
+});
+})();
+</script>
+</body>
+</html>
