@@ -217,9 +217,14 @@ function mdToNodeData(md){
   }
 
   var lines = String(md||'').split(/\r?\n/);
-  var root = { id:id('root'), topic:'笔记', expanded:true, children:[] };
-  var stack = [{ depth:-1, node:root }];
+  var root = null;
   var firstH1 = '';
+  var stack = [];
+  var counter = 0;
+  function genId(){ counter++; return 'n'+counter; }
+  function mkNode2(topic, depth, children){
+    return { id: genId(), topic: topic, expanded: true, children: children||[] };
+  }
   var i;
   for(i=0;i<lines.length;i++){
     var line = lines[i];
@@ -229,12 +234,26 @@ function mdToNodeData(md){
     if(m){
       var d = m[2].length;
       var t = m[3].trim();
-      var node = makeNode(t, d);
+      var node = mkNode2(t, d);
+      // 链接处理
+      var lm = t.match(/\[([^\]]+)\]\(([^)]+)\)/);
+      if(lm){
+        node.dangerouslySetInnerHTML = '<a href="'+lm[2].replace(/"/g,'&quot;')+'" target="_blank" style="color:#667eea;text-decoration:underline">'+escapeHtml(lm[1])+'</a>';
+      }
+      if(d===1 && !root){
+        root = node;
+        stack = [{ depth:1, node:node }];
+        firstH1 = t;
+        continue;
+      }
+      if(!root){
+        root = { id: genId(), topic: '笔记', expanded: true, children: [] };
+        stack = [{ depth:0, node:root }];
+      }
       while(stack.length>1 && stack[stack.length-1].depth>=d) stack.pop();
       var parent = stack[stack.length-1].node;
       parent.children.push(node);
       stack.push({ depth:d, node:node });
-      if(d===1 && !firstH1) firstH1 = t;
       continue;
     }
     var ml = line.match(/^(\s*)[-*+]\s+(.+)$/);
@@ -244,7 +263,15 @@ function mdToNodeData(md){
       var rawIndent = m2[1];
       var d2 = Math.floor(rawIndent.length/2);
       var t2 = m2[2].trim();
-      var node2 = makeNode(t2, d2);
+      if(!root){
+        root = { id: genId(), topic: '笔记', expanded: true, children: [] };
+        stack = [{ depth:0, node:root }];
+      }
+      var node2 = mkNode2(t2, d2);
+      var lm2 = t2.match(/\[([^\]]+)\]\(([^)]+)\)/);
+      if(lm2){
+        node2.dangerouslySetInnerHTML = '<a href="'+lm2[2].replace(/"/g,'&quot;')+'" target="_blank" style="color:#667eea;text-decoration:underline">'+escapeHtml(lm2[1])+'</a>';
+      }
       while(stack.length>1 && stack[stack.length-1].depth>d2) stack.pop();
       var parent2 = stack[stack.length-1].node;
       parent2.children.push(node2);
@@ -252,6 +279,7 @@ function mdToNodeData(md){
       continue;
     }
   }
+  if(!root) root = { id: genId(), topic: '笔记', expanded: true, children: [] };
   return { nodeData:root, firstH1:firstH1 };
 }
 
@@ -608,7 +636,7 @@ document.addEventListener('DOMContentLoaded', function(){
     if(!md){ alert('请粘贴 Markdown 内容'); return; }
     try{
       var result = mdToNodeData(md);
-      var name = $('imp-name').value.trim() || result.firstH1 || '导入笔记';
+      var name = $('imp-name').value.trim() || result.firstH1 || ('笔记 '+(notes.length+1));
       var id = 'n'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
       var note = { id:id, name:name, created:Date.now() };
       notes = loadNotes();
