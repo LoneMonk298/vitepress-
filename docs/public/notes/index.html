@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>笔记导图</title>
+<link rel="stylesheet" href="./vendor/katex/katex.min.css">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{--bg:#f5f6f8;--card:#fff;--text:#1f2937;--text2:#6b7280;--bd:#e5e7eb;--pri:#667eea;--ok:#10b981;--err:#ef4444}
@@ -35,6 +36,8 @@ button.ok:hover{opacity:.9;color:#fff}
 .ico{padding:7px 10px;font-size:15px}
 #find{padding:6px 10px;border:1px solid var(--bd);border-radius:7px;background:var(--bg);color:var(--text);font-size:12.5px;font-family:inherit;width:140px}
 #map{flex:1;min-height:0;background:var(--bg)}
+  .katex{font-size:1.02em}
+  .mind-elixir .katex-display{margin:0}
 .status{position:absolute;left:14px;bottom:12px;font-size:12px;color:var(--text2);background:var(--card);padding:6px 12px;border-radius:20px;box-shadow:0 2px 8px #0001;max-width:70%}
 .modal{position:fixed;inset:0;background:#0007;display:none;align-items:center;justify-content:center;z-index:99;padding:16px}
 .modal.show{display:flex}
@@ -153,6 +156,7 @@ html.dark .mm-hint code{background:rgba(255,255,255,.08)}
 </div>
 
 <script src="./vendor/mind-elixir.global.js"></script>
+<script src="./vendor/katex/katex.min.js"></script>
 <script>
 (function(){
 var LS_LIST='mm_notes_list', LS_PFX='mm_notes:';
@@ -179,108 +183,95 @@ function loadScript(src){
 
 /* ===== Markdown → nodeData ===== */
 function mdToNodeData(md){
-  function id(s){ return 'n'+Math.random().toString(36).slice(2,9); }
-  function mkNode(topic, expanded, children){
-    return { id:id(topic+Math.random()), topic:topic, expanded:expanded!==false, children:children||[] };
-  }
-  function parseLink(text){
-    var m = String(text||'').match(/\[([^\]]+)\]\(([^)]+)\)/);
-    if(m) return { topic:m[1], html:'<a href="'+m[2].replace(/"/g,'&quot;')+'" target="_blank" style="color:#667eea;text-decoration:underline">'+escapeHtml(m[1])+'</a>' };
-    return null;
-  }
-  function escapeHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-  function cleanInline(s){
-    return String(s||'')
-      .replace(/\*\*([^*]+)\*\*/g,'<b>$1</b>')
-      .replace(/\*([^*]+)\*/g,'<i>$1</i>')
-      .replace(/`([^`]+)`/g,'<code style="background:rgba(0,0,0,.06);padding:1px 4px;border-radius:3px;font-family:monospace;font-size:11px">$1</code>');
-  }
-  function hasLink(text){ return /\[[^\]]+\]\([^)]+\)/.test(String(text||'')); }
-  function buildNodeText(raw, depth){
-    if(hasLink(raw)){
-      var lm = raw.match(/\[([^\]]+)\]\(([^)]+)\)/);
-      var before = raw.slice(0, lm.index);
-      var after = raw.slice(lm.index + lm[0].length);
-      var html = escapeHtml(cleanInline(before));
-      html += '<a href="'+lm[2].replace(/"/g,'&quot;')+'" target="_blank" style="color:#667eea;text-decoration:underline">'+escapeHtml(lm[1])+'</a>';
-      html += escapeHtml(cleanInline(after));
-      return { topic: String(raw).replace(/\s/g,' ').trim().slice(0,40), html: html };
+  var counter = 0;
+  function gid(){ counter++; return 'n'+counter; }
+  function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  /* LaTeX: $...$ / $$...$$ → KaTeX HTML；无公式返回 null */
+  function texHtml(text){
+    text = String(text||'');
+    if(text.indexOf('$') < 0) return null;
+    var re = /\$\$([\s\S]+?)\$\$|\$([^$\n]+?)\$/g;
+    var out='', last=0, m, found=false;
+    while((m = re.exec(text)) !== null){
+      found = true;
+      out += esc(text.slice(last, m.index));
+      var tex = (m[1] !== undefined) ? m[1] : m[2];
+      var disp = (m[1] !== undefined);
+      try{
+        out += (window.katex ? katex.renderToString(tex, {throwOnError:false, displayMode:disp}) : esc(m[0]));
+      }catch(e){ out += esc(m[0]); }
+      last = re.lastIndex;
     }
-    return null;
+    if(!found) return null;
+    out += esc(text.slice(last));
+    return out;
   }
-  function makeNode(raw, depth){
-    var clean = cleanInline(raw);
-    var n = mkNode(clean.replace(/<[^>]+>/g,'').trim(), depth<2);
-    var nodeHtml = buildNodeText(raw, depth);
-    if(nodeHtml) n.dangerouslySetInnerHTML = nodeHtml.html;
+  function mkNode(text){
+    text = String(text==null?'':text).trim();
+    var n = { id: gid(), topic: text, expanded: true, children: [] };
+    var h = texHtml(text);
+    if(h) n.dangerouslySetInnerHTML = h;
     return n;
   }
 
   var lines = String(md||'').split(/\r?\n/);
-  var root = null;
-  var firstH1 = '';
-  var stack = [];
-  var counter = 0;
-  function genId(){ counter++; return 'n'+counter; }
-  function mkNode2(topic, depth, children){
-    return { id: genId(), topic: topic, expanded: true, children: children||[] };
-  }
-  var i;
-  for(i=0;i<lines.length;i++){
+  var items = [];
+  for(var i=0;i<lines.length;i++){
     var line = lines[i];
     if(!line || !line.trim()) continue;
     if(/^\s*<!--/.test(line)) continue;
-    var m = line.match(/^(\s*)(#+)\s+(.+)$/);
-    if(m){
-      var d = m[2].length;
-      var t = m[3].trim();
-      var node = mkNode2(t, d);
-      // 链接处理
-      var lm = t.match(/\[([^\]]+)\]\(([^)]+)\)/);
-      if(lm){
-        node.dangerouslySetInnerHTML = '<a href="'+lm[2].replace(/"/g,'&quot;')+'" target="_blank" style="color:#667eea;text-decoration:underline">'+escapeHtml(lm[1])+'</a>';
-      }
-      if(d===1 && !root){
-        root = node;
-        stack = [{ depth:1, node:node }];
-        firstH1 = t;
-        continue;
-      }
-      if(!root){
-        root = { id: genId(), topic: '笔记', expanded: true, children: [] };
-        stack = [{ depth:0, node:root }];
-      }
-      while(stack.length>1 && stack[stack.length-1].depth>=d) stack.pop();
-      var parent = stack[stack.length-1].node;
-      parent.children.push(node);
-      stack.push({ depth:d, node:node });
-      continue;
-    }
-    var ml = line.match(/^(\s*)[-*+]\s+(.+)$/);
-    var mo = line.match(/^(\s*)\d+\.\s+(.+)$/);
-    var m2 = ml || mo;
-    if(m2){
-      var rawIndent = m2[1];
-      var d2 = Math.floor(rawIndent.length/2);
-      var t2 = m2[2].trim();
-      if(!root){
-        root = { id: genId(), topic: '笔记', expanded: true, children: [] };
-        stack = [{ depth:0, node:root }];
-      }
-      var node2 = mkNode2(t2, d2);
-      var lm2 = t2.match(/\[([^\]]+)\]\(([^)]+)\)/);
-      if(lm2){
-        node2.dangerouslySetInnerHTML = '<a href="'+lm2[2].replace(/"/g,'&quot;')+'" target="_blank" style="color:#667eea;text-decoration:underline">'+escapeHtml(lm2[1])+'</a>';
-      }
-      while(stack.length>1 && stack[stack.length-1].depth>d2) stack.pop();
-      var parent2 = stack[stack.length-1].node;
-      parent2.children.push(node2);
-      stack.push({ depth:d2, node:node2 });
-      continue;
-    }
+    var s = line.replace(/\t/g, '  ');
+    var mh = s.match(/^(\s*)(#+)\s+(.+?)\s*$/);
+    if(mh){ items.push({ indent: mh[1].length, text: mh[3], kind:'h', lvl: mh[2].length }); continue; }
+    var ml = s.match(/^(\s*)(?:[-*+]|\d+[.)])\s+(.+?)\s*$/);
+    if(ml){ items.push({ indent: ml[1].length, text: ml[2], kind:'l', lvl: 0 }); continue; }
   }
-  if(!root) root = { id: genId(), topic: '笔记', expanded: true, children: [] };
-  return { nodeData:root, firstH1:firstH1 };
+  if(!items.length) return { nodeData: mkNode('空笔记'), firstH1: '' };
+
+  var hasH = items.some(function(it){ return it.kind==='h'; });
+  var hasL = items.some(function(it){ return it.kind==='l'; });
+
+  if(hasL && !hasH){
+    /* 纯列表：缩进归一化（自动兼容 2/4 空格） */
+    var inds = [];
+    items.forEach(function(it){ if(inds.indexOf(it.indent)<0) inds.push(it.indent); });
+    inds.sort(function(a,b){return a-b;});
+    items.forEach(function(it){ it.depth = inds.indexOf(it.indent); });
+  } else if(hasH && !hasL){
+    /* 纯标题：按 # 层级归一 */
+    var lvls = [];
+    items.forEach(function(it){ if(lvls.indexOf(it.lvl)<0) lvls.push(it.lvl); });
+    lvls.sort(function(a,b){return a-b;});
+    items.forEach(function(it){ it.depth = lvls.indexOf(it.lvl); });
+  } else {
+    /* 混合：标题按层级，列表 = 最近标题 depth + 1 + 缩进序 */
+    var lvls2 = [];
+    items.forEach(function(it){ if(it.kind==='h' && lvls2.indexOf(it.lvl)<0) lvls2.push(it.lvl); });
+    lvls2.sort(function(a,b){return a-b;});
+    var curH = -1, listInds = [];
+    items.forEach(function(it){
+      if(it.kind==='h'){ it.depth = lvls2.indexOf(it.lvl); curH = it.depth; }
+      else { if(listInds.indexOf(it.indent)<0) listInds.push(it.indent); }
+    });
+    listInds.sort(function(a,b){return a-b;});
+    items.forEach(function(it){
+      if(it.kind==='l') it.depth = (curH<0?0:curH) + 1 + listInds.indexOf(it.indent);
+    });
+  }
+
+  /* 建树：第一个节点作根（不建占位） */
+  var root = mkNode(items[0].text);
+  var stack = [{ depth: items[0].depth, node: root }];
+  for(var k=1;k<items.length;k++){
+    var it = items[k];
+    while(stack.length>1 && stack[stack.length-1].depth >= it.depth) stack.pop();
+    var parent = stack[stack.length-1].node;
+    var node = mkNode(it.text);
+    parent.children.push(node);
+    stack.push({ depth: it.depth, node: node });
+  }
+  return { nodeData: root, firstH1: items[0].text || '' };
 }
 
 /* ===== 笔记管理 ===== */
