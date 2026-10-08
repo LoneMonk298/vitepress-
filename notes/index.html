@@ -119,6 +119,7 @@ html.dark .mm-hint code{background:rgba(255,255,255,.08)}
       <br>• <code>[文字](https://...)</code> 外链
       <br>• <code>[[目标笔记名]]</code> 跳到另一篇笔记
       <br>• <code>[文字](note:目标笔记名)</code> 同上（可改显示文字）
+      <br>• <code>![说明](图片地址)</code> 插入图片（可写 <code>=300x200</code> 指定尺寸）
     </div>
     <div class="row">
       <button id="btnImpCancel">取消</button>
@@ -199,6 +200,15 @@ function inlineHtml(text){
   var ph = [];
   function put(html){ ph.push(html); return '\u0000'+(ph.length-1)+'\u0000'; }
   var escL = function(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); };
+  /* Markdown 图片 ![alt](url) 或 ![alt](url =300x200)（必须在链接之前） */
+  text = text.replace(/!\[([^\]]*)\]\(([^)\s]+)(?:\s*=(\d+)x(\d+))?\)/g, function(_, alt, u, w, h){
+    var url = u.replace(/"/g,'&quot;');
+    var a = escL(alt).replace(/"/g,'&quot;');
+    var st = 'max-width:100%;border-radius:6px;display:block;margin:2px 0;';
+    if(w && h) st += 'width:'+w+'px;height:'+h+'px;object-fit:contain;';
+    else st += 'max-height:170px;';
+    return put('<img src="'+url+'" alt="'+a+'" style="'+st+'" loading="lazy">');
+  });
   /* 笔记跳转 [[目标笔记名]] */
   text = text.replace(/\[\[([^\]]+)\]\]/g, function(_, nm){
     nm = nm.trim();
@@ -443,6 +453,25 @@ function initMind(data){
   mind.init(data);
   if(mind.toCenter) mind.toCenter();
   mind.bus.addListener('operation', function(){ queueSave(); });
+  /* 图片异步加载 → 节点宽度会变，重算布局（防溢出） */
+  try{
+    var imgs = document.querySelectorAll('#map img');
+    for(var q=0;q<imgs.length;q++){
+      (function(im){
+        if(im.complete && im.naturalWidth) return;
+        im.addEventListener('load', scheduleLayoutRefresh);
+        im.addEventListener('error', function(){ im.style.display = 'none'; scheduleLayoutRefresh(); });
+      })(imgs[q]);
+    }
+  }catch(e){}
+}
+var _refreshTimer = null;
+function scheduleLayoutRefresh(){
+  if(_refreshTimer) return;
+  _refreshTimer = setTimeout(function(){
+    _refreshTimer = null;
+    try{ if(mind && mind.refresh) mind.refresh(); }catch(e){}
+  }, 150);
 }
 function queueSave(){
   if(!curNote) return;
