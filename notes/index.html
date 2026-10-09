@@ -45,6 +45,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei
 .note-move{padding:2px 6px;border:none;background:transparent;cursor:pointer;font-size:13px;color:var(--text2);border-radius:4px;opacity:0}
 .note:hover .note-move{opacity:1}
 .note-move:hover{color:#667eea;background:rgba(102,126,234,.1)}
+.tbar-group{display:flex;gap:3px;align-items:center;padding:0 4px;border-left:1px solid var(--bd);margin-left:2px}
+.tbar-group button{padding:5px 7px;font-size:12px}
+.zoom-ic{font-size:14px;font-weight:600;line-height:1}
+.zoom-val{font-size:11px;color:var(--text2);min-width:38px;text-align:center;font-variant-numeric:tabular-nums}
+.focus-badge{font-size:11px;padding:2px 7px;border-radius:4px;background:#f59e0b;color:#fff;font-weight:600;animation:none}
+.focus-badge.hidden{display:none}
 .empty-tip{padding:20px;text-align:center;color:var(--text2);font-size:13px;line-height:1.8}
 .main{flex:1;display:flex;flex-direction:column;position:relative;min-width:0}
 .topbar{height:52px;background:var(--card);border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:8px;padding:0 14px;flex:none}
@@ -108,7 +114,17 @@ html.dark .mm-hint code{background:rgba(255,255,255,.08)}
       <button class="ico" id="btnSide">&#9776;</button>
       <span class="t" id="cur">请选择或新建笔记</span>
       <button id="btnBack" title="返回上一个笔记">返回</button>
+      <span class="focus-badge hidden" id="focusBadge">焦点模式</span>
       <input id="find" placeholder="搜索节点…">
+      <div class="tbar-group" title="视图控制">
+        <button id="btnExpandAll" class="zoom-ic" title="全部展开 (Ctrl+E)">⊕</button>
+        <button id="btnCollapseAll" class="zoom-ic" title="全部折叠 (Ctrl+Shift+E)">⊖</button>
+        <button id="btnZoomOut" class="zoom-ic" title="缩小 (Ctrl+-)">−</button>
+        <span class="zoom-val" id="zoomVal">100%</span>
+        <button id="btnZoomIn" class="zoom-ic" title="放大 (Ctrl++)">+</button>
+        <button id="btnFit" class="zoom-ic" title="适配视图 (Ctrl+0)">⤢</button>
+      </div>
+      <button id="btnFocus" title="聚焦选中节点 (Ctrl+F)">聚焦</button>
       <button id="btnRename">改名</button>
       <button id="btnEditSrc">编辑源</button>
       <button id="btnExport">导出</button>
@@ -355,6 +371,29 @@ function saveNotes(arr){
 function newNodeData(){
   return { nodeData:{ id:'n'+Math.random().toString(36).slice(2,9), topic:'新笔记', expanded:true, children:[] } };
 }
+function bindViewControls(){
+  function on(id, fn){ var b = $(id); if(b) b.onclick = function(e){ e.stopPropagation(); fn(); }; }
+  on('btnExpandAll', function(){ setAllExpanded(true); setStatus('已展开全部', true); });
+  on('btnCollapseAll', function(){ setAllExpanded(false); setStatus('已折叠全部', true); });
+  on('btnZoomIn', function(){ setZoom(getZoom() + 0.15); });
+  on('btnZoomOut', function(){ setZoom(getZoom() - 0.15); });
+  on('btnFit', function(){ fitView(); });
+  on('btnFocus', function(){ if(mind && mind.isFocusMode) exitFocus(); else focusSelected(); });
+
+  /* Ctrl+滚轮缩放（原生 Ctrl+滚轮已被库拦截，这里补一层防止浏览器缩放） */
+  var map = document.getElementById('map');
+  if(map && !map._zoomWheel){
+    map._zoomWheel = true;
+    map.addEventListener('wheel', function(e){
+      if(!(e.ctrlKey || e.metaKey)) return;
+      e.preventDefault();
+      var d = e.deltaY > 0 ? -0.1 : 0.1;
+      setZoom(getZoom() + d);
+    }, { passive:false });
+  }
+}
+
+
 function loadNote(note){
   curNote = note;
   var data = null;
@@ -588,7 +627,148 @@ function initMind(data){
   mind.init(data);
   if(mind.toCenter) mind.toCenter();
   mind.bus.addListener('operation', function(){ queueSave(); });
-  /* 图片异步加载 → 节点宽度会变，重算布局（防溢出） */
+  /* ===== 视图控制 ===== */
+function setZoom(v, fire){
+  v = Math.max(0.2, Math.min(4, v));
+  if(mind && mind.scale) mind.scale(v);
+  var z = $('zoomVal'); if(z) z.textContent = Math.round(v*100) + '%';
+}
+function getZoom(){
+  try{ return mind && mind.scaleVal ? mind.scaleVal : 1; }catch(e){ return 1; }
+}
+
+/* 递归设置所有节点 expanded */
+function setAllExpanded(val){
+  if(!mind || !mind.getData) return;
+  var d = mind.getData();
+  if(!d || !d.nodeData) return;
+  (function walk(n){
+    if(!n) return;
+    n.expanded = !!val;
+    if(n.children) for(var i=0;i<n.children.length;i++) walk(n.children[i]);
+  })(d.nodeData);
+  /* 保留当前焦点状态：焦点模式下 getData 返回的是焦点子树 */
+  try{ mind.refresh(); }catch(e){}
+  try{ mind.bus.fire('operation'); }catch(e){}
+  setZoom(1);
+  setTimeout(fitView, 60);
+}
+
+/* 适配视图：计算所有节点包围盒 → 缩放并居中 */
+function fitView(){
+  if(!mind) return;
+  try{
+    var map = document.getElementById('map');
+    if(!map) return;
+    /* 先重置到 100% 测量真实尺寸 */
+    var curScale = getZoom();
+    mind.scale(1);
+    var nodes = map.querySelectorAll('me-node');
+    if(!nodes.length){ setZoom(1); return; }
+    var minX=1e9, minY=1e9, maxX=-1e9, maxY=-1e9;
+    for(var i=0;i<nodes.length;i++){
+      var r = nodes[i].getBoundingClientRect();
+      if(r.width===0 || r.height===0) continue;
+      if(r.left<minX) minX=r.left;
+      if(r.top<minY) minY=r.top;
+      if(r.right>maxX) maxX=r.right;
+      if(r.bottom>maxY) maxY=r.bottom;
+    }
+    if(minX===1e9){ setZoom(curScale); return; }
+    var boxW = maxX-minX, boxH = maxY-minY;
+    var viewW = map.clientWidth, viewH = map.clientHeight;
+    var pad = 60;
+    var sx = (viewW-pad*2)/boxW, sy = (viewH-pad*2)/boxH;
+    var target = Math.min(sx, sy);
+    target = Math.max(0.2, Math.min(4, target));
+    setZoom(target);
+    /* 延迟居中（等 scale 应用后测中心） */
+    setTimeout(function(){
+      try{
+        var nodes2 = map.querySelectorAll('me-node');
+        var cx=0, cy=0, cnt=0;
+        for(var j=0;j<nodes2.length;j++){
+          var rr = nodes2[j].getBoundingClientRect();
+          if(rr.width===0) continue;
+          cx += (rr.left+rr.right)/2; cy += (rr.top+rr.bottom)/2; cnt++;
+        }
+        if(cnt===0) return;
+        cx /= cnt; cy /= cnt;
+        var mr = map.getBoundingClientRect();
+        var dx = cx - (mr.left + mr.width/2);
+        var dy = cy - (mr.top + mr.height/2);
+        mind.container.scrollLeft += dx;
+        mind.container.scrollTop += dy;
+      }catch(e){}
+    }, 90);
+  }catch(e){}
+}
+
+/* 聚焦选中节点（库内置 focusNode） */
+function focusSelected(){
+  if(!mind) return;
+  try{
+    var cn = mind.currentNodes;
+    if(!cn || !cn.length){ setStatus('请先点选一个节点', true); return; }
+    mind.focusNode(cn[0]);
+    var fb = $('focusBadge'); if(fb) fb.classList.remove('hidden');
+    setStatus('已聚焦「'+String(cn[0].topic||'')+'」', true);
+  }catch(e){ setStatus('聚焦失败', true); }
+}
+function exitFocus(){
+  if(!mind) return;
+  try{
+    if(!mind.isFocusMode) return;
+    mind.cancelFocus();
+    var fb = $('focusBadge'); if(fb) fb.classList.add('hidden');
+    setStatus('已退出焦点', true);
+    setTimeout(fitView, 80);
+  }catch(e){}
+}
+function updateFocusBadge(){
+  var fb = $('focusBadge');
+  if(!fb) return;
+  try{ fb.classList.toggle('hidden', !(mind && mind.isFocusMode)); }catch(e){}
+}
+function updateZoomLabel(){
+  var z = $('zoomVal');
+  if(z && mind) z.textContent = Math.round(getZoom()*100) + '%';
+}
+
+/* ===== 全局快捷键 ===== */
+document.addEventListener('keydown', function(e){
+  if(!mind) return;
+  var t = e.target;
+  /* 输入框/文本域/可编辑元素内不触发 */
+  var tag = (t.tagName || '').toLowerCase();
+  var inEdit = tag === 'input' || tag === 'textarea' || t.isContentEditable;
+  var mod = e.ctrlKey || e.metaKey;
+
+  if(e.key === 'Escape'){
+    if(mind.isFocusMode){ exitFocus(); return; }
+    return;
+  }
+  if(!mod || inEdit) return;
+
+  var k = e.key.toLowerCase();
+  if(k === 'e' && !e.shiftKey){ e.preventDefault(); setAllExpanded(true); return; }
+  if(k === 'e' && e.shiftKey){ e.preventDefault(); setAllExpanded(false); return; }
+  if(k === 'f' && !e.shiftKey){
+    e.preventDefault();
+    if(mind.isFocusMode) exitFocus(); else focusSelected();
+    return;
+  }
+  if(k === '0'){ e.preventDefault(); fitView(); return; }
+  if(k === '=' || k === '+'){ e.preventDefault(); setZoom(getZoom() + 0.15); return; }
+  if(k === '-'){ e.preventDefault(); setZoom(getZoom() - 0.15); return; }
+});
+
+/* 监听选中变化 → 更新焦点徽标 */
+if(window.addEventListener){
+  document.addEventListener('mouseup', function(){ setTimeout(updateFocusBadge, 30); }, true);
+}
+
+/* 图片异步加载 → 节点宽度会变，重算布局（防溢出） */
   try{
     var imgs = document.querySelectorAll('#map img');
     for(var q=0;q<imgs.length;q++){
@@ -599,6 +779,12 @@ function initMind(data){
       })(imgs[q]);
     }
   }catch(e){}
+  /* 视图控制绑定 + 缩放标签 */
+  bindViewControls();
+  var _z = $('zoomVal'); if(_z) _z.textContent = '100%';
+  /* 监听缩放事件 → 更新标签（bus.fire('scale', v)） */
+  try{ mind.bus.addListener('scale', updateZoomLabel); }catch(e){}
+  updateFocusBadge();
 }
 var _refreshTimer = null;
 function scheduleLayoutRefresh(){
