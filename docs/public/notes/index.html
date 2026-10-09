@@ -616,18 +616,7 @@ function goBack(){
   if(t) loadNote(t); else setStatus('上一个笔记已不存在');
 }
 
-function initMind(data){
-  if(mind){ try{ mind.destroy(); }catch(e){} }
-  applyInlineHtml(data);
-  mind = new MindElixir({
-    el:'#map', direction:MindElixir.RIGHT, draggable:true, editable:true,
-    contextMenu:true, toolBar:true, keypress:true, overflowHidden:false,
-    theme: isDark()? MindElixir.DARK_THEME : MindElixir.THEME
-  });
-  mind.init(data);
-  if(mind.toCenter) mind.toCenter();
-  mind.bus.addListener('operation', function(){ queueSave(); });
-  /* ===== 视图控制 ===== */
+/* ===== 视图控制 ===== */
 function setZoom(v, fire){
   v = Math.max(0.2, Math.min(4, v));
   if(mind && mind.scale) mind.scale(v);
@@ -768,7 +757,20 @@ if(window.addEventListener){
   document.addEventListener('mouseup', function(){ setTimeout(updateFocusBadge, 30); }, true);
 }
 
-/* 图片异步加载 → 节点宽度会变，重算布局（防溢出） */
+
+
+function initMind(data){
+  if(mind){ try{ mind.destroy(); }catch(e){} }
+  applyInlineHtml(data);
+  mind = new MindElixir({
+    el:'#map', direction:MindElixir.RIGHT, draggable:true, editable:true,
+    contextMenu:true, toolBar:true, keypress:true, overflowHidden:false,
+    theme: isDark()? MindElixir.DARK_THEME : MindElixir.THEME
+  });
+  mind.init(data);
+  if(mind.toCenter) mind.toCenter();
+  mind.bus.addListener('operation', function(){ queueSave(); });
+  /* 图片异步加载 → 节点宽度会变，重算布局（防溢出） */
   try{
     var imgs = document.querySelectorAll('#map img');
     for(var q=0;q<imgs.length;q++){
