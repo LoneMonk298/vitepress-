@@ -626,9 +626,11 @@ function getZoom(){
   try{ return mind && mind.scaleVal ? mind.scaleVal : 1; }catch(e){ return 1; }
 }
 
-/* 递归设置所有节点 expanded */
+/* 递归设置所有节点 expanded，并把结果传回 refresh() */
 function setAllExpanded(val){
   if(!mind || !mind.getData) return;
+  /* 焦点模式下先退出，否则 getData 只返回焦点子树 */
+  try{ if(mind.isFocusMode){ mind.cancelFocus(); } }catch(e){}
   var d = mind.getData();
   if(!d || !d.nodeData) return;
   (function walk(n){
@@ -636,11 +638,12 @@ function setAllExpanded(val){
     n.expanded = !!val;
     if(n.children) for(var i=0;i<n.children.length;i++) walk(n.children[i]);
   })(d.nodeData);
-  /* 保留当前焦点状态：焦点模式下 getData 返回的是焦点子树 */
-  try{ mind.refresh(); }catch(e){}
-  try{ mind.bus.fire('operation'); }catch(e){}
+  /* 关键：必须把数据传回 refresh，否则 this.nodeData 不更新、改动丢失 */
+  try{ mind.refresh(d); }catch(e){}
+  /* 重新挂载焦点徽标状态 */
+  updateFocusBadge();
   setZoom(1);
-  setTimeout(fitView, 60);
+  setTimeout(fitView, 80);
 }
 
 /* 适配视图：计算所有节点包围盒 → 缩放并居中 */
