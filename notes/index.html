@@ -140,7 +140,7 @@ html.dark .mm-hint code{background:rgba(255,255,255,.08)}
         <button id="btnFit" class="zoom-ic" title="适配视图 (Ctrl+0)">⤢</button>
       </div>
       <button id="btnFocus" title="聚焦选中节点 (Ctrl+F)">聚焦</button>
-      <button id="btnPresent" title="演示模式 (Ctrl+P)">演示</button>
+      <button id="btnPresent" title="从选中节点开始演示 (Ctrl+P)">演示</button>
       <button id="btnRename">改名</button>
       <button id="btnEditSrc">编辑源</button>
       <button id="btnExport">导出</button>
@@ -804,7 +804,7 @@ function plainTopic(s){
     .replace(/\s+/g,' ').trim();
 }
 
-/* 先序遍历收集 {id, path, topic} */
+/* 先序遍历收集 {id, path, topic}（从根开始） */
 function collectPreorder(data){
   var out = [];
   (function walk(n, path){
@@ -817,14 +817,56 @@ function collectPreorder(data){
   return out;
 }
 
+/* 找从根到指定 id 的路径 */
+function findPathById(data, id){
+  var res = null;
+  (function walk(n, path){
+    if(res || !n) return;
+    var p = path.concat([n.id]);
+    if(n.id === id){ res = p; return; }
+    var cs = n.children || [];
+    for(var i=0;i<cs.length;i++){ walk(cs[i], p); if(res) return; }
+  })(data.nodeData, []);
+  return res;
+}
+
+/* 以 startId 为起点，先序遍历其子树（含自身） */
+function collectSubtree(data, startId){
+  var basePath = findPathById(data, startId);
+  if(!basePath) return [];
+  var startNode = null;
+  (function find(n){
+    if(!n || startNode) return;
+    if(n.id === startId){ startNode = n; return; }
+    var cs = n.children || [];
+    for(var i=0;i<cs.length;i++){ find(cs[i]); if(startNode) return; }
+  })(data.nodeData);
+  if(!startNode) return [];
+  var out = [];
+  (function walk(n, rel){
+    if(!n) return;
+    var r = rel.concat([n.id]);
+    out.push({ id:n.id, path: basePath.slice(0,-1).concat(r), topic: plainTopic(n.topic) });
+    var cs = n.children || [];
+    for(var i=0;i<cs.length;i++) walk(cs[i], r);
+  })(startNode, []);
+  return out;
+}
+
 function enterPresent(){
   if(!mind || !mind.getData) return;
   if(present.on) return;
   var d = mind.getData();
   if(!d || !d.nodeData) return;
   present.backup = JSON.parse(JSON.stringify(d));
-  present.list = collectPreorder(present.backup);
-  if(present.list.length < 2){ setStatus('节点太少，不需要演示', true); return; }
+  /* 起点：优先当前选中的节点；没选中则用树根 */
+  var startId = present.backup.nodeData.id;
+  try{
+    var cn = mind.currentNodes;
+    if(cn && cn.length && cn[0] && cn[0].id) startId = cn[0].id;
+  }catch(e){}
+  present.list = collectSubtree(present.backup, startId);
+  if(!present.list.length){ setStatus('没找到起点节点，请先点选一个节点', true); return; }
   present.zoom = getZoom();
   present.idx = 0;
   present.on = true;
@@ -833,7 +875,8 @@ function enterPresent(){
   $('presentProg').classList.remove('hidden');
   $('prTotal').textContent = present.list.length;
   presentGo(0);
-  setStatus('演示模式：→ 下一张 / ← 上一张 / Esc 退出', true);
+  var _first = present.list[0].topic || '节点';
+  setStatus('演示「'+_first+'」共 '+present.list.length+' 张：→ 下一张 / ← 上一张 / Esc 退出', true);
 }
 
 function presentGo(i){
