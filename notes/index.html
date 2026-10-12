@@ -51,6 +51,21 @@ body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei
 .zoom-val{font-size:11px;color:var(--text2);min-width:38px;text-align:center;font-variant-numeric:tabular-nums}
 .focus-badge{font-size:11px;padding:2px 7px;border-radius:4px;background:#f59e0b;color:#fff;font-weight:600;animation:none}
 .focus-badge.hidden{display:none}
+.present-bar{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);display:flex;align-items:center;gap:6px;background:rgba(24,26,32,.94);color:#fff;padding:9px 14px;border-radius:12px;box-shadow:0 6px 28px rgba(0,0,0,.35);z-index:9999;font-size:13px;backdrop-filter:blur(8px)}
+.present-bar.hidden{display:none}
+.present-bar button{border:none;background:rgba(255,255,255,.12);color:#fff;padding:6px 11px;border-radius:7px;cursor:pointer;font-size:14px;line-height:1;min-width:34px}
+.present-bar button:hover{background:rgba(255,255,255,.26)}
+.present-bar button.pb-exit{background:rgba(239,68,68,.75)}
+.present-bar button.pb-exit:hover{background:#ef4444}
+.present-bar button.on{background:#10b981}
+.present-pos{font-variant-numeric:tabular-nums;padding:0 4px;color:#cbd5e1}
+.present-pos b{color:#fff;font-size:15px}
+.present-title{max-width:340px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#e2e8f0;padding-left:8px;border-left:1px solid rgba(255,255,255,.18);margin-left:4px}
+.present-prog{position:fixed;left:0;top:0;height:3px;background:#10b981;z-index:9999;transition:width .18s}
+body.present-mode .topbar{opacity:.12;transition:opacity .2s}
+body.present-mode .topbar:hover{opacity:1}
+body.present-mode .sidebar{margin-left:-260px}
+body.present-mode .status{display:none}
 .empty-tip{padding:20px;text-align:center;color:var(--text2);font-size:13px;line-height:1.8}
 .main{flex:1;display:flex;flex-direction:column;position:relative;min-width:0}
 .topbar{height:52px;background:var(--card);border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:8px;padding:0 14px;flex:none}
@@ -125,6 +140,7 @@ html.dark .mm-hint code{background:rgba(255,255,255,.08)}
         <button id="btnFit" class="zoom-ic" title="适配视图 (Ctrl+0)">⤢</button>
       </div>
       <button id="btnFocus" title="聚焦选中节点 (Ctrl+F)">聚焦</button>
+      <button id="btnPresent" title="演示模式 (Ctrl+P)">演示</button>
       <button id="btnRename">改名</button>
       <button id="btnEditSrc">编辑源</button>
       <button id="btnExport">导出</button>
@@ -132,6 +148,17 @@ html.dark .mm-hint code{background:rgba(255,255,255,.08)}
       <button id="btnSync">云同步</button>
     </div>
     <div id="map"></div>
+    <div class="present-prog hidden" id="presentProg"></div>
+    <div class="present-bar hidden" id="presentBar">
+      <button class="pb-exit" id="prExit" title="退出演示 (Esc)">✕</button>
+      <button id="prFirst" title="第一张 (Home)">⏮</button>
+      <button id="prPrev" title="上一张 (←)">◀</button>
+      <span class="present-pos"><b id="prIdx">1</b>/<span id="prTotal">1</span></span>
+      <button id="prNext" title="下一张 (→ / 空格)">▶</button>
+      <button id="prLast" title="最后一张 (End)">⏭</button>
+      <button id="prPlay" title="自动播放">自动</button>
+      <span class="present-title" id="prTitle"></span>
+    </div>
     <div class="status" id="status">新建笔记开始</div>
   </main>
 </div>
@@ -751,6 +778,7 @@ document.addEventListener('keydown', function(e){
     return;
   }
   if(k === '0'){ e.preventDefault(); fitView(); return; }
+  if(k === 'p'){ e.preventDefault(); enterPresent(); return; }
   if(k === '=' || k === '+'){ e.preventDefault(); setZoom(getZoom() + 0.15); return; }
   if(k === '-'){ e.preventDefault(); setZoom(getZoom() - 0.15); return; }
 });
@@ -761,6 +789,167 @@ if(window.addEventListener){
 }
 
 
+
+/* ===== 演示模式（XMind 漫游式）===== */
+var present = { on:false, list:[], idx:0, backup:null, zoom:1, timer:null };
+
+function plainTopic(s){
+  return String(s==null?'':s)
+    .replace(/\$\$[\s\S]+?\$\$/g,'公式')
+    .replace(/\$[^$\n]+?\$/g,'公式')
+    .replace(/!\[[^\]]*\]\([^)]*\)/g,'图片')
+    .replace(/\[\[([^\]]+)\]\]/g,'$1')
+    .replace(/\[([^\]]+)\]\([^)]*\)/g,'$1')
+    .replace(/#[\u4e00-\u9fa5A-Za-z0-9_\-]+/g,'')
+    .replace(/\s+/g,' ').trim();
+}
+
+/* 先序遍历收集 {id, path, topic} */
+function collectPreorder(data){
+  var out = [];
+  (function walk(n, path){
+    if(!n) return;
+    var p = path.concat([n.id]);
+    out.push({ id:n.id, path:p, topic: plainTopic(n.topic) });
+    var cs = n.children || [];
+    for(var i=0;i<cs.length;i++) walk(cs[i], p);
+  })(data.nodeData, []);
+  return out;
+}
+
+function enterPresent(){
+  if(!mind || !mind.getData) return;
+  if(present.on) return;
+  var d = mind.getData();
+  if(!d || !d.nodeData) return;
+  present.backup = JSON.parse(JSON.stringify(d));
+  present.list = collectPreorder(present.backup);
+  if(present.list.length < 2){ setStatus('节点太少，不需要演示', true); return; }
+  present.zoom = getZoom();
+  present.idx = 0;
+  present.on = true;
+  document.body.classList.add('present-mode');
+  $('presentBar').classList.remove('hidden');
+  $('presentProg').classList.remove('hidden');
+  $('prTotal').textContent = present.list.length;
+  presentGo(0);
+  setStatus('演示模式：→ 下一张 / ← 上一张 / Esc 退出', true);
+}
+
+function presentGo(i){
+  if(!present.on || !present.backup) return;
+  var n = present.list.length;
+  if(i < 0) i = 0;
+  if(i > n-1) i = n-1;
+  present.idx = i;
+  var item = present.list[i];
+
+  /* 深拷贝备份 → 全部折叠 → 只展开路径 */
+  var d = JSON.parse(JSON.stringify(present.backup));
+  (function collapse(x){
+    if(!x) return;
+    x.expanded = false;
+    (x.children||[]).forEach(collapse);
+  })(d.nodeData);
+  var pathSet = {};
+  for(var p=0;p<item.path.length;p++) pathSet[item.path[p]] = 1;
+  var target = null;
+  (function expand(x){
+    if(!x) return;
+    if(pathSet[x.id]) x.expanded = true;
+    if(x.id === item.id) target = x;
+    (x.children||[]).forEach(expand);
+  })(d.nodeData);
+  if(target) target.expanded = true;   /* 当前节点展开，露出下一层 */
+
+  try{ mind.refresh(d); }catch(e){}
+  centerOnNode(item.id);
+
+  $('prIdx').textContent = i+1;
+  $('prTitle').textContent = item.topic || '(无标题)';
+  $('prFirst').disabled = (i===0);
+  $('prPrev').disabled = (i===0);
+  $('prNext').disabled = (i===n-1);
+  $('prLast').disabled = (i===n-1);
+  var prog = $('presentProg');
+  if(prog) prog.style.width = ((i+1)/n*100).toFixed(2) + '%';
+}
+
+/* 居中并缩放到舒服的阅读尺寸 */
+function centerOnNode(id){
+  try{
+    var map = document.getElementById('map');
+    if(!map) return;
+    var el = map.querySelector('[nodeid="'+id+'"]');
+    if(!el) return;
+    mind.scale(1);
+    var w = Math.max(80, el.getBoundingClientRect().width);
+    var target = (map.clientWidth * 0.5) / w;
+    target = Math.max(0.65, Math.min(1.6, target));
+    mind.scale(target);
+    var r = el.getBoundingClientRect();
+    var mr = map.getBoundingClientRect();
+    if(mind.container){
+      mind.container.scrollLeft += (r.left + r.width/2) - (mr.left + mr.width/2);
+      mind.container.scrollTop  += (r.top + r.height/2) - (mr.top + mr.height/2);
+    }
+  }catch(e){}
+}
+
+function exitPresent(){
+  if(!present.on) return;
+  stopAuto();
+  present.on = false;
+  document.body.classList.remove('present-mode');
+  var bar = $('presentBar'), prog = $('presentProg');
+  if(bar) bar.classList.add('hidden');
+  if(prog) prog.classList.add('hidden');
+  try{
+    if(present.backup) mind.refresh(present.backup);
+    mind.scale(present.zoom || 1);
+    if(mind.toCenter) mind.toCenter();
+  }catch(e){}
+  present.backup = null; present.list = [];
+  setStatus('已退出演示', true);
+}
+
+function startAuto(){
+  stopAuto();
+  present.timer = setInterval(function(){
+    if(!present.on) return stopAuto();
+    if(present.idx >= present.list.length-1) return stopAuto();
+    presentGo(present.idx+1);
+  }, 4200);
+  var b = $('prPlay'); if(b){ b.classList.add('on'); b.textContent = '暂停'; }
+}
+function stopAuto(){
+  if(present.timer){ clearInterval(present.timer); present.timer = null; }
+  var b = $('prPlay'); if(b && b.textContent === '暂停'){ b.classList.remove('on'); b.textContent = '自动'; }
+}
+
+function bindPresent(){
+  function on(id, fn){ var b = $(id); if(b) b.onclick = function(e){ e.stopPropagation(); fn(); }; }
+  on('btnPresent', enterPresent);
+  on('prExit', exitPresent);
+  on('prPrev', function(){ presentGo(present.idx-1); });
+  on('prNext', function(){ presentGo(present.idx+1); });
+  on('prFirst', function(){ presentGo(0); });
+  on('prLast', function(){ presentGo(present.list.length-1); });
+  on('prPlay', function(){ present.timer ? stopAuto() : startAuto(); });
+}
+
+/* 演示模式键盘（捕获阶段，优先于库的快捷键） */
+document.addEventListener('keydown', function(e){
+  if(!present.on || !mind) return;
+  var handled = true;
+  if(e.key === 'Escape') exitPresent();
+  else if(e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') presentGo(present.idx+1);
+  else if(e.key === 'ArrowLeft' || e.key === 'PageUp') presentGo(present.idx-1);
+  else if(e.key === 'Home') presentGo(0);
+  else if(e.key === 'End') presentGo(present.list.length-1);
+  else handled = false;
+  if(handled){ e.preventDefault(); e.stopPropagation(); }
+}, true);
 
 function initMind(data){
   if(mind){ try{ mind.destroy(); }catch(e){} }
@@ -786,6 +975,7 @@ function initMind(data){
   }catch(e){}
   /* 视图控制绑定 + 缩放标签 */
   bindViewControls();
+  bindPresent();
   var _z = $('zoomVal'); if(_z) _z.textContent = '100%';
   /* 监听缩放事件 → 更新标签（bus.fire('scale', v)） */
   try{ mind.bus.addListener('scale', updateZoomLabel); }catch(e){}
@@ -909,11 +1099,21 @@ function updateSyncStatus(type, msg){
   else{ el.textContent=''; el.classList.remove('show'); }
 }
 
+function stripHtml(n){
+  if(!n) return n;
+  if(n.dangerouslySetInnerHTML) delete n.dangerouslySetInnerHTML;
+  if(n.children) for(var i=0;i<n.children.length;i++) stripHtml(n.children[i]);
+  return n;
+}
 function buildSyncPayload(){
   var payload={}, n=0;
   for(var k in localStorage){
     if(k.indexOf(LS_PFX)===0){
-      try{ payload[k.slice(LS_PFX.length)] = JSON.parse(localStorage.getItem(k)); n++; }catch(e){}
+      try{
+        var d = JSON.parse(localStorage.getItem(k));
+        if(d && d.nodeData) stripHtml(d.nodeData);
+        payload[k.slice(LS_PFX.length)] = d; n++;
+      }catch(e){}
     }
   }
   return { payload:payload, count:n };
@@ -930,14 +1130,20 @@ async function syncPush(){
     updateSyncStatus('error','本机还没有任何笔记数据');
     return;
   }
-  updateSyncStatus('info','正在推送…');
+  var bodyStr = JSON.stringify(p.payload);
+  var sizeKB = new Blob([bodyStr]).size / 1024;
+  if(sizeKB > 90){
+    updateSyncStatus('error','数据过大: '+sizeKB.toFixed(0)+'KB（免费额度100KB）\\n已剥离公式HTML，如仍超限请减少笔记或升级付费版');
+    return;
+  }
+  updateSyncStatus('info','正在推送 '+sizeKB.toFixed(0)+'KB…');
   try{
     var response;
     if(syncConfig.binId){
       response = await fetch('https://api.jsonbin.io/v3/b/'+syncConfig.binId,{
         method:'PUT',
         headers:{ 'X-Access-Key':syncConfig.accessKey, 'Content-Type':'application/json' },
-        body: JSON.stringify(p.payload)
+        body: bodyStr
       });
     } else {
       response = await fetch('https://api.jsonbin.io/v3/b',{
@@ -948,10 +1154,10 @@ async function syncPush(){
           'X-Bin-Name':'mm_notes_data',
           'X-Bin-Private':'true'
         },
-        body: JSON.stringify(p.payload)
+        body: bodyStr
       });
     }
-    if(!response.ok) throw new Error('失败: '+response.status);
+    if(!response.ok) throw new Error('失败: '+response.status+' '+response.statusText);
     if(!syncConfig.binId){
       var result = await response.json();
       syncConfig.binId = result.metadata.id;
@@ -995,10 +1201,12 @@ async function syncPull(){
     }
     var n=0;
     for(var f in result.record){
-      localStorage.setItem(LS_PFX+f, JSON.stringify(result.record[f]));
+      var d = result.record[f];
+      if(d && d.nodeData) applyInlineHtml(d);
+      localStorage.setItem(LS_PFX+f, JSON.stringify(d));
       n++;
     }
-    updateSyncStatus('success','拉取成功！已载入 '+n+' 篇笔记');
+    updateSyncStatus('success','拉取成功！已载入 '+n+' 篇笔记（公式/链接已重建）');
     renderList();
     if(curNote) loadNote(curNote);
     var now = new Date().toLocaleString('zh-CN');
