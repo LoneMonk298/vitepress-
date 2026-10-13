@@ -673,53 +673,59 @@ function setAllExpanded(val){
   setTimeout(fitView, 80);
 }
 
-/* 适配视图：计算所有节点包围盒 → 缩放并居中 */
+/* 适配视图：测量当前可见节点的包围盒 → 缩放 → 居中
+   注意：CSS transform 缩放不影响 scrollWidth，
+   所以滚动偏移必须除以 scale，否则会偏。 */
 function fitView(){
-  if(!mind) return;
   try{
     var map = document.getElementById('map');
-    if(!map) return;
-    /* 先重置到 100% 测量真实尺寸 */
-    var curScale = getZoom();
+    if(!map || !mind) return;
+    var nodes = map.querySelectorAll('me-tpc, me-root');
+    if(!nodes.length) return;
+
+    /* 1. 先回到 100% 测量真实尺寸，算目标缩放 */
     mind.scale(1);
-    var nodes = map.querySelectorAll('me-node');
-    if(!nodes.length){ setZoom(1); return; }
-    var minX=1e9, minY=1e9, maxX=-1e9, maxY=-1e9;
+    var minX=1e9, minY=1e9, maxX=-1e9, maxY=-1e9, cnt=0;
     for(var i=0;i<nodes.length;i++){
       var r = nodes[i].getBoundingClientRect();
-      if(r.width===0 || r.height===0) continue;
-      if(r.left<minX) minX=r.left;
-      if(r.top<minY) minY=r.top;
-      if(r.right>maxX) maxX=r.right;
-      if(r.bottom>maxY) maxY=r.bottom;
+      if(!r.width || !r.height) continue;
+      cnt++;
+      if(r.left  < minX) minX = r.left;
+      if(r.top   < minY) minY = r.top;
+      if(r.right > maxX) maxX = r.right;
+      if(r.bottom> maxY) maxY = r.bottom;
     }
-    if(minX===1e9){ setZoom(curScale); return; }
-    var boxW = maxX-minX, boxH = maxY-minY;
-    var viewW = map.clientWidth, viewH = map.clientHeight;
+    if(!cnt){ mind.scale(getZoom()); return; }
+
+    var boxW = Math.max(1, maxX-minX), boxH = Math.max(1, maxY-minY);
     var pad = 60;
-    var sx = (viewW-pad*2)/boxW, sy = (viewH-pad*2)/boxH;
-    var target = Math.min(sx, sy);
-    target = Math.max(0.2, Math.min(4, target));
-    setZoom(target);
-    /* 延迟居中（等 scale 应用后测中心） */
-    setTimeout(function(){
-      try{
-        var nodes2 = map.querySelectorAll('me-node');
-        var cx=0, cy=0, cnt=0;
-        for(var j=0;j<nodes2.length;j++){
-          var rr = nodes2[j].getBoundingClientRect();
-          if(rr.width===0) continue;
-          cx += (rr.left+rr.right)/2; cy += (rr.top+rr.bottom)/2; cnt++;
-        }
-        if(cnt===0) return;
-        cx /= cnt; cy /= cnt;
-        var mr = map.getBoundingClientRect();
-        var dx = cx - (mr.left + mr.width/2);
-        var dy = cy - (mr.top + mr.height/2);
-        mind.container.scrollLeft += dx;
-        mind.container.scrollTop += dy;
-      }catch(e){}
-    }, 90);
+    var target = Math.min((map.clientWidth-pad*2)/boxW, (map.clientHeight-pad*2)/boxH);
+    target = Math.max(0.45, Math.min(1.4, target));
+
+    /* 2. 应用缩放后重新测量（原点未知，重测最稳） */
+    mind.scale(target);
+    var minX2=1e9, minY2=1e9, maxX2=-1e9, maxY2=-1e9, cnt2=0;
+    for(var k=0;k<nodes.length;k++){
+      var r2 = nodes[k].getBoundingClientRect();
+      if(!r2.width || !r2.height) continue;
+      cnt2++;
+      if(r2.left  < minX2) minX2 = r2.left;
+      if(r2.top   < minY2) minY2 = r2.top;
+      if(r2.right > maxX2) maxX2 = r2.right;
+      if(r2.bottom> maxY2) maxY2 = r2.bottom;
+    }
+    if(!cnt2) return;
+
+    /* 3. 把包围盒中心对准视口中心（滚动量 ÷ scale） */
+    var cx = (minX2+maxX2)/2, cy = (minY2+maxY2)/2;
+    var mr = map.getBoundingClientRect();
+    var dx = (cx - (mr.left + mr.width/2))  / target;
+    var dy = (cy - (mr.top  + mr.height/2)) / target;
+    if(mind.container){
+      mind.container.scrollLeft += dx;
+      mind.container.scrollTop  += dy;
+    }
+    var z = $('zoomVal'); if(z) z.textContent = Math.round(target*100) + '%';
   }catch(e){}
 }
 
@@ -918,7 +924,7 @@ function presentGo(i){
   if(target) target.expanded = true;   /* 当前节点展开，露出下一层 */
 
   try{ mind.refresh(d); }catch(e){}
-  centerOnNode(item.id);
+  fitView();
 
   $('prIdx').textContent = i+1;
   $('prTitle').textContent = item.topic || '(无标题)';
