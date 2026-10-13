@@ -858,13 +858,25 @@ function enterPresent(){
   if(present.on) return;
   var d = mind.getData();
   if(!d || !d.nodeData) return;
-  present.backup = JSON.parse(JSON.stringify(d));
+  var d = mind.getData();
+  if(!d || !d.nodeData) return;
+  /* 聚焦模式下先退出，否则 getData 只返回焦点子树 */
+  if(mind.isFocusMode){ try{ mind.cancelFocus(); }catch(e){} }
+  present.backup = JSON.parse(JSON.stringify(mind.getData()));
   /* 起点：优先当前选中的节点；没选中则用树根 */
   var startId = present.backup.nodeData.id;
   try{
     var cn = mind.currentNodes;
-    if(cn && cn.length && cn[0] && cn[0].id) startId = cn[0].id;
+    if(cn && cn.length){
+      var c0 = cn[0];
+      /* currentNodes 存的是 DOM 元素，ID 在 dataset.nodeid 里（带 me 前缀） */
+      var did = (c0.dataset && c0.dataset.nodeid) || '';
+      if(did && did.slice(0,2) === 'me') startId = did.slice(2);
+      else if(c0.id) startId = c0.id;
+    }
   }catch(e){}
+  /* 起点必须在备份树里 */
+  if(!findPathById(present.backup, startId)) startId = present.backup.nodeData.id;
   present.list = collectSubtree(present.backup, startId);
   if(!present.list.length){ setStatus('没找到起点节点，请先点选一个节点', true); return; }
   present.zoom = getZoom();
@@ -923,7 +935,8 @@ function centerOnNode(id){
   try{
     var map = document.getElementById('map');
     if(!map) return;
-    var el = map.querySelector('[nodeid="'+id+'"]');
+    /* 库的节点是 me-tpc，属性 data-nodeid，值带 me 前缀 */
+    var el = map.querySelector('[data-nodeid="me'+id+'"]');
     if(!el) return;
     mind.scale(1);
     var w = Math.max(80, el.getBoundingClientRect().width);
