@@ -143,6 +143,10 @@ html.dark .s-badge.run{color:#fbbf24}
 .gs-empty{font-size:12px;color:var(--text2);padding:6px 4px}
 .bl-item{cursor:pointer}
 .bl-item:hover{background:var(--bg)}
+/* 侧栏排序 */
+.sort-bar{display:flex;align-items:center;gap:6px;padding:6px 10px;border-bottom:1px solid var(--bd);font-size:12px}
+.sort-bar .sb-label{color:var(--text2);flex:none}
+#sortSel{flex:1;min-width:0;padding:4px 6px;border:1px solid var(--bd);border-radius:7px;background:var(--bg);color:var(--text);font-size:12px;font-family:inherit}
 @media(max-width:768px){
   .sidebar{position:absolute;z-index:20;height:100%;box-shadow:4px 0 16px #0002}
   .topbar .t{font-size:13px}
@@ -163,6 +167,15 @@ html.dark .s-badge.run{color:#fbbf24}
         <button class="ico" id="btnBacklinks" title="谁引用了当前笔记">⇄</button>
       </div>
       <div id="globalResults"></div>
+    </div>
+    <div class="sort-bar">
+      <span class="sb-label">排序</span>
+      <select id="sortSel" title="文件夹内笔记排序方式">
+        <option value="default">默认</option>
+        <option value="name">按名称</option>
+        <option value="edited">最近编辑</option>
+        <option value="created">创建时间</option>
+      </select>
     </div>
     <div class="side-list" id="list"></div>
     <div style="padding:10px;border-top:1px solid var(--bd);display:flex;gap:6px">
@@ -509,6 +522,27 @@ function loadNote(note){
   setStatus('已载入「'+note.name+'」', true);
 }
 
+/* ===== 侧栏笔记排序 ===== */
+var SORT_KEY = 'mm_notes_sort';
+function getSortMode(){
+  try{ return localStorage.getItem(SORT_KEY) || 'default'; }catch(e){ return 'default'; }
+}
+function setSortMode(m){
+  try{ localStorage.setItem(SORT_KEY, m); }catch(e){}
+}
+/* 对文件夹内的笔记数组按当前排序方式返回新副本 */
+function sortNotesArr(arr){
+  var m = getSortMode();
+  var copy = arr.slice();
+  if(m==='name'){
+    copy.sort(function(a,b){ return String(a.name).localeCompare(String(b.name),'zh-CN'); });
+  } else if(m==='edited'){
+    copy.sort(function(a,b){ return (b.updated||0)-(a.updated||0); });
+  } else if(m==='created'){
+    copy.sort(function(a,b){ return (b.created||0)-(a.created||0); });
+  }
+  return copy;
+}
 function renderList(){
   var list = $('list');
   notes = loadNotes();
@@ -531,7 +565,7 @@ function renderList(){
   });
   var h = '';
   for(var fi=0;fi<order.length;fi++){
-    var fname = order[fi], arr = folders[fname];
+    var fname = order[fi], arr = sortNotesArr(folders[fname]);
     h += '<div class="folder" data-folder="'+escapeHtml(fname)+'">';
     h += '<div class="f-head" data-folder="'+escapeHtml(fname)+'">';
     h += '<span class="f-arrow">▾</span>';
@@ -1846,6 +1880,13 @@ document.addEventListener('DOMContentLoaded', function(){
   $('globalFind').addEventListener('keydown', function(e){
     if(e.key === 'Enter'){ renderGlobalResults(this.value); e.preventDefault(); return; }
     if(e.key === 'Escape'){ this.value=''; renderGlobalResults(''); }
+  });
+
+  /* 侧栏排序 */
+  $('sortSel').value = getSortMode();
+  $('sortSel').addEventListener('change', function(){
+    setSortMode(this.value);
+    renderList();
   });
   $('btnUp').onclick = syncPush;
   $('btnDown').onclick = syncPull;
