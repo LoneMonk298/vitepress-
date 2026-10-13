@@ -60,8 +60,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei
 .present-bar button.on{background:#10b981}
 .present-pos{font-variant-numeric:tabular-nums;padding:0 4px;color:#cbd5e1}
 .present-pos b{color:#fff;font-size:15px}
-.present-title{max-width:340px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#e2e8f0;padding-left:8px;border-left:1px solid rgba(255,255,255,.18);margin-left:4px}
+.present-title{max-width:400px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#e2e8f0;padding-left:8px;border-left:1px solid rgba(255,255,255,.18);margin-left:4px}
 .present-prog{position:fixed;left:0;top:0;height:3px;background:#10b981;z-index:9999;transition:width .18s}
+.present-prog.hidden{display:none}
+/* 演示模式：当前节点高亮，路径/直接子节点为上下文，其余淡化（XMind 漫游式） */
+body.present-mode .map-container me-tpc{transition:opacity .2s}
+body.present-mode .map-container me-tpc.present-dim{opacity:.16}
+body.present-mode .map-container me-tpc.present-ctx{opacity:.82}
+body.present-mode .map-container me-tpc.present-hit{opacity:1;outline:3px solid #f59e0b !important;outline-offset:2px;box-shadow:0 0 0 6px rgba(245,158,11,.18),0 10px 28px rgba(0,0,0,.32) !important}
 body.present-mode .topbar{opacity:.12;transition:opacity .2s}
 body.present-mode .topbar:hover{opacity:1}
 body.present-mode .sidebar{margin-left:-260px}
@@ -140,7 +146,7 @@ html.dark .mm-hint code{background:rgba(255,255,255,.08)}
         <button id="btnFit" class="zoom-ic" title="适配视图 (Ctrl+0)">⤢</button>
       </div>
       <button id="btnFocus" title="聚焦选中节点 (Ctrl+F)">聚焦</button>
-      <button id="btnPresent" title="从选中节点开始演示 (Ctrl+P)">演示</button>
+      <button id="btnPresent" title="演示复习 (Ctrl+P)：选中节点则从该节点开始；未选中则继续上次进度">演示</button>
       <button id="btnRename">改名</button>
       <button id="btnEditSrc">编辑源</button>
       <button id="btnExport">导出</button>
@@ -793,8 +799,10 @@ if(window.addEventListener){
 
 
 
-/* ===== 演示模式（XMind 漫游式）===== */
-var present = { on:false, list:[], idx:0, backup:null, zoom:1, timer:null };
+/* ===== 演示模式（XMind 漫游式复习）===== */
+var present = { on:false, list:[], idx:0, backup:null, zoom:1, timer:null, raf:0, noteId:null, topicMap:{}, canvasTrans:'' };
+var PRESENT_POS_KEY='mm_present_pos';
+var CANVAS_O=10000;
 
 function plainTopic(s){
   return String(s==null?'':s)
@@ -820,85 +828,222 @@ function collectPreorder(data){
   return out;
 }
 
-/* 找从根到指定 id 的路径 */
-function findPathById(data, id){
-  var res = null;
-  (function walk(n, path){
-    if(res || !n) return;
-    var p = path.concat([n.id]);
-    if(n.id === id){ res = p; return; }
-    var cs = n.children || [];
-    for(var i=0;i<cs.length;i++){ walk(cs[i], p); if(res) return; }
-  })(data.nodeData, []);
+/* 在节点树上按 id 查找节点对象 */
+function findNodeData(root, id){
+  var res=null;
+  (function f(n){
+    if(res||!n) return;
+    if(n.id===id){ res=n; return; }
+    (n.children||[]).forEach(f);
+  })(root);
   return res;
 }
 
-/* 以 startId 为起点，先序遍历其子树（含自身） */
-function collectSubtree(data, startId){
-  var basePath = findPathById(data, startId);
-  if(!basePath) return [];
-  var startNode = null;
-  (function find(n){
-    if(!n || startNode) return;
-    if(n.id === startId){ startNode = n; return; }
-    var cs = n.children || [];
-    for(var i=0;i<cs.length;i++){ find(cs[i]); if(startNode) return; }
-  })(data.nodeData);
-  if(!startNode) return [];
-  var out = [];
-  (function walk(n, rel){
-    if(!n) return;
-    var r = rel.concat([n.id]);
-    out.push({ id:n.id, path: basePath.slice(0,-1).concat(r), topic: plainTopic(n.topic) });
-    var cs = n.children || [];
-    for(var i=0;i<cs.length;i++) walk(cs[i], r);
-  })(startNode, []);
-  return out;
+/* ===== 复习进度记忆（按笔记分别记录，方便一天天复习）===== */
+function loadPosAll(){
+  try{ return JSON.parse(localStorage.getItem(PRESENT_POS_KEY)||'{}'); }catch(e){ return {}; }
+}
+function getPresentPos(noteId){
+  var a=loadPosAll();
+  return a[noteId]||null;
+}
+function savePresentPos(){
+  if(!present.on || !present.noteId) return;
+  try{
+    var a=loadPosAll();
+    a[present.noteId]={ idx:present.idx, total:present.list.length, t:Date.now() };
+    localStorage.setItem(PRESENT_POS_KEY, JSON.stringify(a));
+  }catch(e){}
+}
+function clearPresentPos(noteId){
+  if(!noteId) return;
+  try{
+    var a=loadPosAll();
+    if(a[noteId]){ delete a[noteId]; localStorage.setItem(PRESENT_POS_KEY, JSON.stringify(a)); }
+  }catch(e){}
+}
+
+/* 取当前选中的节点元素（兼容单选 currentNode 与多选 currentNodes） */
+function getSelectedEl(){
+  try{
+    var cn = mind.currentNodes;
+    if(cn && cn.length) return cn[0];
+    if(mind.currentNode) return mind.currentNode;
+  }catch(e){}
+  return null;
 }
 
 function enterPresent(){
   if(!mind || !mind.getData) return;
   if(present.on) return;
+  var d0 = mind.getData();
+  if(!d0 || !d0.nodeData) return;
 
-  /* 起点：当前选中的节点 */
-  var selEl = null;
-  try{
-    var cn = mind.currentNodes;
-    if(cn && cn.length) selEl = cn[0];
-  }catch(e){}
-  if(!selEl || !selEl.nodeObj){
-    setStatus('请先点选一个节点', true);
-    return;
+  present.list = collectPreorder(d0);
+  if(!present.list.length){ setStatus('没找到节点', true); return; }
+
+  /* 起点：选中节点 → 从该节点开始；否则继续上次保存的进度 */
+  var selEl = getSelectedEl();
+  var startIdx = 0;
+  if(selEl && selEl.nodeObj){
+    for(var i=0;i<present.list.length;i++){
+      if(present.list[i].id===selEl.nodeObj.id){ startIdx=i; break; }
+    }
+  } else if(curNote){
+    var saved = getPresentPos(curNote.id);
+    if(saved && saved.idx>0 && saved.idx<present.list.length){
+      if(confirm('继续上次复习？\n\n上次看到第 '+(saved.idx+1)+' / '+present.list.length+' 张。\n确定=继续，取消=从第一张开始。')){
+        startIdx = saved.idx;
+      }
+    }
   }
 
-  /* 保存完整树备份（退出时恢复） */
-  present.backup = JSON.parse(JSON.stringify(mind.getData()));
+  present.backup = JSON.parse(JSON.stringify(d0));
   present.zoom = getZoom();
+  present.noteId = curNote ? curNote.id : null;
+  present.topicMap = {};
+  (function f(n){
+    if(!n) return;
+    present.topicMap[n.id]=plainTopic(n.topic);
+    (n.children||[]).forEach(f);
+  })(d0.nodeData);
 
-  /* 用库内置 focusNode 隔离子树：选中节点变成新根，只显示其子树 */
-  if(!mind.isFocusMode && selEl.nodeObj.parent){
-    mind.focusNode(selEl);
-  }
+  /* 演示期间关闭画布 CSS 过渡，相机由 requestAnimationFrame 统一驱动 */
+  try{ present.canvasTrans = mind.map.style.transition; mind.map.style.transition='none'; }catch(e){}
 
-  /* 现在 mind.nodeData 是选中节点的子树 */
-  var d = mind.getData();
-  if(!d || !d.nodeData) return;
-  present.list = collectPreorder(d);
-  if(!present.list.length){
-    setStatus('没找到节点', true);
-    return;
-  }
-  present.idx = 0;
+  present.idx = startIdx;
   present.on = true;
   document.body.classList.add('present-mode');
   $('presentBar').classList.remove('hidden');
+  $('presentProg').classList.remove('hidden');
   $('prTotal').textContent = present.list.length;
-  $('prTitle').textContent = present.list[0].topic || '节点';
-  presentGo(0);
-  setStatus('演示「'+present.list[0].topic+'」共 '+present.list.length+' 张', true);
+  try{ mind.clearSelection(); }catch(e){}
+  presentGo(startIdx, true);
+  setStatus('演示开始，共 '+present.list.length+' 张', true);
 }
 
-function presentGo(i){
+/* 当前节点面板：当前话题 + 其直接子话题（XMind 一页聚焦一个主题） */
+function panelElements(item){
+  var cv=mind.map;
+  var hit=cv.querySelector('[data-nodeid="me'+item.id+'"]');
+  var els=hit?[hit]:[];
+  if(!hit) return els;
+  var tops=null;
+  var box=hit.parentElement;
+  if(box && box.tagName==='ME-ROOT'){
+    var mains=cv.querySelectorAll('me-nodes > me-main');
+    var host=null;
+    for(var m=0;m<mains.length;m++){ if(mains[m].children.length){ host=mains[m]; break; } }
+    if(host) tops=host.querySelectorAll(':scope > me-wrapper > me-parent > me-tpc');
+  } else {
+    var wrapper=hit.closest('me-wrapper');
+    if(wrapper){
+      var ch=wrapper.querySelector(':scope > me-children');
+      if(ch) tops=ch.querySelectorAll(':scope > me-wrapper > me-parent > me-tpc');
+    }
+  }
+  if(tops) for(var i=0;i<tops.length;i++) els.push(tops[i]);
+  return els;
+}
+
+/* 测话题真实包围盒：KaTeX 等不可拆行内容可能溢出 35em 的盒子，用 Range 一并测量 */
+function realRect(el, cRect, sl, st){
+  var r=el.getBoundingClientRect();
+  var x1=r.left,y1=r.top,x2=r.right,y2=r.bottom;
+  try{
+    var rg=document.createRange();
+    rg.selectNodeContents(el);
+    var rr=rg.getBoundingClientRect();
+    if(rr && rr.width){
+      if(rr.left<x1)x1=rr.left;
+      if(rr.top<y1)y1=rr.top;
+      if(rr.right>x2)x2=rr.right;
+      if(rr.bottom>y2)y2=rr.bottom;
+    }
+  }catch(e){}
+  return { x:x1-cRect.left+sl, y:y1-cRect.top+st, w:x2-x1, h:y2-y1 };
+}
+
+/* 相机：v=缩放，(cx,cy)=视口中心对准的布局坐标 */
+function applyCamera(v,cx,cy){
+  var ct=mind.container, cw=ct.clientWidth, ch=ct.clientHeight;
+  mind.scale(v);
+  ct.scrollLeft=CANVAS_O+(cx-CANVAS_O)*v-cw/2;
+  ct.scrollTop=CANVAS_O+(cy-CANVAS_O)*v-ch/2;
+}
+function presentRafCancel(){
+  if(present.raf){ cancelAnimationFrame(present.raf); present.raf=0; }
+}
+function animateCamera(from,to){
+  presentRafCancel();
+  applyCamera(from.v,from.x,from.y);          /* 先同步到起始态，避免测量态闪一帧 */
+  var dur=460, t0=performance.now();
+  function ease(k){ return k<.5?2*k*k:1-Math.pow(-2*k+2,2)/2; }
+  function step(t){
+    var k=Math.min(1,(t-t0)/dur), e=ease(k);
+    applyCamera(from.v+(to.v-from.v)*e, from.x+(to.x-from.x)*e, from.y+(to.y-from.y)*e);
+    if(k<1) present.raf=requestAnimationFrame(step); else present.raf=0;
+  }
+  present.raf=requestAnimationFrame(step);
+}
+
+function presentCamera(item, immediate){
+  var ct=mind.container, cv=mind.map;
+  var cw=ct.clientWidth, ch=ct.clientHeight;
+  if(!cw||!ch) return;
+
+  /* 记录起始相机（中心用布局坐标表示，缩放过程中不漂移） */
+  var fromV=mind.scaleVal||1;
+  var fromCx=CANVAS_O+(ct.scrollLeft+cw/2-CANVAS_O)/fromV;
+  var fromCy=CANVAS_O+(ct.scrollTop+ch/2-CANVAS_O)/fromV;
+
+  /* 回到 1:1 测真实布局坐标 */
+  cv.style.transition='none';
+  mind.scale(1);
+  void ct.offsetWidth;
+  var cRect=ct.getBoundingClientRect(), sl=ct.scrollLeft, st=ct.scrollTop;
+  var els=panelElements(item);
+  var minX=1e9,minY=1e9,maxX=-1e9,maxY=-1e9,cnt=0;
+  for(var i=0;i<els.length;i++){
+    var rc=realRect(els[i],cRect,sl,st);
+    if(rc.w<=0||rc.h<=0) continue;
+    cnt++;
+    if(rc.x<minX)minX=rc.x;
+    if(rc.y<minY)minY=rc.y;
+    if(rc.x+rc.w>maxX)maxX=rc.x+rc.w;
+    if(rc.y+rc.h>maxY)maxY=rc.y+rc.h;
+  }
+  if(!cnt) return;
+  var bw=Math.max(1,maxX-minX), bh=Math.max(1,maxY-minY);
+  /* 允许充分缩小（最低 0.2），保证长公式链也完整在屏内；为演示栏预留底部空间 */
+  var v=Math.min((cw-160)/bw,(ch-190)/bh);
+  v=Math.max(0.2,Math.min(1.5,v));
+  var px=(minX+maxX)/2, py=(minY+maxY)/2;
+  var to={v:v,x:px,y:py};
+  if(immediate) applyCamera(v,px,py);
+  else animateCamera({v:fromV,x:fromCx,y:fromCy}, to);
+  var z=$('zoomVal'); if(z) z.textContent=Math.round(v*100)+'%';
+}
+
+/* 高亮当前节点；路径与直接子节点标为上下文；其余淡化 */
+function markPresentClasses(item){
+  var tops=mind.map.querySelectorAll('me-tpc');
+  var ctx={};
+  for(var p=0;p<item.path.length;p++) ctx[item.path[p]]=1;
+  var cur=findNodeData(mind.nodeData, item.id);
+  if(cur && cur.children){
+    for(var k=0;k<cur.children.length;k++) ctx[cur.children[k].id]=1;
+  }
+  for(var i=0;i<tops.length;i++){
+    var dn=tops[i].dataset.nodeid ? tops[i].dataset.nodeid.slice(2) : '';
+    tops[i].classList.remove('present-hit','present-ctx','present-dim');
+    if(dn===item.id) tops[i].classList.add('present-hit');
+    else if(ctx[dn]) tops[i].classList.add('present-ctx');
+    else tops[i].classList.add('present-dim');
+  }
+}
+
+function presentGo(i, immediate){
   if(!present.on) return;
   var n = present.list.length;
   if(i<0) i=0;
@@ -906,58 +1051,66 @@ function presentGo(i){
   present.idx = i;
   var item = present.list[i];
 
-  /* 折叠全部，只展开到当前节点的路径 */
+  /* 折叠全部，只展开到当前节点的路径（当前节点也展开，露出其直接子节点） */
   var d = mind.getData();
   (function collapse(x){
     if(!x) return;
     x.expanded = false;
     (x.children||[]).forEach(collapse);
   })(d.nodeData);
-
-  var pathSet = {};
-  for(var p=0; p<item.path.length; p++) pathSet[item.path[p]] = 1;
+  var pathSet={};
+  for(var p=0;p<item.path.length;p++) pathSet[item.path[p]]=1;
   (function expand(x){
     if(!x) return;
-    if(pathSet[x.id]) x.expanded = true;
+    if(pathSet[x.id]) x.expanded=true;
     (x.children||[]).forEach(expand);
   })(d.nodeData);
 
+  presentRafCancel();
   mind.refresh(d);
-  fitView();
+  markPresentClasses(item);
+  presentCamera(item, immediate);
 
-  $('prIdx').textContent = i+1;
-  $('prTitle').textContent = item.topic || '(无标题)';
-  $('prFirst').disabled = (i===0);
-  $('prPrev').disabled = (i===0);
-  $('prNext').disabled = (i===n-1);
-  $('prLast').disabled = (i===n-1);
-  var prog = $('presentProg');
-  if(prog) prog.style.width = ((i+1)/n*100).toFixed(2) + '%';
+  $('prIdx').textContent=i+1;
+  $('prTitle').textContent=item.path.map(function(id){ return present.topicMap[id]||''; }).join(' / ');
+  $('prFirst').disabled=(i===0);
+  $('prPrev').disabled=(i===0);
+  $('prNext').disabled=(i===n-1);
+  $('prLast').disabled=(i===n-1);
+  $('presentProg').style.width=((i+1)/n*100).toFixed(2)+'%';
+
+  /* 进度记忆：到达最后一张视为本轮复习完成，重置进度；否则保存当前位置 */
+  if(i===n-1) clearPresentPos(present.noteId);
+  else savePresentPos();
 }
 
 function exitPresent(){
   if(!present.on) return;
   stopAuto();
-  present.on = false;
+  presentRafCancel();
+  if(present.idx < present.list.length-1) savePresentPos();
+  var backup=present.backup, zoom=present.zoom, canvasTrans=present.canvasTrans;
+  present.on=false;
   document.body.classList.remove('present-mode');
   $('presentBar').classList.add('hidden');
   $('presentProg').classList.add('hidden');
+  present.backup=null;
+  present.list=[];
+  present.noteId=null;
+  present.topicMap={};
 
-  /* 退出聚焦模式 */
+  /* 清除高亮/淡化标记，恢复画布过渡 */
   try{
-    if(mind.isFocusMode) mind.cancelFocus();
+    var marks=mind.map.querySelectorAll('me-tpc');
+    for(var i=0;i<marks.length;i++) marks[i].classList.remove('present-hit','present-ctx','present-dim');
+    mind.map.style.transition=canvasTrans||'';
   }catch(e){}
 
-  /* 恢复完整树备份 */
-  if(present.backup){
-    try{ mind.refresh(present.backup); }catch(e){}
-  }
-  mind.scale(present.zoom || 1);
-  fitView();
-
-  present.backup = null;
-  present.list = [];
-  setStatus('已退出演示', true);
+  /* 恢复完整树 */
+  if(backup){ try{ mind.refresh(backup); }catch(e){} }
+  mind.scale(zoom||1);
+  setTimeout(fitView, 80);
+  setStatus('已退出演示，复习进度已保存', true);
 }
 
 function startAuto(){
