@@ -859,68 +859,70 @@ function collectSubtree(data, startId){
 function enterPresent(){
   if(!mind || !mind.getData) return;
   if(present.on) return;
-  var d = mind.getData();
-  if(!d || !d.nodeData) return;
-  var d = mind.getData();
-  if(!d || !d.nodeData) return;
-  /* 聚焦模式下先退出，否则 getData 只返回焦点子树 */
-  if(mind.isFocusMode){ try{ mind.cancelFocus(); }catch(e){} }
-  present.backup = JSON.parse(JSON.stringify(mind.getData()));
-  /* 起点：优先当前选中的节点；没选中则用树根 */
-  var startId = present.backup.nodeData.id;
+
+  /* 起点：当前选中的节点 */
+  var selEl = null;
   try{
     var cn = mind.currentNodes;
-    if(cn && cn.length){
-      var c0 = cn[0];
-      /* currentNodes 存的是 DOM 元素，ID 在 dataset.nodeid 里（带 me 前缀） */
-      var did = (c0.dataset && c0.dataset.nodeid) || '';
-      if(did && did.slice(0,2) === 'me') startId = did.slice(2);
-      else if(c0.id) startId = c0.id;
-    }
+    if(cn && cn.length) selEl = cn[0];
   }catch(e){}
-  /* 起点必须在备份树里 */
-  if(!findPathById(present.backup, startId)) startId = present.backup.nodeData.id;
-  present.list = collectSubtree(present.backup, startId);
-  if(!present.list.length){ setStatus('没找到起点节点，请先点选一个节点', true); return; }
+  if(!selEl || !selEl.nodeObj){
+    setStatus('请先点选一个节点', true);
+    return;
+  }
+
+  /* 保存完整树备份（退出时恢复） */
+  present.backup = JSON.parse(JSON.stringify(mind.getData()));
   present.zoom = getZoom();
+
+  /* 用库内置 focusNode 隔离子树：选中节点变成新根，只显示其子树 */
+  if(!mind.isFocusMode && selEl.nodeObj.parent){
+    mind.focusNode(selEl);
+  }
+
+  /* 现在 mind.nodeData 是选中节点的子树 */
+  var d = mind.getData();
+  if(!d || !d.nodeData) return;
+  present.list = collectPreorder(d);
+  if(!present.list.length){
+    setStatus('没找到节点', true);
+    return;
+  }
   present.idx = 0;
   present.on = true;
   document.body.classList.add('present-mode');
   $('presentBar').classList.remove('hidden');
-  $('presentProg').classList.remove('hidden');
   $('prTotal').textContent = present.list.length;
+  $('prTitle').textContent = present.list[0].topic || '节点';
   presentGo(0);
-  var _first = present.list[0].topic || '节点';
-  setStatus('演示「'+_first+'」共 '+present.list.length+' 张：→ 下一张 / ← 上一张 / Esc 退出', true);
+  setStatus('演示「'+present.list[0].topic+'」共 '+present.list.length+' 张', true);
 }
 
 function presentGo(i){
-  if(!present.on || !present.backup) return;
+  if(!present.on) return;
   var n = present.list.length;
-  if(i < 0) i = 0;
-  if(i > n-1) i = n-1;
+  if(i<0) i=0;
+  if(i>n-1) i=n-1;
   present.idx = i;
   var item = present.list[i];
 
-  /* 深拷贝备份 → 全部折叠 → 只展开路径 */
-  var d = JSON.parse(JSON.stringify(present.backup));
+  /* 折叠全部，只展开到当前节点的路径 */
+  var d = mind.getData();
   (function collapse(x){
     if(!x) return;
     x.expanded = false;
     (x.children||[]).forEach(collapse);
   })(d.nodeData);
+
   var pathSet = {};
-  for(var p=0;p<item.path.length;p++) pathSet[item.path[p]] = 1;
-  var target = null;
+  for(var p=0; p<item.path.length; p++) pathSet[item.path[p]] = 1;
   (function expand(x){
     if(!x) return;
     if(pathSet[x.id]) x.expanded = true;
-    if(x.id === item.id) target = x;
     (x.children||[]).forEach(expand);
   })(d.nodeData);
-  if(target) target.expanded = true;   /* 当前节点展开，露出下一层 */
 
-  try{ mind.refresh(d); }catch(e){}
+  mind.refresh(d);
   fitView();
 
   $('prIdx').textContent = i+1;
@@ -933,23 +935,28 @@ function presentGo(i){
   if(prog) prog.style.width = ((i+1)/n*100).toFixed(2) + '%';
 }
 
-/* 居中并缩放到舒服的阅读尺寸 */
-
-
 function exitPresent(){
   if(!present.on) return;
   stopAuto();
   present.on = false;
   document.body.classList.remove('present-mode');
-  var bar = $('presentBar'), prog = $('presentProg');
-  if(bar) bar.classList.add('hidden');
-  if(prog) prog.classList.add('hidden');
+  $('presentBar').classList.add('hidden');
+  $('presentProg').classList.add('hidden');
+
+  /* 退出聚焦模式 */
   try{
-    if(present.backup) mind.refresh(present.backup);
-    mind.scale(present.zoom || 1);
-    if(mind.toCenter) mind.toCenter();
+    if(mind.isFocusMode) mind.cancelFocus();
   }catch(e){}
-  present.backup = null; present.list = [];
+
+  /* 恢复完整树备份 */
+  if(present.backup){
+    try{ mind.refresh(present.backup); }catch(e){}
+  }
+  mind.scale(present.zoom || 1);
+  fitView();
+
+  present.backup = null;
+  present.list = [];
   setStatus('已退出演示', true);
 }
 
