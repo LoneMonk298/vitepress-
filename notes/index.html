@@ -128,6 +128,21 @@ html.dark .mm-hint code{background:rgba(255,255,255,.08)}
 .s-badge.new{background:var(--bg);color:var(--text2);border:1px solid var(--bd)}
 html.dark .s-badge.done{color:#34d399}
 html.dark .s-badge.run{color:#fbbf24}
+/* 全局搜索（侧栏顶部） */
+.global-search{padding:8px 10px;border-bottom:1px solid var(--bd)}
+.gs-row{display:flex;gap:6px}
+#globalFind{flex:1;min-width:0;padding:6px 10px;border:1px solid var(--bd);border-radius:7px;background:var(--bg);color:var(--text);font-size:12.5px;font-family:inherit}
+.gs-row .ico{padding:5px 9px;font-size:14px}
+#globalResults{max-height:190px;overflow-y:auto;margin-top:6px;display:none}
+#globalResults.show{display:block}
+.gs-hit{padding:7px 9px;border-radius:7px;cursor:pointer;font-size:12.5px;margin-bottom:4px;border:1px solid transparent}
+.gs-hit:hover{background:var(--bg);border-color:var(--bd)}
+.gs-note{font-size:11px;color:var(--pri);font-weight:600}
+.gs-topic{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:1px}
+.gs-path{display:block;font-size:11px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gs-empty{font-size:12px;color:var(--text2);padding:6px 4px}
+.bl-item{cursor:pointer}
+.bl-item:hover{background:var(--bg)}
 @media(max-width:768px){
   .sidebar{position:absolute;z-index:20;height:100%;box-shadow:4px 0 16px #0002}
   .topbar .t{font-size:13px}
@@ -141,6 +156,13 @@ html.dark .s-badge.run{color:#fbbf24}
     <div class="side-h">
       <span>笔记导图</span>
       <small id="cnt"></small>
+    </div>
+    <div class="global-search">
+      <div class="gs-row">
+        <input id="globalFind" placeholder="搜所有笔记… (Ctrl+Shift+F)">
+        <button class="ico" id="btnBacklinks" title="谁引用了当前笔记">⇄</button>
+      </div>
+      <div id="globalResults"></div>
     </div>
     <div class="side-list" id="list"></div>
     <div style="padding:10px;border-top:1px solid var(--bd);display:flex;gap:6px">
@@ -262,6 +284,15 @@ html.dark .s-badge.run{color:#fbbf24}
     <p>各笔记复习进度一目了然：<b style="color:#0d9488">已完成</b> 表示演示模式看到最后一张；<b style="color:#d97706">复习到 x/y</b> 表示下次可继续。</p>
     <div id="stats-body"></div>
     <div class="row"><button id="btnCloseStats">关闭</button></div>
+  </div>
+</div>
+
+<div class="modal" id="modalBacklinks">
+  <div class="mbox">
+    <h3>谁引用了这篇笔记</h3>
+    <p>其他笔记里用 <code>[[笔记名]]</code> 或 <code>(note:笔记名)</code> 引用了当前笔记，会列在这里，点击可跳转。</p>
+    <div id="backlinks-body"></div>
+    <div class="row"><button id="btnCloseBacklinks">关闭</button></div>
   </div>
 </div>
 
@@ -815,6 +846,12 @@ document.addEventListener('keydown', function(e){
   var k = e.key.toLowerCase();
   if(k === 'e' && !e.shiftKey){ e.preventDefault(); setAllExpanded(true); return; }
   if(k === 'e' && e.shiftKey){ e.preventDefault(); setAllExpanded(false); return; }
+  if(k === 'f' && e.shiftKey){
+    e.preventDefault();
+    $('sidebar').classList.remove('hide');
+    var gf = $('globalFind'); if(gf) gf.focus();
+    return;
+  }
   if(k === 'f' && !e.shiftKey){
     e.preventDefault();
     if(mind.isFocusMode) exitFocus(); else focusSelected();
@@ -1401,6 +1438,140 @@ function openStats(){
   $('modalStats').classList.add('show');
 }
 
+/* ===== 全局搜索与双链反查（P0）===== */
+/* 找从根到指定 id 的节点路径（对象数组） */
+function findPathInData(root, id){
+  var res = null;
+  (function walk(n, path){
+    if(res || !n) return;
+    var p = path.concat([n]);
+    if(n.id===id){ res=p; return; }
+    (n.children||[]).forEach(function(c){ walk(c,p); });
+  })(root, []);
+  return res;
+}
+/* 加载笔记并定位到指定节点（复用应用的高亮逻辑） */
+function jumpToNote(note, nodeId){
+  if(!note) return;
+  loadNote(note);
+  setTimeout(function(){
+    try{
+      if(!mind) return;
+      var d = mind.getData();
+      var root = d.nodeData;
+      var path = findPathInData(root, nodeId);
+      if(!path){ setStatus('节点未找到', true); return; }
+      applyFocus(root, { node:path[path.length-1], path:path });
+      initMind(d);
+      setTimeout(function(){
+        var el = document.querySelector('[data-nodeid="me'+nodeId+'"]');
+        if(!el) return;
+        try{ el.scrollIntoView({block:'center',inline:'center',behavior:'smooth'}); }catch(e){}
+        el.classList.add('mm-hit');
+      }, 400);
+      setStatus('已定位「'+String(path[path.length-1].topic).slice(0,24)+'」', true);
+    }catch(e){ setStatus('定位失败', true); }
+  }, 260);
+}
+function renderGlobalResults(kw){
+  var box = $('globalResults');
+  kw = String(kw||'').trim();
+  if(!kw){ box.classList.remove('show'); box.innerHTML=''; return; }
+  var ns = loadNotes(), hits = [];
+  for(var i=0;i<ns.length;i++){
+    var d = null;
+    try{ d = JSON.parse(localStorage.getItem(LS_PFX+ns[i].id)||'null'); }catch(e){ d = null; }
+    if(!d || !d.nodeData) continue;
+    var h = locateInData(d.nodeData, kw);
+    if(h) hits.push({ note:ns[i], node:h.node, path:h.path, score:h.score });
+  }
+  hits.sort(function(a,b){ return b.score-a.score; });
+  hits = hits.slice(0,15);
+  var h = '';
+  if(!hits.length){
+    h = '<div class="gs-empty">未找到「'+escapeHtml(kw)+'」</div>';
+  } else {
+    for(var j=0;j<hits.length;j++){
+      var it = hits[j];
+      var pathStr = it.path.slice(0,-1).map(function(n){ return plainTopic(n.topic); }).join(' / ');
+      h += '<div class="gs-hit" data-id="'+it.note.id+'" data-node="'+it.node.id+'">';
+      h += '<span class="gs-note">'+escapeHtml(it.note.name)+'</span>';
+      h += '<span class="gs-topic">'+escapeHtml(plainTopic(it.node.topic))+'</span>';
+      if(pathStr) h += '<span class="gs-path">'+escapeHtml(pathStr)+'</span>';
+      h += '</div>';
+    }
+  }
+  box.innerHTML = h;
+  box.classList.add('show');
+  var els = box.querySelectorAll('.gs-hit');
+  for(var k=0;k<els.length;k++){
+    (function(el){
+      el.onclick = function(){
+        var note = findNoteById(el.getAttribute('data-id'));
+        if(note) jumpToNote(note, el.getAttribute('data-node'));
+      };
+    })(els[k]);
+  }
+}
+/* 反查：匹配 [[名]] / [文字](note:名) / (note:名) 三种引用写法 */
+function noteRefMatch(name){
+  name = String(name||'').trim();
+  if(!name || !curNote) return false;
+  if(name===curNote.name) return true;
+  return curNote.name.indexOf(name)>=0 || name.indexOf(curNote.name)>=0;
+}
+function openBacklinks(){
+  if(!curNote){ setStatus('请先选择笔记', true); return; }
+  var ns = loadNotes(), rows = [];
+  var refRe = /\[\[([^\]]+)\]\]|\[[^\]]*\]\(note:([^)\s]+)\)|\(note:([^)\s]+)\)/g;
+  for(var i=0;i<ns.length;i++){
+    var n = ns[i];
+    if(n.id===curNote.id) continue;
+    var d = null;
+    try{ d = JSON.parse(localStorage.getItem(LS_PFX+n.id)||'null'); }catch(e){ d = null; }
+    if(!d || !d.nodeData) continue;
+    (function walk(node){
+      if(!node) return;
+      var t = String(node.topic||'');
+      refRe.lastIndex = 0;
+      var m;
+      while((m=refRe.exec(t))!==null){
+        var refName = m[1]||m[2]||m[3]||'';
+        if(noteRefMatch(refName)){ rows.push({ note:n, node:node }); break; }
+      }
+      (node.children||[]).forEach(walk);
+    })(d.nodeData);
+  }
+  var h = '';
+  if(!rows.length){
+    h = '<div class="empty-tip">还没有笔记引用「'+escapeHtml(curNote.name)+'」<br><br>在其他笔记里写 <code>[[当前笔记名]]</code> 即可建立引用</div>';
+  } else {
+    h = '<div class="stat-list">';
+    for(var r=0;r<rows.length;r++){
+      var it = rows[r];
+      h += '<div class="stat-item bl-item" data-id="'+it.note.id+'" data-node="'+it.node.id+'">';
+      h += '<span class="s-name"><b>'+escapeHtml(it.note.name)+'</b></span>';
+      h += '<span class="s-meta" style="flex:1">'+escapeHtml(plainTopic(it.node.topic).slice(0,32))+'</span>';
+      h += '</div>';
+    }
+    h += '</div>';
+  }
+  $('backlinks-body').innerHTML = h;
+  var els = $('backlinks-body').querySelectorAll('.bl-item');
+  for(var k=0;k<els.length;k++){
+    (function(el){
+      el.onclick = function(){
+        var note = findNoteById(el.getAttribute('data-id'));
+        if(note){
+          $('modalBacklinks').classList.remove('show');
+          jumpToNote(note, el.getAttribute('data-node'));
+        }
+      };
+    })(els[k]);
+  }
+  $('modalBacklinks').classList.add('show');
+}
+
 /* ===== 云同步 ===== */
 var SYNC_CONFIG_KEY='mm_notes_sync_config';
 var syncConfig = { keyId:'', accessKey:'', binId:'' };
@@ -1667,6 +1838,15 @@ document.addEventListener('DOMContentLoaded', function(){
   $('btnCloseSync').onclick = function(){ $('modalSync').classList.remove('show'); };
   $('btnStats').onclick = openStats;
   $('btnCloseStats').onclick = function(){ $('modalStats').classList.remove('show'); };
+  $('btnBacklinks').onclick = openBacklinks;
+  $('btnCloseBacklinks').onclick = function(){ $('modalBacklinks').classList.remove('show'); };
+
+  /* 全局搜索：输入实时搜，Enter 再搜一次，Esc 清空 */
+  $('globalFind').addEventListener('input', function(){ renderGlobalResults(this.value); });
+  $('globalFind').addEventListener('keydown', function(e){
+    if(e.key === 'Enter'){ renderGlobalResults(this.value); e.preventDefault(); return; }
+    if(e.key === 'Escape'){ this.value=''; renderGlobalResults(''); }
+  });
   $('btnUp').onclick = syncPush;
   $('btnDown').onclick = syncPull;
 
