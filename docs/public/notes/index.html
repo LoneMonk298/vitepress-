@@ -112,6 +112,22 @@ button.ok:hover{opacity:.9;color:#fff}
 .mm-hint{font-size:12px;color:var(--text2);line-height:1.7;margin:10px 0 0;padding:10px;background:var(--bg);border-radius:8px;border:1px solid var(--bd)}
 .mm-hint code{background:rgba(0,0,0,.06);padding:1px 5px;border-radius:3px;font-family:monospace;font-size:11.5px}
 html.dark .mm-hint code{background:rgba(255,255,255,.08)}
+/* 统计面板 */
+.stat-cards{display:flex;gap:10px;margin-bottom:14px}
+.stat-card{flex:1;background:var(--bg);border:1px solid var(--bd);border-radius:10px;padding:12px 8px;text-align:center}
+.stat-card b{display:block;font-size:22px;color:var(--pri);font-variant-numeric:tabular-nums}
+.stat-card span{font-size:11.5px;color:var(--text2)}
+.stat-list{max-height:44vh;overflow-y:auto;border:1px solid var(--bd);border-radius:8px}
+.stat-item{display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid var(--bd);font-size:13px}
+.stat-item:last-child{border-bottom:none}
+.stat-item .s-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.stat-item .s-meta{font-size:11px;color:var(--text2);white-space:nowrap;font-variant-numeric:tabular-nums}
+.s-badge{font-size:11px;padding:2px 9px;border-radius:10px;white-space:nowrap;flex:none}
+.s-badge.done{background:rgba(16,185,129,.13);color:#0d9488}
+.s-badge.run{background:rgba(245,158,11,.16);color:#d97706}
+.s-badge.new{background:var(--bg);color:var(--text2);border:1px solid var(--bd)}
+html.dark .s-badge.done{color:#34d399}
+html.dark .s-badge.run{color:#fbbf24}
 @media(max-width:768px){
   .sidebar{position:absolute;z-index:20;height:100%;box-shadow:4px 0 16px #0002}
   .topbar .t{font-size:13px}
@@ -149,6 +165,7 @@ html.dark .mm-hint code{background:rgba(255,255,255,.08)}
       </div>
       <button id="btnFocus" title="聚焦选中节点 (Ctrl+F)">聚焦</button>
       <button id="btnPresent" title="演示复习 (Ctrl+P)：选中节点则从该节点开始；未选中则继续上次进度">演示</button>
+      <button id="btnStats" title="统计与复习进度">统计</button>
       <button id="btnRename">改名</button>
       <button id="btnEditSrc">编辑源</button>
       <button id="btnExport">导出</button>
@@ -236,6 +253,15 @@ html.dark .mm-hint code{background:rgba(255,255,255,.08)}
     </div>
     <div id="sync-last-time" style="font-size:12px;color:var(--text2);margin-top:12px"></div>
     <div class="row"><button id="btnCloseSync">关闭</button></div>
+  </div>
+</div>
+
+<div class="modal" id="modalStats">
+  <div class="mbox">
+    <h3>统计与复习进度</h3>
+    <p>各笔记复习进度一目了然：<b style="color:#0d9488">已完成</b> 表示演示模式看到最后一张；<b style="color:#d97706">复习到 x/y</b> 表示下次可继续。</p>
+    <div id="stats-body"></div>
+    <div class="row"><button id="btnCloseStats">关闭</button></div>
   </div>
 </div>
 
@@ -555,6 +581,7 @@ function renderList(){
         for(var z=0;z<notes.length;z++) if(notes[z].id===id){
           if(confirm('删除「'+notes[z].name+'」？此操作不可撤销。')){
             notes.splice(z,1); saveNotes(notes); localStorage.removeItem(LS_PFX+id);
+            removePresentPos(id);
             renderList(); setStatus('已删除', true);
           }
           return;
@@ -862,7 +889,17 @@ function savePresentPos(){
     localStorage.setItem(PRESENT_POS_KEY, JSON.stringify(a));
   }catch(e){}
 }
-function clearPresentPos(noteId){
+/* 看到最后一张 → 标记「已完成」（保留记录供统计面板展示） */
+function markPresentDone(){
+  if(!present.noteId) return;
+  try{
+    var a=loadPosAll();
+    a[present.noteId]={ idx:present.list.length-1, total:present.list.length, completed:true, t:Date.now() };
+    localStorage.setItem(PRESENT_POS_KEY, JSON.stringify(a));
+  }catch(e){}
+}
+/* 删除笔记时清理进度记录 */
+function removePresentPos(noteId){
   if(!noteId) return;
   try{
     var a=loadPosAll();
@@ -1079,8 +1116,8 @@ function presentGo(i, immediate){
   $('prLast').disabled=(i===n-1);
   $('presentProg').style.width=((i+1)/n*100).toFixed(2)+'%';
 
-  /* 进度记忆：到达最后一张视为本轮复习完成，重置进度；否则保存当前位置 */
-  if(i===n-1) clearPresentPos(present.noteId);
+  /* 进度记忆：到达最后一张视为本轮复习完成并标记；否则保存当前位置 */
+  if(i===n-1) markPresentDone();
   else savePresentPos();
 }
 
@@ -1215,6 +1252,11 @@ function queueSave(){
   queueSave._t = setTimeout(function(){
     try{
       localStorage.setItem(LS_PFX + curNote.id, JSON.stringify(mind.getData()));
+      /* 记录最近编辑时间（供统计面板展示） */
+      curNote.updated = Date.now();
+      var arr = loadNotes();
+      for(var i=0;i<arr.length;i++) if(arr[i].id===curNote.id) arr[i].updated = curNote.updated;
+      saveNotes(arr);
       setStatus('已自动保存', true);
     }catch(e){ setStatus('保存失败：'+e.message); }
   }, 800);
@@ -1302,6 +1344,61 @@ function exportNote(){
   a.click();
   URL.revokeObjectURL(url);
   setStatus('已导出 JSON', true);
+}
+
+/* ===== 统计与复习进度 ===== */
+function countNodes(nodeData){
+  if(!nodeData) return 0;
+  var c = 1;
+  (nodeData.children||[]).forEach(function(ch){ c += countNodes(ch); });
+  return c;
+}
+function fmtTime(t){
+  if(!t) return '';
+  var d = new Date(t);
+  function p(n){ return n<10 ? '0'+n : ''+n; }
+  return (d.getMonth()+1)+'/'+d.getDate()+' '+p(d.getHours())+':'+p(d.getMinutes());
+}
+function openStats(){
+  var ns = loadNotes();
+  var totalNodes = 0, doneN = 0, runN = 0, newN = 0, rows = [];
+  for(var i=0;i<ns.length;i++){
+    var n = ns[i], d = null;
+    try{ d = JSON.parse(localStorage.getItem(LS_PFX+n.id)||'null'); }catch(e){ d = null; }
+    var cnt = (d && d.nodeData) ? countNodes(d.nodeData) : 0;
+    totalNodes += cnt;
+    var pos = getPresentPos(n.id);
+    var badge = '未开始', cls = 'new';
+    if(pos && pos.completed){ badge = '已完成'; cls = 'done'; doneN++; }
+    else if(pos && pos.total){ badge = '复习到 '+(Math.min(pos.idx,pos.total-1)+1)+'/'+pos.total; cls = 'run'; runN++; }
+    else newN++;
+    rows.push({ n:n, cnt:cnt, badge:badge, cls:cls });
+  }
+  var h = '';
+  h += '<div class="stat-cards">';
+  h += '<div class="stat-card"><b>'+ns.length+'</b><span>笔记</span></div>';
+  h += '<div class="stat-card"><b>'+totalNodes+'</b><span>节点</span></div>';
+  h += '<div class="stat-card"><b>'+doneN+'/'+ns.length+'</b><span>已复习完成</span></div>';
+  h += '</div>';
+  if(!rows.length){
+    h += '<div class="empty-tip">还没有笔记<br>点侧栏「新建」或「导入」开始</div>';
+  } else {
+    h += '<div class="stat-list">';
+    for(var r=0;r<rows.length;r++){
+      var it = rows[r];
+      var meta = it.cnt+' 节点 · '+escapeHtml(it.n.folder||'未分类');
+      var t = fmtTime(it.n.updated || it.n.created);
+      if(t) meta += ' · '+t;
+      h += '<div class="stat-item">';
+      h += '<span class="s-badge '+it.cls+'">'+it.badge+'</span>';
+      h += '<span class="s-name" title="'+escapeHtml(it.n.name)+'">'+escapeHtml(it.n.name)+'</span>';
+      h += '<span class="s-meta">'+meta+'</span>';
+      h += '</div>';
+    }
+    h += '</div>';
+  }
+  $('stats-body').innerHTML = h;
+  $('modalStats').classList.add('show');
 }
 
 /* ===== 云同步 ===== */
@@ -1568,6 +1665,8 @@ document.addEventListener('DOMContentLoaded', function(){
   };
   $('btnSync').onclick = openSyncModal;
   $('btnCloseSync').onclick = function(){ $('modalSync').classList.remove('show'); };
+  $('btnStats').onclick = openStats;
+  $('btnCloseStats').onclick = function(){ $('modalStats').classList.remove('show'); };
   $('btnUp').onclick = syncPush;
   $('btnDown').onclick = syncPull;
 
