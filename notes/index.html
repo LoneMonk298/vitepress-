@@ -58,9 +58,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei
 .present-bar button.pb-exit{background:rgba(239,68,68,.75)}
 .present-bar button.pb-exit:hover{background:#ef4444}
 .present-bar button.on{background:#10b981}
+.present-speed{background:rgba(255,255,255,.12);color:#fff;border:none;border-radius:7px;padding:5px 8px;font-size:12.5px;cursor:pointer;font-family:inherit;outline:none}
+.present-speed:hover{background:rgba(255,255,255,.26)}
+.present-speed option{color:#1f2937;background:#fff}
 .present-pos{font-variant-numeric:tabular-nums;padding:0 4px;color:#cbd5e1}
 .present-pos b{color:#fff;font-size:15px}
-.present-title{max-width:400px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#e2e8f0;padding-left:8px;border-left:1px solid rgba(255,255,255,.18);margin-left:4px}
 .present-prog{position:fixed;left:0;top:0;height:3px;background:#10b981;z-index:9999;transition:width .18s}
 .present-prog.hidden{display:none}
 /* 演示模式：当前节点高亮，路径/直接子节点为上下文，其余淡化（XMind 漫游式） */
@@ -163,7 +165,12 @@ html.dark .mm-hint code{background:rgba(255,255,255,.08)}
       <button id="prNext" title="下一张 (→ / 空格)">▶</button>
       <button id="prLast" title="最后一张 (End)">⏭</button>
       <button id="prPlay" title="自动播放">自动</button>
-      <span class="present-title" id="prTitle"></span>
+      <select id="prSpeed" class="present-speed" title="自动播放速度">
+        <option value="1">1x</option>
+        <option value="1.5">1.5x</option>
+        <option value="2">2x</option>
+        <option value="0.5">0.5x</option>
+      </select>
     </div>
     <div class="status" id="status">新建笔记开始</div>
   </main>
@@ -800,7 +807,7 @@ if(window.addEventListener){
 
 
 /* ===== 演示模式（XMind 漫游式复习）===== */
-var present = { on:false, list:[], idx:0, backup:null, zoom:1, timer:null, raf:0, noteId:null, topicMap:{}, canvasTrans:'' };
+var present = { on:false, list:[], idx:0, backup:null, zoom:1, timer:null, raf:0, noteId:null, canvasTrans:'' };
 var PRESENT_POS_KEY='mm_present_pos';
 var CANVAS_O=10000;
 
@@ -901,12 +908,6 @@ function enterPresent(){
   present.backup = JSON.parse(JSON.stringify(d0));
   present.zoom = getZoom();
   present.noteId = curNote ? curNote.id : null;
-  present.topicMap = {};
-  (function f(n){
-    if(!n) return;
-    present.topicMap[n.id]=plainTopic(n.topic);
-    (n.children||[]).forEach(f);
-  })(d0.nodeData);
 
   /* 演示期间关闭画布 CSS 过渡，相机由 requestAnimationFrame 统一驱动 */
   try{ present.canvasTrans = mind.map.style.transition; mind.map.style.transition='none'; }catch(e){}
@@ -1072,7 +1073,6 @@ function presentGo(i, immediate){
   presentCamera(item, immediate);
 
   $('prIdx').textContent=i+1;
-  $('prTitle').textContent=item.path.map(function(id){ return present.topicMap[id]||''; }).join(' / ');
   $('prFirst').disabled=(i===0);
   $('prPrev').disabled=(i===0);
   $('prNext').disabled=(i===n-1);
@@ -1097,7 +1097,6 @@ function exitPresent(){
   present.backup=null;
   present.list=[];
   present.noteId=null;
-  present.topicMap={};
 
   /* 清除高亮/淡化标记，恢复画布过渡 */
   try{
@@ -1113,13 +1112,25 @@ function exitPresent(){
   setStatus('已退出演示，复习进度已保存', true);
 }
 
+var PRESENT_SPEED_KEY='mm_present_speed';
+function loadSpeed(){
+  try{
+    var v=localStorage.getItem(PRESENT_SPEED_KEY);
+    if(v && $('prSpeed') && $('prSpeed').querySelector('option[value="'+v+'"]')) $('prSpeed').value=v;
+  }catch(e){}
+}
+function saveSpeed(){
+  try{ if($('prSpeed')) localStorage.setItem(PRESENT_SPEED_KEY, $('prSpeed').value); }catch(e){}
+}
 function startAuto(){
   stopAuto();
+  var sp = parseFloat($('prSpeed') ? $('prSpeed').value : '1') || 1;
+  var interval = Math.round(4200 / sp);
   present.timer = setInterval(function(){
     if(!present.on) return stopAuto();
     if(present.idx >= present.list.length-1) return stopAuto();
     presentGo(present.idx+1);
-  }, 4200);
+  }, interval);
   var b = $('prPlay'); if(b){ b.classList.add('on'); b.textContent = '暂停'; }
 }
 function stopAuto(){
@@ -1136,6 +1147,15 @@ function bindPresent(){
   on('prFirst', function(){ presentGo(0); });
   on('prLast', function(){ presentGo(present.list.length-1); });
   on('prPlay', function(){ present.timer ? stopAuto() : startAuto(); });
+  /* 切换速度：保存选择；自动播放中则按新间隔重启 */
+  var sp = $('prSpeed');
+  if(sp){
+    sp.onchange = function(){
+      saveSpeed();
+      if(present.timer) startAuto();
+    };
+    loadSpeed();
+  }
 }
 
 /* 演示模式键盘（捕获阶段，优先于库的快捷键） */
