@@ -253,16 +253,16 @@ https://www.example.com → 裸 URL（自动转链接）
 | XMind 内容 | 导入结果 |
 |---|---|
 | 标题与层级 | 完整节点树 |
-| 图片（≤300KB） | base64 内嵌，`![图片](data:image/...)` 直接渲染 |
-| 图片（>300KB） | 「🖼 图片已略过」占位节点（防 localStorage 爆容量） |
+| 图片 | **全部** base64 内嵌，`![图片](data:image/...)` 直接渲染（不设体积上限） |
 | 备注 Notes | 该节点下的「📝」子节点 |
 | 标签 labels | `#标签` |
 | 公式（LaTeX） | `$...$`（KaTeX 渲染） |
+| 自由主题（detached） | 转为普通子节点保留内容 |
 | 多画布 | 每画布一篇笔记，优先用画布名（非「画布 1」占位名时），否则用中心主题名 |
 
-导入完成弹窗会报告：节点数、内嵌图片数、略过图片数。
+导入完成弹窗会报告：节点数、内嵌图片数。
 
-**当前限制**：支持 XMind 2024 及以前版本（`content.json` 结构）；26.02 新版格式暂未适配；自由主题、外框概要、关系线、主题配色暂不导入。
+**当前限制**：支持 XMind 2024 及以前版本（`content.json` 结构）；26.02 新版格式暂未适配；外框概要、关系线、主题配色暂不导入（不影响内容，仅外观）。
 
 ---
 
@@ -271,12 +271,17 @@ https://www.example.com → 裸 URL（自动转链接）
 ```
 localStorage:
   mm_notes_list        → 笔记索引 [{id, name, folder, created, updated}]
-  mm_notes:<id>        → 单篇笔记完整数据 {nodeData, arrows, summaries, direction, theme}
   mm_notes_sync_config → 云同步凭证 {keyId, accessKey, binId}
   mm_notes_last_sync   → 上次同步时间
   mm_present_pos       → 演示复习进度 {<noteId>: {idx, total, completed, t}}
   mm_present_speed     → 自动播放速度（0.5 / 1 / 1.5 / 2）
   mm_notes_sort        → 侧栏排序方式（default / name / edited / created）
+
+IndexedDB（mm-notes-db / notes，keyPath=id）:
+  mm_notes:<id>        → 单篇笔记完整数据 {nodeData, arrows, summaries, direction, theme}
+                         （含图片 base64 时可达数 MB~十几 MB，localStorage 5MB 装不下，
+                         因此笔记正文存 IndexedDB，配额为 GB 级；旧 localStorage 数据首次
+                         打开自动迁移，不支持 IndexedDB 的浏览器回退 localStorage 存储）
 ```
 
 **关键不变式**：`nodeData` 里每个节点的 `topic` 字段永远是原始纯文本（含 `$...$`、`[[x]]`、`![...](...)`、`#标签` 语法），`dangerouslySetInnerHTML` 是派生的视图层。每次加载都从 `topic` 重新生成 HTML（`applyInlineHtml`），保证编辑→保存→重新打开不丢失公式/链接/图片/标签。
@@ -351,7 +356,7 @@ docs/public/notes/
 
 ### 已完成（本轮额外实现，不在原计划中）
 
-- ~~**XMind 文件导入**~~ ✅ 2026-10-14：fflate 解压 .xmind → 解析 content.json → 递归转节点；图片 ≤300KB 内嵌 base64、超出占位略过；备注→「📝」子节点、标签→`#标签`；多画布→多篇笔记。支持 XMind 2024 及以前版本。
+- ~~**XMind 文件导入**~~ ✅ 2026-10-14：fflate 解压 .xmind → 解析 content.json → 递归转节点；**图片全部** base64 内嵌；自由主题（detached）→ 普通子节点；备注→「📝」子节点、标签→`#标签`；多画布→多篇笔记；笔记正文存储升级到 IndexedDB。支持 XMind 2024 及以前版本。
 
 ---
 
@@ -399,11 +404,16 @@ setLocale / install
 
 ## 十、更新日志
 
+### 2026-10-14 · 图片全部内嵌 + 存储升级 IndexedDB
+- **图片全部显示**：移除 300KB 限制，XMind 导入的图片一律 base64 内嵌渲染（「计算机网络第一章」19 张图全部显示）
+- **存储升级**：笔记正文从 localStorage 迁到 **IndexedDB**（配额 GB 级），解决大图笔记超过 localStorage 5MB 的问题；旧数据首次打开自动迁移；索引与设置仍在 localStorage
+- **自由主题导入**：XMind 的 detached（自由主题）也转为普通子节点导入，不再丢失（该文件 3 个自由主题全部保留）
+- 用真实文件实测：267 节点 = 原版 267（264 主 + 3 自由），19 张图全部内嵌，搜索/统计/标签/演示正常
+
 ### 2026-10-14 · XMind 文件导入
 - 新增**导入 .xmind 文件**：引入 fflate（ZIP 解压）解析 `content.json`，递归转换节点树
-- **图片 A+B 混合**：≤300KB 自动转 base64 内嵌渲染；超出以「🖼 图片已略过」占位，防 localStorage 爆容量
 - 备注 → 「📝」子节点；标签 → `#标签`；多画布 → 多篇笔记（用中心主题命名）
-- 用真实文件「计算机网络第一章.xmind」实测：264 节点、内嵌 8 图、略过 11 图，演示模式正常漫游
+- 用真实文件「计算机网络第一章.xmind」实测：264 节点、8 图内嵌（当时有 300KB 限制）
 
 ### 2026-10-14 · 侧栏排序 + 未来计划扩充
 - 新增**侧栏排序**：文件夹内笔记可按 默认 / 名称 / 最近编辑 / 创建时间 排序，选择自动记忆（`mm_notes_sort`）
