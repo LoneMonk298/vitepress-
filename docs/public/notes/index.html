@@ -1431,12 +1431,25 @@ function openLightbox(src, alt){
   $('imgLightbox').classList.add('show');
 }
 function closeLightbox(){ $('imgLightbox').classList.remove('show'); }
-/* 点击导图里的图片 → 放大（捕获阶段，避免触发节点选中/演示操作） */
+/* 点击导图里的图片 → 放大（pointerdown 捕获阶段拦截：MindElixir 在 mousedown/pointerdown 就处理节点选中，
+   click 阶段拦截太晚；preventDefault 同时阻止兼容鼠标事件与节点操作） */
+document.addEventListener('pointerdown', function(e){
+  var t = e.target;
+  if(!t || t.tagName !== 'IMG') return;
+  var lb = $('imgLightbox');
+  if(lb && lb.classList.contains('show') && lb.contains(t)) return; /* 预览中的大图拖拽不受影响 */
+  var src = t.getAttribute('src') || '';
+  if(src && (src.indexOf('data:image')===0 || /^https?:\/\//.test(src))){
+    e.preventDefault(); e.stopImmediatePropagation();
+    openLightbox(src, t.getAttribute('alt'));
+  }
+}, true);
+/* click 兜底（合成点击等场景） */
 document.addEventListener('click', function(e){
   var t = e.target;
   if(!t || t.tagName !== 'IMG') return;
   var lb = $('imgLightbox');
-  if(lb && lb.classList.contains('show') && lb.contains(t)) return; /* 已在预览中，不重开 */
+  if(lb && lb.classList.contains('show') && lb.contains(t)) return;
   var src = t.getAttribute('src') || '';
   if(src && (src.indexOf('data:image')===0 || /^https?:\/\//.test(src))){
     e.preventDefault(); e.stopImmediatePropagation();
@@ -1504,8 +1517,16 @@ function initMind(data){
   mind.init(data);
   if(mind.toCenter) mind.toCenter();
   mind.bus.addListener('operation', function(){ queueSave(); });
-  /* 图片异步加载 → 节点宽度会变，重算布局（防溢出） */
+  /* 图片异步加载 → 节点宽度会变，重算布局（防溢出）。
+     事件委托在 #map 上捕获所有 img 的 load：折叠节点展开时动态渲染的新图片也能覆盖到 */
   try{
+    var mapEl = document.getElementById('map');
+    if(mapEl && !mapEl._imgLoadDeleg){
+      mapEl._imgLoadDeleg = true;
+      mapEl.addEventListener('load', function(e){
+        if(e.target && e.target.tagName === 'IMG') scheduleLayoutRefresh();
+      }, true);
+    }
     var imgs = document.querySelectorAll('#map img');
     for(var q=0;q<imgs.length;q++){
       (function(im){
