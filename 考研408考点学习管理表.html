@@ -1761,33 +1761,6 @@ body.dark .stat-card.focus-now .focus-meta { color: #94a3b8; }
   }
 
 
-  /* PDF Viewer */
-  .pdf-container {
-    background: white;
-    border-radius: 10px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-    overflow: hidden;
-    height: calc(100vh - 380px);
-    min-height: 500px;
-  }
-  .pdf-container embed {
-    width: 100%;
-    height: 100%;
-    border: none;
-  }
-  .pdf-fallback {
-    padding: 40px;
-    text-align: center;
-    color: #6b7280;
-  }
-  .pdf-fallback a {
-    color: #667eea;
-    text-decoration: none;
-    font-weight: 500;
-  }
-  .pdf-fallback a:hover { text-decoration: underline; }
-
-
 
 
   /* Floating button collapse */
@@ -2189,17 +2162,7 @@ body.dark .mm-head a.mm-new,body.dark .mm-head button,body.dark .mm-btn{backgrou
     <div class="qh-wrap" id="qh-wrap"></div>
   </div>
 
-  <div class="pdf-container" id="pdf-container" style="display:none">
-    <embed src="review/考试大纲.pdf" type="application/pdf" width="100%" height="100%">
-      <div class="pdf-fallback">
-        <p>📄 您的浏览器可能不支持内嵌PDF预览</p>
-        <p style="margin-top:10px"><a href="review/考试大纲.pdf" target="_blank">点击此处打开考试大纲PDF</a></p>
-      </div>
-    
-  </div>
-
-  
-<button class="floating-toggle" id="float-toggle" title="展开/收起">⚡</button>
+  <button class="floating-toggle" id="float-toggle" title="展开/收起">⚡</button>
 <div class="floating-actions" id="float-actions">
   <button class="floating-btn" id="float-schedule-btn" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:white" title="冲刺日程">
     <span class="tooltip">📅 冲刺日程</span>
@@ -2592,9 +2555,6 @@ function renderTabs() {
   const qhActive = currentTab === 'qianghua' ? 'active' : '';
   const qhTotal = (QIANGHUA_DATA['算法题'] ? QIANGHUA_DATA['算法题'].length : 0) + (QIANGHUA_DATA['应用题'] ? QIANGHUA_DATA['应用题'].length : 0);
   html += `<button class="tab ${qhActive}" data-sheet="qianghua" style="margin-left:8px">💪 强化打卡 <span class="count">${qhTotal}</span></button>`;
-  // Add syllabus tab
-  const syllabusActive = currentTab === 'syllabus' ? 'active' : '';
-  html += `<button class="tab ${syllabusActive}" data-sheet="syllabus" style="margin-left:8px">📄 考试大纲</button>`;
   // Add stats tab
   const statsActive = currentTab === 'stats' ? 'active' : '';
   html += `<button class="tab ${statsActive}" data-sheet="stats">📊 学习统计</button>`;
@@ -2608,29 +2568,20 @@ function renderTabs() {
     btn.addEventListener('click', () => {
       currentTab = btn.dataset.sheet;
       renderTabs();
-      if (currentTab === 'syllabus') {
+      if (currentTab === 'stats') {
         document.querySelector('.table-container').style.display = 'none';
-        document.getElementById('pdf-container').style.display = 'block';
-        document.getElementById('stats-view').style.display = 'none';
-        document.getElementById('qianghua-view').style.display = 'none';
-        document.querySelector('.toolbar').style.display = 'none';
-      } else if (currentTab === 'stats') {
-        document.querySelector('.table-container').style.display = 'none';
-        document.getElementById('pdf-container').style.display = 'none';
         document.getElementById('stats-view').style.display = 'block';
         document.getElementById('qianghua-view').style.display = 'none';
         document.querySelector('.toolbar').style.display = 'none';
         renderStatsView();
       } else if (currentTab === 'qianghua') {
         document.querySelector('.table-container').style.display = 'none';
-        document.getElementById('pdf-container').style.display = 'none';
         document.getElementById('stats-view').style.display = 'none';
         document.getElementById('qianghua-view').style.display = 'block';
         document.querySelector('.toolbar').style.display = 'none';
         renderQianghuaView();
       } else {
         document.querySelector('.table-container').style.display = 'block';
-        document.getElementById('pdf-container').style.display = 'none';
         document.getElementById('stats-view').style.display = 'none';
         document.getElementById('qianghua-view').style.display = 'none';
         document.querySelector('.toolbar').style.display = 'flex';
