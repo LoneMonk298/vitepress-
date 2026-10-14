@@ -87,6 +87,27 @@ button.ok:hover{opacity:.9;color:#fff}
 .ico{padding:7px 10px;font-size:15px}
 #find{padding:6px 10px;border:1px solid var(--bd);border-radius:7px;background:var(--bg);color:var(--text);font-size:12.5px;font-family:inherit;width:140px}
 #map{flex:1;min-height:0;background:var(--bg)}
+#map.ol-hidden{display:none}
+/* 大纲模式 */
+#outline{flex:1;min-height:0;background:var(--bg);overflow:auto;padding:14px 24px 90px}
+#outline.hidden{display:none}
+.ol-head{font-size:12px;color:var(--text2);margin-bottom:10px;display:flex;align-items:center;gap:6px;user-select:none}
+.ol-head .ol-count{font-weight:700;color:var(--text)}
+.ol-tree{list-style:none;margin:0;padding:0;font-size:13.5px}
+.ol-tree ul{list-style:none;margin:0;padding:0}
+.ol-tree ul{padding-left:19px}
+.ol-tree li{position:relative}
+.ol-tree ul li::before{content:"";position:absolute;left:6px;top:-2px;bottom:-2px;border-left:1px dashed var(--bd);opacity:.55}
+.ol-item{display:flex;align-items:center;gap:3px;border-radius:6px;cursor:pointer;padding:2px 6px;line-height:1.85;white-space:nowrap}
+.ol-item:hover{background:rgba(102,126,234,.09)}
+.ol-item .ol-caret{width:15px;height:15px;flex:none;display:inline-flex;align-items:center;justify-content:center;font-size:9px;color:var(--text2);user-select:none;transition:transform .15s;border-radius:4px}
+.ol-item .ol-caret:hover{background:rgba(102,126,234,.14);color:#667eea}
+.ol-item .ol-caret.open{transform:rotate(90deg)}
+.ol-item .ol-caret.ol-empty{opacity:0;pointer-events:none}
+.ol-item .ol-topic{overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0}
+.ol-item .ol-img{flex:none;font-size:12px;opacity:.85}
+.ol-root .ol-topic{font-weight:700;font-size:14px}
+.ol-depth1 .ol-topic{font-weight:600}
   .katex{font-size:1.02em}
   #map a[data-note]{pointer-events:auto}
   /* MindElixir 官方 CSS 给 me-wrapper 设了 pointer-events:none（画布空白穿透），
@@ -216,6 +237,7 @@ html.dark .s-badge.run{color:#fbbf24}
         <button id="btnZoomIn" class="zoom-ic" title="放大 (Ctrl++)">+</button>
         <button id="btnFit" class="zoom-ic" title="适配视图 (Ctrl+0)">⤢</button>
       </div>
+      <button id="btnOutline" title="大纲模式 (Ctrl+O)：导图 ↔ 大纲列表快速浏览">大纲</button>
       <button id="btnFocus" title="聚焦选中节点 (Ctrl+F)">聚焦</button>
       <button id="btnPresent" title="演示复习 (Ctrl+P)：选中节点则从该节点开始；未选中则继续上次进度">演示</button>
       <button id="btnStats" title="统计与复习进度">统计</button>
@@ -226,6 +248,7 @@ html.dark .s-badge.run{color:#fbbf24}
       <button id="btnSync">云同步</button>
     </div>
     <div id="map"></div>
+    <div id="outline" class="hidden"></div>
     <div class="present-prog hidden" id="presentProg"></div>
     <div class="present-bar hidden" id="presentBar">
       <button class="pb-exit" id="prExit" title="退出演示 (Esc)">✕</button>
@@ -626,6 +649,7 @@ function bindViewControls(){
   function on(id, fn){ var b = $(id); if(b) b.onclick = function(e){ e.stopPropagation(); fn(); }; }
   on('btnExpandAll', function(){ setAllExpanded(true); });
   on('btnCollapseAll', function(){ setAllExpanded(false); });
+  on('btnOutline', function(){ toggleOutline(); });
   on('btnZoomIn', function(){ setZoom(getZoom() + 0.15); });
   on('btnZoomOut', function(){ setZoom(getZoom() - 0.15); });
   on('btnFit', function(){ fitView(); });
@@ -1007,6 +1031,131 @@ function fitView(){
   }catch(e){}
 }
 
+/* ===== 大纲模式（导图 ↔ 大纲列表快速浏览）===== */
+/* 大纲内折叠状态独立于导图：只记录被用户手动折叠的节点 id（默认展开前 2 层） */
+var _olCollapsed = {};
+function toggleOutline(){
+  var ol = $('outline'), mp = $('map');
+  if(!ol || !mp) return;
+  var on = ol.classList.contains('hidden');
+  if(on){
+    /* 演示模式中先退出演示，避免两个全屏视图叠加 */
+    if(document.body.classList.contains('present-mode')){ try{ exitPresent(); }catch(e){} }
+    renderOutline();
+    mp.classList.add('ol-hidden');
+    ol.classList.remove('hidden');
+    setStatus('大纲模式：点击条目定位到导图对应节点', true);
+  }else{
+    ol.classList.add('hidden');
+    mp.classList.remove('ol-hidden');
+    setStatus('已退出大纲模式', true);
+  }
+}
+function renderOutline(){
+  var ol = $('outline');
+  if(!ol) return;
+  if(!mind || !mind.getData){ ol.innerHTML = '<div class="ol-head">请先载入笔记</div>'; return; }
+  var d;
+  try{ d = mind.isFocusMode ? { nodeData: mind.nodeData } : mind.getData(); }catch(e){ try{ d = mind.getData(); }catch(e2){ d = null; } }
+  if(!d || !d.nodeData){ ol.innerHTML = '<div class="ol-head">暂无内容</div>'; return; }
+  var cnt = 0;
+  (function c(n){ if(!n) return; cnt++; if(n.children) for(var i=0;i<n.children.length;i++) c(n.children[i]); })(d.nodeData);
+  var html = '<div class="ol-head">大纲 · <span class="ol-count">'+cnt+'</span> 个节点 · 点击条目定位到导图</div><ul class="ol-tree">';
+  html += _olNode(d.nodeData, 0);
+  html += '</ul>';
+  ol.innerHTML = html;
+  /* 事件绑定：箭头折叠/展开；条目点击定位 */
+  var items = ol.querySelectorAll('.ol-item');
+  for(var i=0;i<items.length;i++){
+    (function(it){
+      it.addEventListener('click', function(e){
+        if(e.target.closest('.ol-caret')) return;
+        locateOutlineNode(it.getAttribute('data-id'));
+      });
+    })(items[i]);
+  }
+  var cares = ol.querySelectorAll('.ol-caret');
+  for(var j=0;j<cares.length;j++){
+    (function(cr){
+      cr.addEventListener('click', function(){
+        var li = cr.closest('li');
+        var sub = li ? li.querySelector(':scope > ul') : null;
+        if(!sub) return;
+        var id = cr.getAttribute('data-id');
+        var collapsed = sub.style.display === 'none';
+        sub.style.display = collapsed ? '' : 'none';
+        cr.classList.toggle('open', collapsed);
+        if(id) _olCollapsed[id] = !collapsed;
+      });
+    })(cares[j]);
+  }
+}
+/* 递归生成大纲条目：默认展开前 2 层（根=0 层），更深默认折叠 */
+function _olNode(n, dep){
+  if(!n) return '';
+  var hasKids = n.children && n.children.length;
+  var hasImg = (n.images && n.images.length) || /!\[[^\]]*\]\(data:image\//.test(n.topic||'');
+  var collapsed = _olCollapsed[n.id] === true;
+  var expanded = hasKids && !collapsed && dep < 2;
+  var caret = hasKids
+    ? '<span class="ol-caret'+(expanded?' open':'')+'" data-id="'+n.id+'">▶</span>'
+    : '<span class="ol-caret ol-empty"></span>';
+  var img = hasImg ? '<span class="ol-img" title="含图片">🖼</span>' : '';
+  var cls = 'ol-item' + (dep===0 ? ' ol-root' : (dep===1 ? ' ol-depth1' : ''));
+  var html = '<li><div class="'+cls+'" data-id="'+n.id+'" title="点击定位到导图">'+caret+'<span class="ol-topic">'+escapeHtml(plainTopic(n.topic))+'</span>'+img+'</div>';
+  if(hasKids){
+    html += '<ul'+(expanded?'':' style="display:none"')+'>';
+    for(var i=0;i<n.children.length;i++) html += _olNode(n.children[i], dep+1);
+    html += '</ul>';
+  }
+  html += '</li>';
+  return html;
+}
+/* 定位：展开父链 → 刷新 → 选中 → 平移到视口中心 */
+function locateOutlineNode(id){
+  var ol = $('outline'), mp = $('map');
+  if(ol) ol.classList.add('hidden');
+  if(mp) mp.classList.remove('ol-hidden');
+  if(!mind) return;
+  try{
+    var root = mind.nodeData;
+    var path = _findPath(root, id);
+    if(!path){ setStatus('节点不存在或已删除', true); return; }
+    for(var i=0;i<path.length;i++) path[i].expanded = true;
+    mind.refresh();
+    var el = document.querySelector('#map [data-nodeid="me'+id+'"]');
+    if(!el){ setStatus('定位失败', true); return; }
+    if(mind.selectNode) mind.selectNode(el);
+    setTimeout(function(){
+      try{
+        var s = document.querySelector('#map .map-container') || (mind.mindElixirBox && mind.mindElixirBox.querySelector('.map-container'));
+        if(!s) return;
+        var sc = mind.scaleVal || 1;
+        /* 循环逼近：最多 3 轮，把选中节点移到视口中心 */
+        for(var t=0;t<3;t++){
+          var b = el.getBoundingClientRect();
+          var c = s.getBoundingClientRect();
+          var dx = b.left + b.width/2 - (c.left + c.width/2);
+          var dy = b.top + b.height/2 - (c.top + c.height/2);
+          if(Math.abs(dx) < 30 && Math.abs(dy) < 30) break;
+          s.scrollBy(dx / sc, dy / sc);
+        }
+      }catch(e){}
+    }, 80);
+    setStatus('已定位到导图', true);
+  }catch(e){ setStatus('定位失败', true); }
+}
+function _findPath(node, id, path){
+  if(!node) return null;
+  var np = (path||[]).concat([node]);
+  if(node.id === id) return np;
+  if(node.children) for(var i=0;i<node.children.length;i++){
+    var r = _findPath(node.children[i], id, np);
+    if(r) return r;
+  }
+  return null;
+}
+
 /* 聚焦选中节点（库内置 focusNode） */
 function focusSelected(){
   if(!mind) return;
@@ -1071,6 +1220,7 @@ document.addEventListener('keydown', function(e){
     return;
   }
   if(k === '0'){ e.preventDefault(); fitView(); return; }
+  if(k === 'o'){ e.preventDefault(); toggleOutline(); return; }
   if(k === 'p'){ e.preventDefault(); enterPresent(); return; }
   if(k === '=' || k === '+'){ e.preventDefault(); setZoom(getZoom() + 0.15); return; }
   if(k === '-'){ e.preventDefault(); setZoom(getZoom() - 0.15); return; }
