@@ -89,6 +89,10 @@ button.ok:hover{opacity:.9;color:#fff}
 #map{flex:1;min-height:0;background:var(--bg)}
   .katex{font-size:1.02em}
   #map a[data-note]{pointer-events:auto}
+  /* MindElixir 官方 CSS 给 me-wrapper 设了 pointer-events:none（画布空白穿透），
+     pointer-events 是继承属性 → 节点内图片也会继承 none → 真实点击永远落不到 img 上。
+     显式恢复图片可点击，否则图片单击放大（pointerdown 拦截）永远不生效 */
+  #map img{pointer-events:auto}
   .mind-elixir .katex-display{margin:0}
 .status{position:absolute;left:14px;bottom:12px;font-size:12px;color:var(--text2);background:var(--card);padding:6px 12px;border-radius:20px;box-shadow:0 2px 8px #0001;max-width:70%}
 .modal{position:fixed;inset:0;background:#0007;display:none;align-items:center;justify-content:center;z-index:99;padding:16px}
@@ -1518,22 +1522,31 @@ function initMind(data){
   if(mind.toCenter) mind.toCenter();
   mind.bus.addListener('operation', function(){ queueSave(); });
   /* 图片异步加载 → 节点宽度会变，重算布局（防溢出）。
-     事件委托在 #map 上捕获所有 img 的 load：折叠节点展开时动态渲染的新图片也能覆盖到 */
+     事件委托在 #map 上捕获所有 img 的 load/error：折叠节点展开时动态渲染的新图片也能覆盖到。
+     同一 src 只触发一次布局刷新：refresh 重建 DOM 后同源图片会重新 load，
+     不去重会导致「load → refresh → 重建 → 再 load」无限循环（节点反复重建、选中被清） */
   try{
     var mapEl = document.getElementById('map');
     if(mapEl && !mapEl._imgLoadDeleg){
       mapEl._imgLoadDeleg = true;
+      mapEl._imgLoadSeen = mapEl._imgLoadSeen || {};
       mapEl.addEventListener('load', function(e){
-        if(e.target && e.target.tagName === 'IMG') scheduleLayoutRefresh();
+        if(e.target && e.target.tagName === 'IMG'){
+          var src = e.target.getAttribute('src');
+          if(src && mapEl._imgLoadSeen[src]) return;
+          if(src) mapEl._imgLoadSeen[src] = true;
+          scheduleLayoutRefresh();
+        }
       }, true);
-    }
-    var imgs = document.querySelectorAll('#map img');
-    for(var q=0;q<imgs.length;q++){
-      (function(im){
-        if(im.complete && im.naturalWidth) return;
-        im.addEventListener('load', scheduleLayoutRefresh);
-        im.addEventListener('error', function(){ im.style.display = 'none'; scheduleLayoutRefresh(); });
-      })(imgs[q]);
+      mapEl.addEventListener('error', function(e){
+        if(e.target && e.target.tagName === 'IMG'){
+          var src = e.target.getAttribute('src');
+          if(src && mapEl._imgLoadSeen[src]) return;
+          if(src) mapEl._imgLoadSeen[src] = true;
+          e.target.style.display = 'none';
+          scheduleLayoutRefresh();
+        }
+      }, true);
     }
   }catch(e){}
   /* 视图控制绑定 + 缩放标签 */
@@ -1549,7 +1562,22 @@ function scheduleLayoutRefresh(){
   if(_refreshTimer) return;
   _refreshTimer = setTimeout(function(){
     _refreshTimer = null;
-    try{ if(mind && mind.refresh) mind.refresh(); }catch(e){}
+    try{
+      if(mind && mind.refresh){
+        /* refresh 会重建节点 DOM，选中状态（.selected class）会随之丢失。
+           先记住当前选中节点 id，刷新后按 id 找回新元素并恢复选中 */
+        var selId = null;
+        try{
+          var cur = mind.currentNode || (mind.currentNodes && mind.currentNodes[0]);
+          if(cur && cur.dataset && cur.dataset.nodeid) selId = cur.dataset.nodeid;
+        }catch(e2){}
+        mind.refresh();
+        if(selId){
+          var el = document.querySelector('#map [data-nodeid="'+selId+'"]');
+          if(el && mind.selectNode){ try{ mind.selectNode(el); }catch(e3){} }
+        }
+      }
+    }catch(e){}
   }, 150);
 }
 function queueSave(){
