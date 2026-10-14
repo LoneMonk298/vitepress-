@@ -258,7 +258,7 @@ html.dark .s-badge.run{color:#fbbf24}
     <div class="imp-xmind">
       <div class="ix-row"><span class="ix-sep">或</span></div>
       <button class="pri" id="btnImpXmind" style="width:100%">📦 导入 .xmind 文件</button>
-      <div class="mm-hint">支持 XMind 2024 及以前版本（content.json）。<br>图片 ≤300KB 自动内嵌，超出的以占位符略过；多画布 → 多篇笔记。</div>
+      <div class="mm-hint">支持 XMind 2024 及以前版本（content.json）。<br>图片全部内嵌显示（base64）；多画布 → 多篇笔记。</div>
       <input type="file" id="xmindFile" accept=".xmind,.zip" style="display:none">
     </div>
     <div class="row">
@@ -467,6 +467,113 @@ function mdToNodeData(md){
   return { nodeData: root, firstH1: items[0].text || '' };
 }
 
+/* ===== IndexedDB 笔记存储 =====
+   localStorage 约 5MB 装不下大图（base64），笔记数据迁到 IndexedDB（配额 GB 级），
+   索引列表仍在 localStorage；不支持 IndexedDB 时自动回退 localStorage（容量受限）。 */
+var _idbDB = null, _idbWait = [];
+function _idbOpen(cb){
+  if(_idbDB || !window.indexedDB){ cb&&cb(); return; }
+  var req = indexedDB.open('mm-notes-db', 1);
+  req.onupgradeneeded = function(e){
+    var db = e.target.result;
+    if(!db.objectStoreNames.contains('notes')) db.createObjectStore('notes', { keyPath:'id' });
+  };
+  req.onsuccess = function(e){
+    _idbDB = e.target.result;
+    var q = _idbWait; _idbWait = [];
+    for(var i=0;i<q.length;i++) q[i]();
+    cb&&cb();
+  };
+  req.onerror = function(){ console.error('IndexedDB 打开失败，回退 localStorage'); cb&&cb(); };
+}
+function _idbOk(){ return !!_idbDB; }
+function noteStoreGet(id, cb){
+  _idbOpen(function(){
+    if(_idbOk()){
+      try{
+        var rq = _idbDB.transaction('notes','readonly').objectStore('notes').get(id);
+        rq.onsuccess = function(){ cb&&cb(rq.result ? rq.result.data : null); };
+        rq.onerror = function(){ cb&&cb(null); };
+      }catch(e){ cb&&cb(null); }
+    } else {
+      var d = null;
+      try{ d = JSON.parse(localStorage.getItem(LS_PFX+id)||'null'); }catch(e){ d = null; }
+      cb&&cb(d);
+    }
+  });
+}
+function noteStoreGetAll(cb){
+  _idbOpen(function(){
+    if(_idbOk()){
+      try{
+        var rq = _idbDB.transaction('notes','readonly').objectStore('notes').getAll();
+        rq.onsuccess = function(){
+          var map = {};
+          (rq.result||[]).forEach(function(r){ map[r.id] = r.data; });
+          cb&&cb(map);
+        };
+        rq.onerror = function(){ cb&&cb({}); };
+      }catch(e){ cb&&cb({}); }
+    } else {
+      var map = {}, arr = loadNotes();
+      for(var i=0;i<arr.length;i++){
+        try{ map[arr[i].id] = JSON.parse(localStorage.getItem(LS_PFX+arr[i].id)||'null'); }catch(e){ map[arr[i].id] = null; }
+      }
+      cb&&cb(map);
+    }
+  });
+}
+function noteStorePut(id, obj, cb){
+  if(!obj) return cb&&cb();
+  _idbOpen(function(){
+    if(_idbOk()){
+      try{
+        var tx = _idbDB.transaction('notes','readwrite');
+        tx.objectStore('notes').put({ id:id, data:obj });
+        tx.oncomplete = function(){
+          try{ localStorage.removeItem(LS_PFX+id); }catch(e){}
+          cb&&cb();
+        };
+        tx.onerror = function(){ cb&&cb(); };
+      }catch(e){ cb&&cb(); }
+    } else {
+      try{ localStorage.setItem(LS_PFX+id, JSON.stringify(obj)); }catch(e){ setStatus('保存失败：本地存储容量不足', true); }
+      cb&&cb();
+    }
+  });
+}
+function noteStoreDel(id){
+  _idbOpen(function(){
+    if(_idbOk()){
+      try{ _idbDB.transaction('notes','readwrite').objectStore('notes').delete(id); }catch(e){}
+    } else {
+      try{ localStorage.removeItem(LS_PFX+id); }catch(e){}
+    }
+  });
+}
+/* 旧数据迁移：localStorage → IndexedDB（仅在 IndexedDB 可用时执行） */
+function migrateLocalToIDB(){
+  if(!window.indexedDB) return;
+  _idbOpen(function(){
+    if(!_idbOk()) return;
+    var keys = [];
+    for(var k in localStorage) if(k.indexOf(LS_PFX)===0) keys.push(k);
+    for(var i=0;i<keys.length;i++){
+      (function(key){
+        try{
+          var d = JSON.parse(localStorage.getItem(key)||'null');
+          if(d && d.nodeData){
+            var id = key.slice(LS_PFX.length);
+            var tx = _idbDB.transaction('notes','readwrite');
+            tx.objectStore('notes').put({ id:id, data:d });
+            tx.oncomplete = function(){ try{ localStorage.removeItem(key); }catch(e){} };
+          }
+        }catch(e){}
+      })(keys[i]);
+    }
+  });
+}
+
 /* ===== 笔记管理 ===== */
 function loadNotes(){
   var arr;
@@ -515,22 +622,20 @@ function bindViewControls(){
 }
 
 
-function loadNote(note){
+function loadNote(note, cb){
   curNote = note;
-  var data = null;
-  try{
-    var local = localStorage.getItem(LS_PFX + note.id);
-    if(local) data = JSON.parse(local);
-  }catch(e){}
-  if(!data) data = newNodeData();
   $('cur').textContent = note.name;
   var els = document.querySelectorAll('.note');
   for(var i=0;i<els.length;i++) els[i].classList.toggle('on', els[i].dataset.id===note.id);
   $('sidebar').classList.add('hide');
   try{ if(location.hash !== '#'+note.id) history.replaceState(null,'', '#'+note.id); }catch(e){}
   setStatus('加载中…', true);
-  initMind(data);
-  setStatus('已载入「'+note.name+'」', true);
+  noteStoreGet(note.id, function(data){
+    if(!data) data = newNodeData();
+    initMind(data);
+    setStatus('已载入「'+note.name+'」', true);
+    cb&&cb();
+  });
 }
 
 /* ===== 侧栏笔记排序 ===== */
@@ -595,30 +700,7 @@ function renderList(){
     }
     h += '</div></div>';
   }
-  var allTags = {};
-  for(k=0;k<notes.length;k++){
-    var d;
-    try{ d = JSON.parse(localStorage.getItem(LS_PFX+notes[k].id)||'null'); }catch(e){ d = null; }
-    if(d && d.nodeData){
-      var ts = collectTags(d);
-      for(var ti=0;ti<ts.length;ti++){
-        if(!allTags[ts[ti]]) allTags[ts[ti]] = [];
-        allTags[ts[ti]].push(notes[k].id);
-      }
-    }
-  }
-  var tagNames = Object.keys(allTags).sort();
-  h += '<div class="tag-row"><div class="tag-title">标签</div>';
-  if(tagNames.length){
-    h += '<div class="tags">';
-    for(k=0;k<tagNames.length;k++){
-      h += '<span class="tag'+(curTag===tagNames[k]?' on':'')+'" data-tag="'+escapeHtml(tagNames[k])+'">#'+escapeHtml(tagNames[k])+'</span>';
-    }
-    h += '</div>';
-  } else {
-    h += '<div class="tag-empty">节点内写 #标签 即可添加</div>';
-  }
-  h += '</div>';
+  h += '<div class="tag-row"><div class="tag-title">标签</div><div class="tag-empty">加载中…</div></div>';
   list.innerHTML = h;
 
   var fheads = list.querySelectorAll('.f-head');
@@ -656,7 +738,7 @@ function renderList(){
         var id = btn.dataset.id;
         for(var z=0;z<notes.length;z++) if(notes[z].id===id){
           if(confirm('删除「'+notes[z].name+'」？此操作不可撤销。')){
-            notes.splice(z,1); saveNotes(notes); localStorage.removeItem(LS_PFX+id);
+            notes.splice(z,1); saveNotes(notes); noteStoreDel(id);
             removePresentPos(id);
             renderList(); setStatus('已删除', true);
           }
@@ -685,21 +767,57 @@ function renderList(){
       };
     })(moves[k]);
   }
-  var tags = list.querySelectorAll('.tag');
-  for(k=0;k<tags.length;k++){
-    (function(el){
-      el.onclick = function(){
-        var t = el.getAttribute('data-tag');
-        if(curTag === t) curTag = null;
-        else {
-          curTag = t;
-          var ids = allTags[t] || [];
-          if(ids.length) loadNote(findNoteById(ids[0]));
+  /* 标签：异步收集（数据在 IndexedDB） */
+  renderTagsAsync();
+}
+
+function renderTagsAsync(){
+  var list = $('list');
+  var tagRow = list && list.querySelector('.tag-row');
+  if(!tagRow) return;
+  noteStoreGetAll(function(map){
+    var allTags = {};
+    var notesArr = loadNotes();
+    for(var i=0;i<notesArr.length;i++){
+      var d = map[notesArr[i].id];
+      if(d && d.nodeData){
+        var ts = collectTags(d);
+        for(var ti=0;ti<ts.length;ti++){
+          if(!allTags[ts[ti]]) allTags[ts[ti]] = [];
+          allTags[ts[ti]].push(notesArr[i].id);
         }
-        renderList();
-      };
-    })(tags[k]);
-  }
+      }
+    }
+    var row = list.querySelector('.tag-row');
+    if(!row) return;
+    var tagNames = Object.keys(allTags).sort();
+    var h = '<div class="tag-title">标签</div>';
+    if(tagNames.length){
+      h += '<div class="tags">';
+      for(var k=0;k<tagNames.length;k++){
+        h += '<span class="tag'+(curTag===tagNames[k]?' on':'')+'" data-tag="'+escapeHtml(tagNames[k])+'">#'+escapeHtml(tagNames[k])+'</span>';
+      }
+      h += '</div>';
+    } else {
+      h += '<div class="tag-empty">节点内写 #标签 即可添加</div>';
+    }
+    row.innerHTML = h;
+    var tags = row.querySelectorAll('.tag');
+    for(var j=0;j<tags.length;j++){
+      (function(el){
+        el.onclick = function(){
+          var t = el.getAttribute('data-tag');
+          if(curTag === t) curTag = null;
+          else {
+            curTag = t;
+            var ids = allTags[t] || [];
+            if(ids.length) loadNote(findNoteById(ids[0]));
+          }
+          renderList();
+        };
+      })(tags[j]);
+    }
+  });
 }
 
 function escapeHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
@@ -1333,7 +1451,7 @@ function queueSave(){
   clearTimeout(queueSave._t);
   queueSave._t = setTimeout(function(){
     try{
-      localStorage.setItem(LS_PFX + curNote.id, JSON.stringify(mind.getData()));
+      noteStorePut(curNote.id, mind.getData());
       /* 记录最近编辑时间（供统计面板展示） */
       curNote.updated = Date.now();
       var arr = loadNotes();
@@ -1443,44 +1561,47 @@ function fmtTime(t){
 }
 function openStats(){
   var ns = loadNotes();
-  var totalNodes = 0, doneN = 0, runN = 0, newN = 0, rows = [];
-  for(var i=0;i<ns.length;i++){
-    var n = ns[i], d = null;
-    try{ d = JSON.parse(localStorage.getItem(LS_PFX+n.id)||'null'); }catch(e){ d = null; }
-    var cnt = (d && d.nodeData) ? countNodes(d.nodeData) : 0;
-    totalNodes += cnt;
-    var pos = getPresentPos(n.id);
-    var badge = '未开始', cls = 'new';
-    if(pos && pos.completed){ badge = '已完成'; cls = 'done'; doneN++; }
-    else if(pos && pos.total){ badge = '复习到 '+(Math.min(pos.idx,pos.total-1)+1)+'/'+pos.total; cls = 'run'; runN++; }
-    else newN++;
-    rows.push({ n:n, cnt:cnt, badge:badge, cls:cls });
-  }
-  var h = '';
-  h += '<div class="stat-cards">';
-  h += '<div class="stat-card"><b>'+ns.length+'</b><span>笔记</span></div>';
-  h += '<div class="stat-card"><b>'+totalNodes+'</b><span>节点</span></div>';
-  h += '<div class="stat-card"><b>'+doneN+'/'+ns.length+'</b><span>已复习完成</span></div>';
-  h += '</div>';
-  if(!rows.length){
-    h += '<div class="empty-tip">还没有笔记<br>点侧栏「新建」或「导入」开始</div>';
-  } else {
-    h += '<div class="stat-list">';
-    for(var r=0;r<rows.length;r++){
-      var it = rows[r];
-      var meta = it.cnt+' 节点 · '+escapeHtml(it.n.folder||'未分类');
-      var t = fmtTime(it.n.updated || it.n.created);
-      if(t) meta += ' · '+t;
-      h += '<div class="stat-item">';
-      h += '<span class="s-badge '+it.cls+'">'+it.badge+'</span>';
-      h += '<span class="s-name" title="'+escapeHtml(it.n.name)+'">'+escapeHtml(it.n.name)+'</span>';
-      h += '<span class="s-meta">'+meta+'</span>';
+  $('stats-body').innerHTML = '<div class="empty-tip">统计中…</div>';
+  $('modalStats').classList.add('show');
+  noteStoreGetAll(function(map){
+    var totalNodes = 0, doneN = 0, runN = 0, newN = 0, rows = [];
+    for(var i=0;i<ns.length;i++){
+      var n = ns[i], d = map[n.id] || null;
+      var cnt = (d && d.nodeData) ? countNodes(d.nodeData) : 0;
+      totalNodes += cnt;
+      var pos = getPresentPos(n.id);
+      var badge = '未开始', cls = 'new';
+      if(pos && pos.completed){ badge = '已完成'; cls = 'done'; doneN++; }
+      else if(pos && pos.total){ badge = '复习到 '+(Math.min(pos.idx,pos.total-1)+1)+'/'+pos.total; cls = 'run'; runN++; }
+      else newN++;
+      rows.push({ n:n, cnt:cnt, badge:badge, cls:cls });
+    }
+    var h = '';
+    h += '<div class="stat-cards">';
+    h += '<div class="stat-card"><b>'+ns.length+'</b><span>笔记</span></div>';
+    h += '<div class="stat-card"><b>'+totalNodes+'</b><span>节点</span></div>';
+    h += '<div class="stat-card"><b>'+doneN+'/'+ns.length+'</b><span>已复习完成</span></div>';
+    h += '</div>';
+    if(!rows.length){
+      h += '<div class="empty-tip">还没有笔记<br>点侧栏「新建」或「导入」开始</div>';
+    } else {
+      h += '<div class="stat-list">';
+      for(var r=0;r<rows.length;r++){
+        var it = rows[r];
+        var meta = it.cnt+' 节点 · '+escapeHtml(it.n.folder||'未分类');
+        var t = fmtTime(it.n.updated || it.n.created);
+        if(t) meta += ' · '+t;
+        h += '<div class="stat-item">';
+        h += '<span class="s-badge '+it.cls+'">'+it.badge+'</span>';
+        h += '<span class="s-name" title="'+escapeHtml(it.n.name)+'">'+escapeHtml(it.n.name)+'</span>';
+        h += '<span class="s-meta">'+meta+'</span>';
+        h += '</div>';
+      }
       h += '</div>';
     }
-    h += '</div>';
-  }
-  $('stats-body').innerHTML = h;
-  $('modalStats').classList.add('show');
+    var body = $('stats-body');
+    if(body) body.innerHTML = h;
+  });
 }
 
 /* ===== 全局搜索与双链反查（P0）===== */
@@ -1498,65 +1619,72 @@ function findPathInData(root, id){
 /* 加载笔记并定位到指定节点（复用应用的高亮逻辑） */
 function jumpToNote(note, nodeId){
   if(!note) return;
-  loadNote(note);
-  setTimeout(function(){
-    try{
-      if(!mind) return;
-      var d = mind.getData();
-      var root = d.nodeData;
-      var path = findPathInData(root, nodeId);
-      if(!path){ setStatus('节点未找到', true); return; }
-      applyFocus(root, { node:path[path.length-1], path:path });
-      initMind(d);
-      setTimeout(function(){
-        var el = document.querySelector('[data-nodeid="me'+nodeId+'"]');
-        if(!el) return;
-        try{ el.scrollIntoView({block:'center',inline:'center',behavior:'smooth'}); }catch(e){}
-        el.classList.add('mm-hit');
-      }, 400);
-      setStatus('已定位「'+String(path[path.length-1].topic).slice(0,24)+'」', true);
-    }catch(e){ setStatus('定位失败', true); }
-  }, 260);
+  loadNote(note, function(){
+    setTimeout(function(){
+      try{
+        if(!mind) return;
+        var d = mind.getData();
+        var root = d.nodeData;
+        var path = findPathInData(root, nodeId);
+        if(!path){ setStatus('节点未找到', true); return; }
+        applyFocus(root, { node:path[path.length-1], path:path });
+        initMind(d);
+        setTimeout(function(){
+          var el = document.querySelector('[data-nodeid="me'+nodeId+'"]');
+          if(!el) return;
+          try{ el.scrollIntoView({block:'center',inline:'center',behavior:'smooth'}); }catch(e){}
+          el.classList.add('mm-hit');
+        }, 400);
+        setStatus('已定位「'+String(path[path.length-1].topic).slice(0,24)+'」', true);
+      }catch(e){ setStatus('定位失败', true); }
+    }, 100);
+  });
 }
+var gsSeq = 0;
 function renderGlobalResults(kw){
   var box = $('globalResults');
   kw = String(kw||'').trim();
   if(!kw){ box.classList.remove('show'); box.innerHTML=''; return; }
-  var ns = loadNotes(), hits = [];
-  for(var i=0;i<ns.length;i++){
-    var d = null;
-    try{ d = JSON.parse(localStorage.getItem(LS_PFX+ns[i].id)||'null'); }catch(e){ d = null; }
-    if(!d || !d.nodeData) continue;
-    var h = locateInData(d.nodeData, kw);
-    if(h) hits.push({ note:ns[i], node:h.node, path:h.path, score:h.score });
-  }
-  hits.sort(function(a,b){ return b.score-a.score; });
-  hits = hits.slice(0,15);
-  var h = '';
-  if(!hits.length){
-    h = '<div class="gs-empty">未找到「'+escapeHtml(kw)+'」</div>';
-  } else {
-    for(var j=0;j<hits.length;j++){
-      var it = hits[j];
-      var pathStr = it.path.slice(0,-1).map(function(n){ return plainTopic(n.topic); }).join(' / ');
-      h += '<div class="gs-hit" data-id="'+it.note.id+'" data-node="'+it.node.id+'">';
-      h += '<span class="gs-note">'+escapeHtml(it.note.name)+'</span>';
-      h += '<span class="gs-topic">'+escapeHtml(plainTopic(it.node.topic))+'</span>';
-      if(pathStr) h += '<span class="gs-path">'+escapeHtml(pathStr)+'</span>';
-      h += '</div>';
-    }
-  }
-  box.innerHTML = h;
+  var mySeq = ++gsSeq;
+  box.innerHTML = '<div class="gs-empty">搜索中…</div>';
   box.classList.add('show');
-  var els = box.querySelectorAll('.gs-hit');
-  for(var k=0;k<els.length;k++){
-    (function(el){
-      el.onclick = function(){
-        var note = findNoteById(el.getAttribute('data-id'));
-        if(note) jumpToNote(note, el.getAttribute('data-node'));
-      };
-    })(els[k]);
-  }
+  noteStoreGetAll(function(map){
+    if(mySeq !== gsSeq) return; /* 过期请求丢弃 */
+    var ns = loadNotes(), hits = [];
+    for(var i=0;i<ns.length;i++){
+      var d = map[ns[i].id] || null;
+      if(!d || !d.nodeData) continue;
+      var h = locateInData(d.nodeData, kw);
+      if(h) hits.push({ note:ns[i], node:h.node, path:h.path, score:h.score });
+    }
+    hits.sort(function(a,b){ return b.score-a.score; });
+    hits = hits.slice(0,15);
+    var h = '';
+    if(!hits.length){
+      h = '<div class="gs-empty">未找到「'+escapeHtml(kw)+'」</div>';
+    } else {
+      for(var j=0;j<hits.length;j++){
+        var it = hits[j];
+        var pathStr = it.path.slice(0,-1).map(function(n){ return plainTopic(n.topic); }).join(' / ');
+        h += '<div class="gs-hit" data-id="'+it.note.id+'" data-node="'+it.node.id+'">';
+        h += '<span class="gs-note">'+escapeHtml(it.note.name)+'</span>';
+        h += '<span class="gs-topic">'+escapeHtml(plainTopic(it.node.topic))+'</span>';
+        if(pathStr) h += '<span class="gs-path">'+escapeHtml(pathStr)+'</span>';
+        h += '</div>';
+      }
+    }
+    box.innerHTML = h;
+    box.classList.add('show');
+    var els = box.querySelectorAll('.gs-hit');
+    for(var k=0;k<els.length;k++){
+      (function(el){
+        el.onclick = function(){
+          var note = findNoteById(el.getAttribute('data-id'));
+          if(note) jumpToNote(note, el.getAttribute('data-node'));
+        };
+      })(els[k]);
+    }
+  });
 }
 /* 反查：匹配 [[名]] / [文字](note:名) / (note:名) 三种引用写法 */
 function noteRefMatch(name){
@@ -1567,58 +1695,62 @@ function noteRefMatch(name){
 }
 function openBacklinks(){
   if(!curNote){ setStatus('请先选择笔记', true); return; }
-  var ns = loadNotes(), rows = [];
-  var refRe = /\[\[([^\]]+)\]\]|\[[^\]]*\]\(note:([^)\s]+)\)|\(note:([^)\s]+)\)/g;
-  for(var i=0;i<ns.length;i++){
-    var n = ns[i];
-    if(n.id===curNote.id) continue;
-    var d = null;
-    try{ d = JSON.parse(localStorage.getItem(LS_PFX+n.id)||'null'); }catch(e){ d = null; }
-    if(!d || !d.nodeData) continue;
-    (function walk(node){
-      if(!node) return;
-      var t = String(node.topic||'');
-      refRe.lastIndex = 0;
-      var m;
-      while((m=refRe.exec(t))!==null){
-        var refName = m[1]||m[2]||m[3]||'';
-        if(noteRefMatch(refName)){ rows.push({ note:n, node:node }); break; }
+  var ns = loadNotes();
+  $('backlinks-body').innerHTML = '<div class="empty-tip">检索中…</div>';
+  $('modalBacklinks').classList.add('show');
+  noteStoreGetAll(function(map){
+    var rows = [];
+    var refRe = /\[\[([^\]]+)\]\]|\[[^\]]*\]\(note:([^)\s]+)\)|\(note:([^)\s]+)\)/g;
+    for(var i=0;i<ns.length;i++){
+      var n = ns[i];
+      if(n.id===curNote.id) continue;
+      var d = map[n.id] || null;
+      if(!d || !d.nodeData) continue;
+      (function walk(node){
+        if(!node) return;
+        var t = String(node.topic||'');
+        refRe.lastIndex = 0;
+        var m;
+        while((m=refRe.exec(t))!==null){
+          var refName = m[1]||m[2]||m[3]||'';
+          if(noteRefMatch(refName)){ rows.push({ note:n, node:node }); break; }
+        }
+        (node.children||[]).forEach(walk);
+      })(d.nodeData);
+    }
+    var h = '';
+    if(!rows.length){
+      h = '<div class="empty-tip">还没有笔记引用「'+escapeHtml(curNote.name)+'」<br><br>在其他笔记里写 <code>[[当前笔记名]]</code> 即可建立引用</div>';
+    } else {
+      h = '<div class="stat-list">';
+      for(var r=0;r<rows.length;r++){
+        var it = rows[r];
+        h += '<div class="stat-item bl-item" data-id="'+it.note.id+'" data-node="'+it.node.id+'">';
+        h += '<span class="s-name"><b>'+escapeHtml(it.note.name)+'</b></span>';
+        h += '<span class="s-meta" style="flex:1">'+escapeHtml(plainTopic(it.node.topic).slice(0,32))+'</span>';
+        h += '</div>';
       }
-      (node.children||[]).forEach(walk);
-    })(d.nodeData);
-  }
-  var h = '';
-  if(!rows.length){
-    h = '<div class="empty-tip">还没有笔记引用「'+escapeHtml(curNote.name)+'」<br><br>在其他笔记里写 <code>[[当前笔记名]]</code> 即可建立引用</div>';
-  } else {
-    h = '<div class="stat-list">';
-    for(var r=0;r<rows.length;r++){
-      var it = rows[r];
-      h += '<div class="stat-item bl-item" data-id="'+it.note.id+'" data-node="'+it.node.id+'">';
-      h += '<span class="s-name"><b>'+escapeHtml(it.note.name)+'</b></span>';
-      h += '<span class="s-meta" style="flex:1">'+escapeHtml(plainTopic(it.node.topic).slice(0,32))+'</span>';
       h += '</div>';
     }
-    h += '</div>';
-  }
-  $('backlinks-body').innerHTML = h;
-  var els = $('backlinks-body').querySelectorAll('.bl-item');
-  for(var k=0;k<els.length;k++){
-    (function(el){
-      el.onclick = function(){
-        var note = findNoteById(el.getAttribute('data-id'));
-        if(note){
-          $('modalBacklinks').classList.remove('show');
-          jumpToNote(note, el.getAttribute('data-node'));
-        }
-      };
-    })(els[k]);
-  }
-  $('modalBacklinks').classList.add('show');
+    var body = $('backlinks-body');
+    if(!body) return;
+    body.innerHTML = h;
+    var els = body.querySelectorAll('.bl-item');
+    for(var k=0;k<els.length;k++){
+      (function(el){
+        el.onclick = function(){
+          var note = findNoteById(el.getAttribute('data-id'));
+          if(note){
+            $('modalBacklinks').classList.remove('show');
+            jumpToNote(note, el.getAttribute('data-node'));
+          }
+        };
+      })(els[k]);
+    }
+  });
 }
 
 /* ===== XMind 导入（.xmind = zip，解析 content.json）===== */
-var XM_IMG_LIMIT = 300*1024; /* 单图 ≤300KB 内嵌 base64，超出以占位略过 */
 function xmGenId(){
   return 'x'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 }
@@ -1629,7 +1761,7 @@ function b64FromBytes(bytes){
   }
   return btoa(bin);
 }
-/* 递归转换 XMind topic → MindElixir 节点 */
+/* 递归转换 XMind topic → MindElixir 节点（图片全部 base64 内嵌） */
 function xmTopicToNode(topic, files, stats){
   stats.nodes++;
   var parts = [];
@@ -1640,13 +1772,10 @@ function xmTopicToNode(topic, files, stats){
     var m = /^(?:xap:)?(resources\/[^:]+)$/.exec(src);
     var key = m ? m[1] : src;
     var data = files[key] || files['resources/'+src.replace(/^xap:resources\//,'')] || null;
-    if(data && data.length<=XM_IMG_LIMIT){
+    if(data){
       var ext = (key.match(/\.(\w+)$/)||[])[1]||'png';
       imgTxt = '![图片](data:image/'+ext+';base64,'+b64FromBytes(data)+')';
       stats.imgIn++;
-    } else {
-      stats.imgSkip++;
-      if(!topic.title) parts.push('🖼 图片已略过（体积超出存储限制）');
     }
   }
   var topicText = parts.join(' ');
@@ -1664,8 +1793,11 @@ function xmTopicToNode(topic, files, stats){
     else if(topic.notes.html && topic.notes.html.content) noteTxt = String(topic.notes.html.content).replace(/<[^>]+>/g,'').replace(/&nbsp;/g,' ').trim();
   }
   var kids = [];
+  /* 子主题 attached + 自由主题 detached（追加为普通子节点，保留内容） */
   var attached = (topic.children && topic.children.attached) || [];
   for(var j=0;j<attached.length;j++) kids.push(xmTopicToNode(attached[j], files, stats));
+  var detached = (topic.children && topic.children.detached) || [];
+  for(var dj=0;dj<detached.length;dj++) kids.push(xmTopicToNode(detached[dj], files, stats));
   if(noteTxt) kids.unshift({ id:xmGenId(), topic:'📝 '+noteTxt, expanded:false, children:[] });
   return { id:xmGenId(), topic: topicText || '（空节点）', expanded:true, children: kids };
 }
@@ -1682,9 +1814,10 @@ function importXmindFile(file){
       if(!sheets.length || !sheets[0].rootTopic) throw new Error('content.json 结构异常');
       var notesArr = loadNotes();
       var made = [];
+      var pending = 0;
       for(var s=0;s<sheets.length;s++){
         var sheet = sheets[s];
-        var stats = { nodes:0, imgIn:0, imgSkip:0 };
+        var stats = { nodes:0, imgIn:0 };
         var nodeData = xmTopicToNode(sheet.rootTopic, files, stats);
         /* 笔记名：画布名（非占位）优先，占位则用中心主题名，再回退文件名 */
         var sheetTitle = String(sheet.title||'').trim();
@@ -1698,19 +1831,26 @@ function importXmindFile(file){
         var id = 'n'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
         var now = Date.now();
         notesArr.push({ id:id, name:name, folder:'未分类', created:now, updated:now });
-        localStorage.setItem(LS_PFX+id, JSON.stringify({ nodeData:nodeData, arrows:[], summaries:[], direction:'right' }));
-        made.push({ name:name, stats:stats });
+        pending++;
+        (function(nid, nd, nm, st){
+          noteStorePut(nid, { nodeData:nd, arrows:[], summaries:[], direction:'right' }, function(){
+            made.push({ name:nm, stats:st });
+            if(--pending === 0) finishImport();
+          });
+        })(id, nodeData, name, stats);
       }
-      saveNotes(notesArr);
-      renderList();
-      if(made.length){
-        var rep = made.map(function(m){
-          return '• '+m.name+'：'+m.stats.nodes+' 节点，内嵌图片 '+m.stats.imgIn+'，略过 '+m.stats.imgSkip;
-        }).join('\n');
-        alert('导入完成，共 '+made.length+' 张画布 → '+made.length+' 篇笔记：\n\n'+rep);
-        loadNote(notesArr[notesArr.length-1]);
+      function finishImport(){
+        saveNotes(notesArr);
+        renderList();
+        if(made.length){
+          var rep = made.map(function(m){
+            return '• '+m.name+'：'+m.stats.nodes+' 节点，图片全部内嵌（'+m.stats.imgIn+' 张）';
+          }).join('\n');
+          alert('导入完成，共 '+made.length+' 张画布 → '+made.length+' 篇笔记：\n\n'+rep);
+          loadNote(notesArr[notesArr.length-1]);
+        }
+        $('modalImport').classList.remove('show');
       }
-      $('modalImport').classList.remove('show');
     }catch(e){
       setStatus('导入失败：'+e.message, true);
       console.error(e);
@@ -1742,17 +1882,17 @@ function stripHtml(n){
   return n;
 }
 function buildSyncPayload(){
-  var payload={}, n=0;
-  for(var k in localStorage){
-    if(k.indexOf(LS_PFX)===0){
-      try{
-        var d = JSON.parse(localStorage.getItem(k));
-        if(d && d.nodeData) stripHtml(d.nodeData);
-        payload[k.slice(LS_PFX.length)] = d; n++;
-      }catch(e){}
-    }
-  }
-  return { payload:payload, count:n };
+  return new Promise(function(resolve){
+    noteStoreGetAll(function(map){
+      var payload={}, n=0;
+      var ids = Object.keys(map);
+      for(var i=0;i<ids.length;i++){
+        var d = map[ids[i]];
+        if(d && d.nodeData){ stripHtml(d.nodeData); payload[ids[i]] = d; n++; }
+      }
+      resolve({ payload:payload, count:n });
+    });
+  });
 }
 
 async function syncPush(){
@@ -1761,7 +1901,7 @@ async function syncPush(){
     updateSyncStatus('error','请先填写两个 Key');
     return;
   }
-  var p = buildSyncPayload();
+  var p = await buildSyncPayload();
   if(!p.count){
     updateSyncStatus('error','本机还没有任何笔记数据');
     return;
@@ -1836,12 +1976,14 @@ async function syncPull(){
       return;
     }
     var n=0;
-    for(var f in result.record){
-      var d = result.record[f];
-      if(d && d.nodeData) applyInlineHtml(d);
-      localStorage.setItem(LS_PFX+f, JSON.stringify(d));
-      n++;
-    }
+    var pullIds = Object.keys(result.record);
+    await Promise.all(pullIds.map(function(f){
+      return new Promise(function(res){
+        var d = result.record[f];
+        if(d && d.nodeData) applyInlineHtml(d);
+        noteStorePut(f, d, function(){ n++; res(); });
+      });
+    }));
     updateSyncStatus('success','拉取成功！已载入 '+n+' 篇笔记（公式/链接已重建）');
     renderList();
     if(curNote) loadNote(curNote);
@@ -1937,11 +2079,12 @@ document.addEventListener('DOMContentLoaded', function(){
         notes = loadNotes();
         for(var i=0;i<notes.length;i++) if(notes[i].id===curNote.id) notes[i].name = name;
         saveNotes(notes);
-        localStorage.setItem(LS_PFX+curNote.id, JSON.stringify(result));
-        $('modalImport').classList.remove('show');
-        renderList();
-        loadNote(curNote);
-        setStatus('已保存「'+name+'」', true);
+        noteStorePut(curNote.id, result, function(){
+          $('modalImport').classList.remove('show');
+          renderList();
+          loadNote(curNote);
+          setStatus('已保存「'+name+'」', true);
+        });
       } else {
         var folder = prompt('放到哪个文件夹？', curFolder || '未分类');
         if(folder === null){ $('modalImport').classList.remove('show'); return; }
@@ -1952,11 +2095,12 @@ document.addEventListener('DOMContentLoaded', function(){
         notes = loadNotes();
         notes.unshift(note);
         saveNotes(notes);
-        localStorage.setItem(LS_PFX+id, JSON.stringify(result));
-        renderList();
-        loadNote(note);
-        $('modalImport').classList.remove('show');
-        setStatus('已导入「'+name+'」', true);
+        noteStorePut(id, result, function(){
+          renderList();
+          loadNote(note);
+          $('modalImport').classList.remove('show');
+          setStatus('已导入「'+name+'」', true);
+        });
       }
     }catch(e){
       alert('操作失败: '+e.message);
@@ -1979,7 +2123,7 @@ document.addEventListener('DOMContentLoaded', function(){
   $('btnReset').onclick = function(){
     if(!curNote) return;
     if(!confirm('放弃本机修改，重置为空？')) return;
-    localStorage.removeItem(LS_PFX+curNote.id);
+    noteStoreDel(curNote.id);
     loadNote(curNote);
   };
   $('btnSync').onclick = openSyncModal;
@@ -2033,6 +2177,9 @@ document.addEventListener('DOMContentLoaded', function(){
   });
 
   renderList();
+  /* 旧数据迁移：localStorage → IndexedDB（完成后刷新列表标签） */
+  migrateLocalToIDB();
+  setTimeout(function(){ renderTagsAsync(); }, 300);
   if(!notes.length){
     setStatus('点左侧「新建」或「导入」开始', true);
     return;
