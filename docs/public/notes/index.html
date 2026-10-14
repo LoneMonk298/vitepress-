@@ -624,8 +624,8 @@ function newNodeData(){
 }
 function bindViewControls(){
   function on(id, fn){ var b = $(id); if(b) b.onclick = function(e){ e.stopPropagation(); fn(); }; }
-  on('btnExpandAll', function(){ setAllExpanded(true); setStatus('已展开全部', true); });
-  on('btnCollapseAll', function(){ setAllExpanded(false); setStatus('已折叠全部', true); });
+  on('btnExpandAll', function(){ setAllExpanded(true); });
+  on('btnCollapseAll', function(){ setAllExpanded(false); });
   on('btnZoomIn', function(){ setZoom(getZoom() + 0.15); });
   on('btnZoomOut', function(){ setZoom(getZoom() - 0.15); });
   on('btnFit', function(){ fitView(); });
@@ -910,22 +910,46 @@ function getZoom(){
   try{ return mind && mind.scaleVal ? mind.scaleVal : 1; }catch(e){ return 1; }
 }
 
-/* 递归设置所有节点 expanded，并把结果传回 refresh() */
+/* 递归设置所有节点 expanded，并把结果传回 refresh()。
+   聚焦模式下只作用于聚焦子树（mind.nodeData 即当前聚焦的节点对象），
+   不退出聚焦、隔离全局（焦点外的其他分支完全不受影响） */
 function setAllExpanded(val){
   if(!mind || !mind.getData) return;
-  /* 焦点模式下先退出，否则 getData 只返回焦点子树 */
-  try{ if(mind.isFocusMode){ mind.cancelFocus(); } }catch(e){}
-  var d = mind.getData();
-  if(!d || !d.nodeData) return;
-  (function walk(n){
-    if(!n) return;
-    n.expanded = !!val;
-    if(n.children) for(var i=0;i<n.children.length;i++) walk(n.children[i]);
-  })(d.nodeData);
-  /* 关键：必须把数据传回 refresh，否则 this.nodeData 不更新、改动丢失 */
-  try{ mind.refresh(d); }catch(e){}
-  /* 重新挂载焦点徽标状态 */
+  /* 记录当前选中，刷新后恢复（refresh 重建 DOM 会丢选中态） */
+  var selId = null;
+  try{
+    var cur = mind.currentNode || (mind.currentNodes && mind.currentNodes[0]);
+    if(cur && cur.dataset && cur.dataset.nodeid) selId = cur.dataset.nodeid;
+  }catch(e){}
+  if(mind.isFocusMode){
+    var sub = mind.nodeData;
+    if(!sub) return;
+    (function walk(n){
+      if(!n) return;
+      n.expanded = !!val;
+      if(n.children) for(var i=0;i<n.children.length;i++) walk(n.children[i]);
+    })(sub);
+    /* 无参 refresh：沿用当前 this.nodeData（聚焦子树）重绘，不触碰全局 */
+    try{ mind.refresh(); }catch(e){}
+  }else{
+    var d = mind.getData();
+    if(!d || !d.nodeData) return;
+    (function walk(n){
+      if(!n) return;
+      n.expanded = !!val;
+      if(n.children) for(var i=0;i<n.children.length;i++) walk(n.children[i]);
+    })(d.nodeData);
+    try{ mind.refresh(d); }catch(e){}
+  }
+  /* 恢复选中 */
+  if(selId){
+    var el = document.querySelector('#map [data-nodeid="'+selId+'"]');
+    if(el && mind.selectNode){ try{ mind.selectNode(el); }catch(e2){} }
+  }
   updateFocusBadge();
+  setStatus(mind.isFocusMode
+    ? (val ? '已展开聚焦内全部节点' : '已折叠聚焦内全部节点')
+    : (val ? '已展开全部' : '已折叠全部'), true);
   setZoom(1);
   setTimeout(fitView, 80);
 }
@@ -988,10 +1012,13 @@ function focusSelected(){
   if(!mind) return;
   try{
     var cn = mind.currentNodes;
-    if(!cn || !cn.length){ setStatus('请先点选一个节点', true); return; }
-    mind.focusNode(cn[0]);
+    var cur = mind.currentNode;
+    if((!cn || !cn.length) && !cur){ setStatus('请先点选一个节点', true); return; }
+    var target = (cn && cn.length) ? cn[0] : cur;
+    mind.focusNode(target);
     var fb = $('focusBadge'); if(fb) fb.classList.remove('hidden');
-    setStatus('已聚焦「'+String(cn[0].topic||'')+'」', true);
+    var tname = String((target.nodeObj && target.nodeObj.topic) || target.textContent || '');
+    setStatus('已聚焦「'+tname+'」', true);
   }catch(e){ setStatus('聚焦失败', true); }
 }
 function exitFocus(){
