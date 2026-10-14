@@ -116,6 +116,16 @@ html.dark .mm-hint code{background:rgba(255,255,255,.08)}
 .imp-xmind{margin-top:14px;border-top:1px dashed var(--bd);padding-top:12px}
 .imp-xmind .ix-sep{font-size:11px;color:var(--text2);text-align:center;display:block;margin-bottom:8px}
 .imp-xmind .mm-hint{margin-top:8px}
+/* 图片点击放大预览 */
+.lightbox{position:fixed;inset:0;z-index:1000;display:none;background:rgba(0,0,0,.82)}
+.lightbox.show{display:flex;align-items:center;justify-content:center}
+.lb-mask{position:absolute;inset:0;cursor:zoom-out}
+.lb-box{position:relative;max-width:92vw;max-height:90vh;overflow:hidden;border-radius:10px;box-shadow:0 10px 50px rgba(0,0,0,.6);background:#111}
+.lb-box img{display:block;max-width:92vw;max-height:90vh;object-fit:contain;transform-origin:center;cursor:grab;user-select:none;-webkit-user-drag:none}
+.lb-box img.drag{cursor:grabbing}
+.lb-tip{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);color:#fff;background:rgba(0,0,0,.55);font-size:12px;padding:4px 12px;border-radius:20px;white-space:nowrap;pointer-events:none}
+.lb-close{position:fixed;top:16px;right:20px;width:40px;height:40px;border:none;border-radius:50%;background:rgba(255,255,255,.15);color:#fff;font-size:22px;cursor:pointer;z-index:1001;line-height:1}
+.lb-close:hover{background:rgba(255,255,255,.3)}
 /* 统计面板 */
 .stat-cards{display:flex;gap:10px;margin-bottom:14px}
 .stat-card{flex:1;background:var(--bg);border:1px solid var(--bd);border-radius:10px;padding:12px 8px;text-align:center}
@@ -317,6 +327,15 @@ html.dark .s-badge.run{color:#fbbf24}
     <div id="backlinks-body"></div>
     <div class="row"><button id="btnCloseBacklinks">关闭</button></div>
   </div>
+</div>
+
+<div class="lightbox" id="imgLightbox">
+  <div class="lb-mask" id="lbMask"></div>
+  <div class="lb-box">
+    <img id="lbImg" alt="">
+    <div class="lb-tip">滚轮缩放 · 拖拽移动 · 双击重置 · 点击关闭</div>
+  </div>
+  <button class="lb-close" id="lbClose" title="关闭 (Esc)">×</button>
 </div>
 
 <script src="./vendor/mind-elixir.global.js"></script>
@@ -1394,6 +1413,72 @@ function bindPresent(){
     loadSpeed();
   }
 }
+
+/* ===== 图片点击放大预览（Lightbox）===== */
+var lbScale = 1, lbX = 0, lbY = 0, lbDragging = false, lbSX = 0, lbSY = 0;
+function lbApply(){
+  var img = $('lbImg');
+  if(!img) return;
+  img.style.transform = 'translate('+lbX+'px,'+lbY+'px) scale('+lbScale+')';
+}
+function lbReset(){ lbScale = 1; lbX = 0; lbY = 0; lbApply(); }
+function openLightbox(src, alt){
+  if(!src) return;
+  var img = $('lbImg');
+  if(!img) return;
+  img.src = src; img.alt = alt || '';
+  lbReset();
+  $('imgLightbox').classList.add('show');
+}
+function closeLightbox(){ $('imgLightbox').classList.remove('show'); }
+/* 点击导图里的图片 → 放大（捕获阶段，避免触发节点选中/演示操作） */
+document.addEventListener('click', function(e){
+  var t = e.target;
+  if(!t || t.tagName !== 'IMG') return;
+  var lb = $('imgLightbox');
+  if(lb && lb.classList.contains('show') && lb.contains(t)) return; /* 已在预览中，不重开 */
+  var src = t.getAttribute('src') || '';
+  if(src && (src.indexOf('data:image')===0 || /^https?:\/\//.test(src))){
+    e.preventDefault(); e.stopImmediatePropagation();
+    openLightbox(src, t.getAttribute('alt'));
+  }
+}, true);
+/* Lightbox 内部交互 */
+(function(){
+  var lb = $('imgLightbox'), img = $('lbImg');
+  if(!lb || !img) return;
+  $('lbClose').onclick = closeLightbox;
+  $('lbMask').onclick = closeLightbox;
+  lb.addEventListener('wheel', function(e){
+    if(!lb.classList.contains('show')) return;
+    e.preventDefault();
+    var d = e.deltaY < 0 ? 1.15 : 1/1.15;
+    lbScale = Math.min(6, Math.max(0.5, lbScale*d));
+    lbApply();
+  }, { passive:false });
+  img.addEventListener('dblclick', function(){ lbReset(); });
+  img.addEventListener('pointerdown', function(e){
+    lbDragging = true; lbSX = e.clientX - lbX; lbSY = e.clientY - lbY;
+    img.classList.add('drag');
+    try{ img.setPointerCapture(e.pointerId); }catch(err){}
+  });
+  img.addEventListener('pointermove', function(e){
+    if(!lbDragging) return;
+    lbX = e.clientX - lbSX; lbY = e.clientY - lbSY;
+    lbApply();
+  });
+  img.addEventListener('pointerup', function(){ lbDragging = false; img.classList.remove('drag'); });
+  img.addEventListener('pointercancel', function(){ lbDragging = false; img.classList.remove('drag'); });
+})();
+/* Esc 关闭 Lightbox（优先于演示模式退出） */
+document.addEventListener('keydown', function(e){
+  if(e.key !== 'Escape') return;
+  var lb = $('imgLightbox');
+  if(lb && lb.classList.contains('show')){
+    e.preventDefault(); e.stopImmediatePropagation();
+    closeLightbox();
+  }
+}, true);
 
 /* 演示模式键盘（捕获阶段，优先于库的快捷键） */
 document.addEventListener('keydown', function(e){
