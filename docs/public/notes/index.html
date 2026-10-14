@@ -112,6 +112,10 @@ button.ok:hover{opacity:.9;color:#fff}
 .mm-hint{font-size:12px;color:var(--text2);line-height:1.7;margin:10px 0 0;padding:10px;background:var(--bg);border-radius:8px;border:1px solid var(--bd)}
 .mm-hint code{background:rgba(0,0,0,.06);padding:1px 5px;border-radius:3px;font-family:monospace;font-size:11.5px}
 html.dark .mm-hint code{background:rgba(255,255,255,.08)}
+/* XMind 导入区 */
+.imp-xmind{margin-top:14px;border-top:1px dashed var(--bd);padding-top:12px}
+.imp-xmind .ix-sep{font-size:11px;color:var(--text2);text-align:center;display:block;margin-bottom:8px}
+.imp-xmind .mm-hint{margin-top:8px}
 /* 统计面板 */
 .stat-cards{display:flex;gap:10px;margin-bottom:14px}
 .stat-card{flex:1;background:var(--bg);border:1px solid var(--bd);border-radius:10px;padding:12px 8px;text-align:center}
@@ -251,6 +255,12 @@ html.dark .s-badge.run{color:#fbbf24}
       <br>• <code>[文字](note:目标笔记名)</code> 同上（可改显示文字）
       <br>• <code>![说明](图片地址)</code> 插入图片（可写 <code>=300x200</code> 指定尺寸）
     </div>
+    <div class="imp-xmind">
+      <div class="ix-row"><span class="ix-sep">或</span></div>
+      <button class="pri" id="btnImpXmind" style="width:100%">📦 导入 .xmind 文件</button>
+      <div class="mm-hint">支持 XMind 2024 及以前版本（content.json）。<br>图片 ≤300KB 自动内嵌，超出的以占位符略过；多画布 → 多篇笔记。</div>
+      <input type="file" id="xmindFile" accept=".xmind,.zip" style="display:none">
+    </div>
     <div class="row">
       <button id="btnImpCancel">取消</button>
       <button class="pri" id="btnImpConfirm">导入</button>
@@ -311,6 +321,7 @@ html.dark .s-badge.run{color:#fbbf24}
 
 <script src="./vendor/mind-elixir.global.js"></script>
 <script src="./vendor/katex/katex.min.js"></script>
+<script src="./vendor/fflate.min.js"></script>
 <script>
 (function(){
 var LS_LIST='mm_notes_list', LS_PFX='mm_notes:';
@@ -1606,6 +1617,109 @@ function openBacklinks(){
   $('modalBacklinks').classList.add('show');
 }
 
+/* ===== XMind 导入（.xmind = zip，解析 content.json）===== */
+var XM_IMG_LIMIT = 300*1024; /* 单图 ≤300KB 内嵌 base64，超出以占位略过 */
+function xmGenId(){
+  return 'x'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+}
+function b64FromBytes(bytes){
+  var bin='', CHUNK=0x8000;
+  for(var i=0;i<bytes.length;i+=CHUNK){
+    bin += String.fromCharCode.apply(null, bytes.subarray(i, Math.min(i+CHUNK, bytes.length)));
+  }
+  return btoa(bin);
+}
+/* 递归转换 XMind topic → MindElixir 节点 */
+function xmTopicToNode(topic, files, stats){
+  stats.nodes++;
+  var parts = [];
+  if(topic.title) parts.push(String(topic.title));
+  var imgTxt = '';
+  if(topic.image){
+    var src = topic.image.src || (topic.image.xlink && topic.image.xlink.href) || '';
+    var m = /^(?:xap:)?(resources\/[^:]+)$/.exec(src);
+    var key = m ? m[1] : src;
+    var data = files[key] || files['resources/'+src.replace(/^xap:resources\//,'')] || null;
+    if(data && data.length<=XM_IMG_LIMIT){
+      var ext = (key.match(/\.(\w+)$/)||[])[1]||'png';
+      imgTxt = '![图片](data:image/'+ext+';base64,'+b64FromBytes(data)+')';
+      stats.imgIn++;
+    } else {
+      stats.imgSkip++;
+      if(!topic.title) parts.push('🖼 图片已略过（体积超出存储限制）');
+    }
+  }
+  var topicText = parts.join(' ');
+  if(imgTxt) topicText = imgTxt + (topicText ? ' '+topicText : '');
+  /* 标签 → #标签 */
+  var labels = topic.labels || [];
+  for(var li=0;li<labels.length;li++){
+    var lb = String(labels[li]).trim();
+    if(lb) topicText += ' #'+lb.replace(/\s+/g,'');
+  }
+  /* 备注 notes → 「📝」子节点 */
+  var noteTxt = '';
+  if(topic.notes){
+    if(topic.notes.plain && topic.notes.plain.content) noteTxt = String(topic.notes.plain.content).trim();
+    else if(topic.notes.html && topic.notes.html.content) noteTxt = String(topic.notes.html.content).replace(/<[^>]+>/g,'').replace(/&nbsp;/g,' ').trim();
+  }
+  var kids = [];
+  var attached = (topic.children && topic.children.attached) || [];
+  for(var j=0;j<attached.length;j++) kids.push(xmTopicToNode(attached[j], files, stats));
+  if(noteTxt) kids.unshift({ id:xmGenId(), topic:'📝 '+noteTxt, expanded:false, children:[] });
+  return { id:xmGenId(), topic: topicText || '（空节点）', expanded:true, children: kids };
+}
+/* 入口：读取并导入 .xmind 文件 */
+function importXmindFile(file){
+  var rd = new FileReader();
+  rd.onload = function(){
+    try{
+      if(!window.fflate) throw new Error('fflate 未加载');
+      var files = fflate.unzipSync(new Uint8Array(rd.result));
+      var cj = files['content.json'];
+      if(!cj) throw new Error('文件里没有 content.json（可能是 XMind 26.02 新版格式，暂不支持）');
+      var sheets = JSON.parse(fflate.strFromU8(cj));
+      if(!sheets.length || !sheets[0].rootTopic) throw new Error('content.json 结构异常');
+      var notesArr = loadNotes();
+      var made = [];
+      for(var s=0;s<sheets.length;s++){
+        var sheet = sheets[s];
+        var stats = { nodes:0, imgIn:0, imgSkip:0 };
+        var nodeData = xmTopicToNode(sheet.rootTopic, files, stats);
+        /* 笔记名：画布名（非占位）优先，占位则用中心主题名，再回退文件名 */
+        var sheetTitle = String(sheet.title||'').trim();
+        var rootTitle = (sheet.rootTopic && sheet.rootTopic.title) ? String(sheet.rootTopic.title).trim() : '';
+        var name = '';
+        if(sheetTitle && !/^(画布\s*\d+|sheet\s*\d+|未命名|untitled)/i.test(sheetTitle)) name = sheetTitle;
+        if(!name) name = rootTitle;
+        if(!name) name = file.name.replace(/\.xmind$/i,'');
+        var base = name, k2 = 2;
+        while(notesArr.some(function(n){ return n.name===name; })) name = base+' ('+(k2++)+')';
+        var id = 'n'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+        var now = Date.now();
+        notesArr.push({ id:id, name:name, folder:'未分类', created:now, updated:now });
+        localStorage.setItem(LS_PFX+id, JSON.stringify({ nodeData:nodeData, arrows:[], summaries:[], direction:'right' }));
+        made.push({ name:name, stats:stats });
+      }
+      saveNotes(notesArr);
+      renderList();
+      if(made.length){
+        var rep = made.map(function(m){
+          return '• '+m.name+'：'+m.stats.nodes+' 节点，内嵌图片 '+m.stats.imgIn+'，略过 '+m.stats.imgSkip;
+        }).join('\n');
+        alert('导入完成，共 '+made.length+' 张画布 → '+made.length+' 篇笔记：\n\n'+rep);
+        loadNote(notesArr[notesArr.length-1]);
+      }
+      $('modalImport').classList.remove('show');
+    }catch(e){
+      setStatus('导入失败：'+e.message, true);
+      console.error(e);
+    }
+  };
+  rd.onerror = function(){ setStatus('读取文件失败', true); };
+  rd.readAsArrayBuffer(file);
+}
+
 /* ===== 云同步 ===== */
 var SYNC_CONFIG_KEY='mm_notes_sync_config';
 var syncConfig = { keyId:'', accessKey:'', binId:'' };
@@ -1887,6 +2001,13 @@ document.addEventListener('DOMContentLoaded', function(){
   $('sortSel').addEventListener('change', function(){
     setSortMode(this.value);
     renderList();
+  });
+
+  /* XMind 导入 */
+  $('btnImpXmind').onclick = function(){ $('xmindFile').click(); };
+  $('xmindFile').addEventListener('change', function(){
+    if(this.files && this.files[0]) importXmindFile(this.files[0]);
+    this.value = '';
   });
   $('btnUp').onclick = syncPush;
   $('btnDown').onclick = syncPull;
