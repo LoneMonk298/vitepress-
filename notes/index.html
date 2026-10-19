@@ -137,6 +137,11 @@ button.ok:hover{opacity:.9;color:#fff}
 .mm-hint{font-size:12px;color:var(--text2);line-height:1.7;margin:10px 0 0;padding:10px;background:var(--bg);border-radius:8px;border:1px solid var(--bd)}
 .mm-hint code{background:rgba(0,0,0,.06);padding:1px 5px;border-radius:3px;font-family:monospace;font-size:11.5px}
 html.dark .mm-hint code{background:rgba(255,255,255,.08)}
+/* 富文本节点编辑弹窗 */
+#modalEditRt .mbox{max-width:600px}
+#rt-topic-input{min-height:140px;font-family:"SF Mono","Consolas",monospace;font-size:13px;line-height:1.6;resize:vertical}
+#rt-preview{min-height:60px;max-height:200px;overflow:auto;padding:10px;border:1px dashed var(--bd);border-radius:6px;background:var(--bg);font-size:14px;line-height:1.6;word-break:break-word}
+#rt-preview .hint{color:var(--text2);font-size:12px}
 /* XMind 导入区 */
 .imp-xmind{margin-top:14px;border-top:1px dashed var(--bd);padding-top:12px}
 .imp-xmind .ix-sep{font-size:11px;color:var(--text2);text-align:center;display:block;margin-bottom:8px}
@@ -240,7 +245,7 @@ html.dark .s-badge.run{color:#fbbf24}
       <button id="btnOutline" title="大纲模式 (Ctrl+O)：导图 ↔ 大纲列表快速浏览">大纲</button>
       <button id="btnFocus" title="聚焦选中节点 (Ctrl+F)">聚焦</button>
       <button id="btnPresent" title="演示复习 (Ctrl+P)：选中节点则从该节点开始；未选中则继续上次进度">演示</button>
-      <button id="btnMark" title="标记重点 (Ctrl+M)">🔥</button>
+      <button id="btnMark" title="标记重点 (Ctrl+M)">重点</button>
       <button id="btnStats" title="统计与复习进度">统计</button>
       <button id="btnRename">改名</button>
       <button id="btnEditSrc">编辑源</button>
@@ -314,6 +319,21 @@ html.dark .s-badge.run{color:#fbbf24}
     <div class="row">
       <button id="btnNewCancel">取消</button>
       <button class="pri" id="btnNewConfirm">创建</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="modalEditRt">
+  <div class="mbox">
+    <h3>编辑节点内容</h3>
+    <p>此节点含公式或链接，编辑原始文本后保存。支持 $公式$、!$公式$（行间）、[文字](链接)、![图片](链接)、[[笔记名]]。</p>
+    <label>节点内容</label>
+    <textarea id="rt-topic-input" spellcheck="false"></textarea>
+    <label>预览</label>
+    <div id="rt-preview"><span class="hint">输入内容后自动预览</span></div>
+    <div class="row">
+      <button id="btnRtCancel">取消</button>
+      <button class="pri" id="btnRtSave">保存</button>
     </div>
   </div>
 </div>
@@ -1693,20 +1713,91 @@ document.addEventListener('keydown', function(e){
 function toggleMark(){
   if(!mind) return;
   try{
+    /* 兼容单选（单击选中的 currentNode）与多选（currentNodes） */
     var cn = mind.currentNodes;
-    if(!cn || !cn.length || !cn[0].nodeObj){
+    var cur = mind.currentNode;
+    var target = (cn && cn.length) ? cn[0] : cur;
+    if(!target || !target.nodeObj){
       setStatus('请先点选一个节点', true); return;
     }
-    var nodeObj = cn[0].nodeObj;
+    var nodeObj = target.nodeObj;
     if(!nodeObj.style || !nodeObj.style.background){
       nodeObj.style = { background:'#fef3c7', color:'#92400e', fontWeight:'600' };
-      setStatus('已标记重点', true);
+      setStatus('已标记重点「'+String(nodeObj.topic||'').slice(0,12)+'」', true);
     } else {
       delete nodeObj.style;
       setStatus('已取消重点', true);
     }
     mind.refresh();
   }catch(e){ setStatus('标记失败', true); }
+}
+
+/* ===== 富文本节点编辑（公式/链接节点双击弹出编辑框） ===== */
+var rtEditTarget = null;
+function openRichTextEdit(nodeObj, nodeEle){
+  if(!nodeObj) return;
+  rtEditTarget = nodeObj;
+  var ta = document.getElementById('rt-topic-input');
+  var pv = document.getElementById('rt-preview');
+  if(!ta || !pv) return;
+  ta.value = String(nodeObj.topic || '');
+  updateRtPreview();
+  ta.oninput = updateRtPreview;
+  document.getElementById('modalEditRt').classList.add('show');
+  setTimeout(function(){ ta.focus(); }, 50);
+}
+function updateRtPreview(){
+  var ta = document.getElementById('rt-topic-input');
+  var pv = document.getElementById('rt-preview');
+  if(!ta || !pv) return;
+  var val = ta.value;
+  if(!val.trim()){ pv.innerHTML = '<span class="hint">输入内容后自动预览</span>'; return; }
+  var h = inlineHtml(val);
+  pv.innerHTML = h || escapeHtml(val);
+}
+function saveRichTextEdit(){
+  var ta = document.getElementById('rt-topic-input');
+  var pv = document.getElementById('rt-preview');
+  if(!ta || !pv) return;
+  var val = ta.value;
+  var modal = document.getElementById('modalEditRt');
+  modal.classList.remove('show');
+  if(!rtEditTarget) return;
+  rtEditTarget.topic = val;
+  var h = inlineHtml(val);
+  var plain = escapeHtml(val);
+  if(h && h !== plain) rtEditTarget.dangerouslySetInnerHTML = h;
+  else delete rtEditTarget.dangerouslySetInnerHTML;
+  rtEditTarget = null;
+  try{ mind.refresh(); }catch(e){}
+  scheduleLayoutRefresh();
+  setStatus('节点已更新', true);
+}
+function cancelRichTextEdit(){
+  var modal = document.getElementById('modalEditRt');
+  if(modal) modal.classList.remove('show');
+  rtEditTarget = null;
+}
+function installDblClickInterceptor(){
+  try{
+    var mapEl = document.querySelector('#map .mind-elixir-map');
+    if(!mapEl || mapEl._dblClickInstalled) return;
+    mapEl._dblClickInstalled = true;
+    mapEl.addEventListener('dblclick', function(e){
+      if(!mind || !mind.editable) return;
+      var t = e.target;
+      while(t && t !== mapEl && t.tagName !== 'ME-TPC') t = t.parentElement;
+      if(!t || t === mapEl || t.tagName !== 'ME-TPC') return;
+      var no = t.nodeObj;
+      if(!no) return;
+      if(no.dangerouslySetInnerHTML){
+        e.stopPropagation();
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        openRichTextEdit(no, t);
+      }
+    }, true);
+  }catch(err){}
 }
 
 function initMind(data){
@@ -1752,6 +1843,10 @@ function initMind(data){
   bindViewControls();
   bindPresent();
   var mb = $('btnMark'); if(mb) mb.onclick = function(e){ e.stopPropagation(); toggleMark(); };
+  installDblClickInterceptor();
+  var _rtSave = document.getElementById('btnRtSave'); if(_rtSave) _rtSave.onclick = function(e){ e.stopPropagation(); saveRichTextEdit(); };
+  var _rtCancel = document.getElementById('btnRtCancel'); if(_rtCancel) _rtCancel.onclick = function(e){ e.stopPropagation(); cancelRichTextEdit(); };
+  var _rtModal = document.getElementById('modalEditRt'); if(_rtModal) _rtModal.onclick = function(e){ if(e.target===this) cancelRichTextEdit(); };
   var _z = $('zoomVal'); if(_z) _z.textContent = '100%';
   /* 监听缩放事件 → 更新标签（bus.fire('scale', v)） */
   try{ mind.bus.addListener('scale', updateZoomLabel); }catch(e){}
