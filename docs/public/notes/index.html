@@ -240,6 +240,7 @@ html.dark .s-badge.run{color:#fbbf24}
       <button id="btnOutline" title="大纲模式 (Ctrl+O)：导图 ↔ 大纲列表快速浏览">大纲</button>
       <button id="btnFocus" title="聚焦选中节点 (Ctrl+F)">聚焦</button>
       <button id="btnPresent" title="演示复习 (Ctrl+P)：选中节点则从该节点开始；未选中则继续上次进度">演示</button>
+      <button id="btnMark" title="标记重点 (Ctrl+M)">🔥</button>
       <button id="btnStats" title="统计与复习进度">统计</button>
       <button id="btnRename">改名</button>
       <button id="btnEditSrc">编辑源</button>
@@ -1222,6 +1223,7 @@ document.addEventListener('keydown', function(e){
   if(k === '0'){ e.preventDefault(); fitView(); return; }
   if(k === 'o'){ e.preventDefault(); toggleOutline(); return; }
   if(k === 'p'){ e.preventDefault(); enterPresent(); return; }
+  if(k === 'm'){ e.preventDefault(); toggleMark(); return; }
   if(k === '=' || k === '+'){ e.preventDefault(); setZoom(getZoom() + 0.15); return; }
   if(k === '-'){ e.preventDefault(); setZoom(getZoom() - 0.15); return; }
 });
@@ -1687,6 +1689,26 @@ document.addEventListener('keydown', function(e){
   if(handled){ e.preventDefault(); e.stopPropagation(); }
 }, true);
 
+/* ===== 重点标记 ===== */
+function toggleMark(){
+  if(!mind) return;
+  try{
+    var cn = mind.currentNodes;
+    if(!cn || !cn.length || !cn[0].nodeObj){
+      setStatus('请先点选一个节点', true); return;
+    }
+    var nodeObj = cn[0].nodeObj;
+    if(!nodeObj.style || !nodeObj.style.background){
+      nodeObj.style = { background:'#fef3c7', color:'#92400e', fontWeight:'600' };
+      setStatus('已标记重点', true);
+    } else {
+      delete nodeObj.style;
+      setStatus('已取消重点', true);
+    }
+    mind.refresh();
+  }catch(e){ setStatus('标记失败', true); }
+}
+
 function initMind(data){
   if(mind){ try{ mind.destroy(); }catch(e){} }
   applyInlineHtml(data);
@@ -1729,6 +1751,7 @@ function initMind(data){
   /* 视图控制绑定 + 缩放标签 */
   bindViewControls();
   bindPresent();
+  var mb = $('btnMark'); if(mb) mb.onclick = function(e){ e.stopPropagation(); toggleMark(); };
   var _z = $('zoomVal'); if(_z) _z.textContent = '100%';
   /* 监听缩放事件 → 更新标签（bus.fire('scale', v)） */
   try{ mind.bus.addListener('scale', updateZoomLabel); }catch(e){}
@@ -2383,6 +2406,12 @@ document.addEventListener('DOMContentLoaded', function(){
     if(!md){ alert('请粘贴 Markdown 内容'); return; }
     try{
       var result = mdToNodeData(md);
+      /* 保留当前概要和连线（编辑源只改节点结构） */
+      if(editMode && curNote && mind){
+        var cur = mind.getData();
+        if(cur && cur.summaries) result.summaries = cur.summaries;
+        if(cur && cur.arrows) result.arrows = cur.arrows;
+      }
       var name = $('imp-name').value.trim() || result.firstH1 || ('笔记 '+(notes.length+1));
       if(editMode && curNote){
         /* 覆盖当前笔记 */
