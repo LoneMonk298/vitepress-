@@ -1780,8 +1780,8 @@ function cancelRichTextEdit(){
 }
 function installDblClickInterceptor(){
   try{
-    var mapEl = document.querySelector('#map .mind-elixir-map');
-    if(!mapEl || mapEl._dblClickInstalled) return;
+    var mapEl = document.querySelector('#map .map-canvas');
+    if(!mapEl){ mapEl = document.querySelector('#map'); if(!mapEl) return; } if(mapEl._dblClickInstalled) return;
     mapEl._dblClickInstalled = true;
     mapEl.addEventListener('dblclick', function(e){
       if(!mind || !mind.editable) return;
