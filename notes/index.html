@@ -340,16 +340,10 @@ html.dark .s-badge.run{color:#fbbf24}
 
 <div class="modal" id="modalSync">
   <div class="mbox">
-    <h3>云同步</h3>
-    <p>使用 jsonbin.io 多设备同步。<br>
-    <b>请用独立的 Bin</b>，勿与 408 导图表共用。</p>
+    <h3>服务器同步</h3>
+    <p>所有笔记数据同步到自有服务器，支持大文件（无 100KB 限制）。<br>
+    适合多设备备份：手机、电脑、平板数据互通。</p>
     <div id="sync-status" class="mm-status"></div>
-    <label>Access Key ID</label>
-    <input autocomplete="off" data-lpignore="true" spellcheck="false" type="text" id="sync-key-id" placeholder="输入你的 Access Key ID">
-    <label>X-Access-Key</label>
-    <input autocomplete="off" data-lpignore="true" spellcheck="false" type="password" id="sync-access-key" placeholder="输入你的 X-Access-Key">
-    <label>Bin ID（第一次使用留空，推送后自动创建）</label>
-    <input autocomplete="off" data-lpignore="true" spellcheck="false" type="text" id="sync-bin-id" placeholder="已有 Bin ID 则填入">
     <div class="row">
       <button id="btnDown">从云端拉取</button>
       <button class="pri" id="btnUp">推送到云端</button>
@@ -2324,12 +2318,9 @@ function buildSyncPayload(){
   });
 }
 
+var SYNC_URL = 'https://web.lonemonk.xyz/api-review/notes/sync';
+
 async function syncPush(){
-  saveSyncConfig();
-  if(!syncConfig.keyId || !syncConfig.accessKey){
-    updateSyncStatus('error','请先填写两个 Key');
-    return;
-  }
   var p = await buildSyncPayload();
   if(!p.count){
     updateSyncStatus('error','本机还没有任何笔记数据');
@@ -2337,41 +2328,16 @@ async function syncPush(){
   }
   var bodyStr = JSON.stringify(p.payload);
   var sizeKB = new Blob([bodyStr]).size / 1024;
-  if(sizeKB > 90){
-    updateSyncStatus('error','数据过大: '+sizeKB.toFixed(0)+'KB（免费额度100KB）\\n已剥离公式HTML，如仍超限请减少笔记或升级付费版');
-    return;
-  }
-  updateSyncStatus('info','正在推送 '+sizeKB.toFixed(0)+'KB…');
+  updateSyncStatus('info','正在推送 '+sizeKB.toFixed(0)+'KB（'+p.count+' 篇）…');
   try{
-    var response;
-    if(syncConfig.binId){
-      response = await fetch('https://api.jsonbin.io/v3/b/'+syncConfig.binId,{
-        method:'PUT',
-        headers:{ 'X-Access-Key':syncConfig.accessKey, 'Content-Type':'application/json' },
-        body: bodyStr
-      });
-    } else {
-      response = await fetch('https://api.jsonbin.io/v3/b',{
-        method:'POST',
-        headers:{
-          'X-Access-Key':syncConfig.accessKey,
-          'Content-Type':'application/json',
-          'X-Bin-Name':'mm_notes_data',
-          'X-Bin-Private':'true'
-        },
-        body: bodyStr
-      });
-    }
+    var response = await fetch(SYNC_URL,{
+      method:'POST',
+      headers:{ 'Content-Type':'application/json' },
+      body: bodyStr
+    });
     if(!response.ok) throw new Error('失败: '+response.status+' '+response.statusText);
-    if(!syncConfig.binId){
-      var result = await response.json();
-      syncConfig.binId = result.metadata.id;
-      $('sync-bin-id').value = syncConfig.binId;
-      saveSyncConfigLocal();
-      updateSyncStatus('success','创建成功！Bin ID: '+syncConfig.binId+'（请保存）');
-    } else {
-      updateSyncStatus('success','推送成功！'+p.count+' 篇笔记已同步');
-    }
+    var result = await response.json();
+    updateSyncStatus('success','推送成功！'+result.count+' 篇笔记已同步');
     var now = new Date().toLocaleString('zh-CN');
     localStorage.setItem('mm_notes_last_sync', now);
     $('sync-last-time').textContent = '上次同步: '+now;
@@ -2382,33 +2348,27 @@ async function syncPush(){
 }
 
 async function syncPull(){
-  saveSyncConfig();
-  if(!syncConfig.keyId || !syncConfig.accessKey){
-    updateSyncStatus('error','请先填写两个 Key');
-    return;
-  }
-  if(!syncConfig.binId){
-    updateSyncStatus('error','请先填写 Bin ID（首次使用请先推送）');
-    return;
-  }
   updateSyncStatus('info','正在拉取…');
   try{
-    var response = await fetch('https://api.jsonbin.io/v3/b/'+syncConfig.binId+'/latest',{
-      method:'GET',
-      headers:{ 'X-Access-Key':syncConfig.accessKey }
+    var response = await fetch(SYNC_URL,{
+      method:'GET'
     });
     if(!response.ok) throw new Error('拉取失败: '+response.status);
     var result = await response.json();
-    if(!result.record) throw new Error('数据格式不正确');
-    if(!confirm('用云端数据覆盖本地？此操作不可撤销。')){
+    if(!result.payload) throw new Error('数据格式不正确');
+    var pullIds = Object.keys(result.payload);
+    if(pullIds.length === 0){
+      updateSyncStatus('error','服务器没有笔记数据，请先从有数据的设备推送');
+      return;
+    }
+    if(!confirm('用服务器数据覆盖本地？共 '+pullIds.length+' 篇笔记。此操作不可撤销。')){
       updateSyncStatus('info','已取消');
       return;
     }
     var n=0;
-    var pullIds = Object.keys(result.record);
     await Promise.all(pullIds.map(function(f){
       return new Promise(function(res){
-        var d = result.record[f];
+        var d = result.payload[f];
         if(d && d.nodeData) applyInlineHtml(d);
         noteStorePut(f, d, function(){ n++; res(); });
       });
@@ -2426,21 +2386,12 @@ async function syncPull(){
 }
 
 function openSyncModal(){
-  loadSyncConfig();
-  $('sync-key-id').value = syncConfig.keyId || '';
-  $('sync-access-key').value = syncConfig.accessKey || '';
-  $('sync-bin-id').value = syncConfig.binId || '';
   updateSyncStatus('','');
   var lastSync = localStorage.getItem('mm_notes_last_sync');
   $('sync-last-time').textContent = lastSync ? '上次同步: '+lastSync : '';
   $('modalSync').classList.add('show');
 }
-function saveSyncConfig(){
-  syncConfig.keyId = $('sync-key-id').value.trim();
-  syncConfig.accessKey = $('sync-access-key').value.trim();
-  syncConfig.binId = $('sync-bin-id').value.trim();
-  saveSyncConfigLocal();
-}
+function saveSyncConfig(){}
 
 /* ===== 初始化 ===== */
 document.addEventListener('DOMContentLoaded', function(){
