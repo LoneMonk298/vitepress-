@@ -4853,7 +4853,6 @@ function renderTable() {
           <td class="sort-col" title="拖动排序"><span class="drag-handle">⋮⋮</span></td>
           <td>${item['考纲章节']}</td>
           <td style="font-weight:500;cursor:pointer" onclick="openDetailModal(${idx})">
-            ${(() => { const rs = getReviewStatus(item); return rs.status !== 'never' ? `<span class="review-dot ${rs.status}" title="${rs.status === 'urgent' ? '今天需复习' : rs.status === 'soon' ? '明天需复习' : '状态良好'}"></span>` : ''; })()}
             ${item['考点']}${item._custom ? '<span class="custom-badge">自定义</span>' : ''}
             ${getStuckPoint(idx) ? '<span class="stuck-dot" title="有卡壳记录"></span>' : ''}
             <span class="drag-hint">点击查看详情</span>
@@ -4870,7 +4869,7 @@ function renderTable() {
           <td class="pdf-cell">
             ${pdfList.length
               ? `<button class="pdf-btn" onclick="openPdfModal(${idx})" title="查看本考点课件">📄 课件${pdfList.length}</button><div class="review-mini">复习 ${review}</div>`
-              : `<div class="review-mini readonly">${review}</div>`}
+              : `<div class="review-mini" style="text-align:center;color:#b6bcc7">—</div>`}
           </td>
           <td class="note-cell">
             <div class="note-text ${note ? '' : 'empty'}" 
