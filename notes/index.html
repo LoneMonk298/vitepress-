@@ -42,6 +42,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei
 .tag:hover{border-color:#10b981}
 .tag.on{background:#10b981;color:#fff}
 .tag-empty{font-size:11px;color:var(--text2);opacity:.7}
+/* 节点自定义标签徽标（定义/不熟/重点…） */
+.nd-tags{display:inline-flex;gap:3px;flex-wrap:wrap;margin-left:6px;vertical-align:middle;pointer-events:auto}
+.nd-tag{font-size:10px;padding:0 6px;border-radius:8px;background:rgba(99,102,241,.13);color:#6366f1;font-style:normal;font-weight:500;line-height:1.7;white-space:nowrap}
+html.dark .nd-tag{color:#a5b4fc;background:rgba(99,102,241,.22)}
+/* 节点标签面板 */
+.tag-chip{display:inline-block;font-size:12px;padding:4px 10px;border-radius:12px;background:var(--bg);border:1px solid var(--bd);cursor:pointer;margin:4px 4px 0 0}
+.tag-chip:hover{border-color:#6366f1}
+.tag-chip.on{background:#6366f1;color:#fff;border-color:#6366f1}
+#tag-node-topic{font-size:12px;color:var(--text2);word-break:break-all;margin-bottom:8px;max-height:48px;overflow:auto}
+#tag-msg{font-size:11px;color:var(--text2);min-height:16px;margin:4px 0 6px}
 .note-move{padding:2px 6px;border:none;background:transparent;cursor:pointer;font-size:13px;color:var(--text2);border-radius:4px;opacity:0}
 .note:hover .note-move{opacity:1}
 .note-move:hover{color:#667eea;background:rgba(102,126,234,.1)}
@@ -254,6 +264,7 @@ html.dark .s-badge.run{color:#fbbf24}
       <button id="btnFocus" title="聚焦选中节点 (Ctrl+F)">聚焦</button>
       <button id="btnPresent" title="演示复习 (Ctrl+P)：选中节点则从该节点开始；未选中则继续上次进度">演示</button>
       <button id="btnMark" title="标记重点 (Ctrl+M)">重点</button>
+      <button id="btnTag" title="节点标签：定义 / 不熟 / 重点…">标签</button>
       <button id="btnStats" title="统计与复习进度">统计</button>
       <button id="btnRename">改名</button>
       <button id="btnEditSrc">编辑源</button>
@@ -367,6 +378,20 @@ html.dark .s-badge.run{color:#fbbf24}
     <p>各笔记复习进度一目了然：<b style="color:#0d9488">已完成</b> 表示演示模式看到最后一张；<b style="color:#d97706">复习到 x/y</b> 表示下次可继续。</p>
     <div id="stats-body"></div>
     <div class="row"><button id="btnCloseStats">关闭</button></div>
+  </div>
+</div>
+
+<div class="modal" id="modalTag">
+  <div class="mbox" style="max-width:440px">
+    <h3>节点标签</h3>
+    <div id="tag-node-topic"></div>
+    <div id="tag-chips"></div>
+    <div id="tag-msg"></div>
+    <div style="display:flex;gap:6px">
+      <input id="tag-new" placeholder="自定义标签，如：定义 / 不熟 / 易错…" style="flex:1;min-width:0">
+      <button id="btnTagAdd">添加</button>
+    </div>
+    <div class="row" style="margin-top:14px"><button id="btnTagClose">完成</button></div>
   </div>
 </div>
 
@@ -658,6 +683,7 @@ function collectTags(data){
     var t = String(n.topic||'');
     var m = t.match(/#([\u4e00-\u9fa5A-Za-z0-9_\-]+)/g);
     if(m) for(var i=0;i<m.length;i++) tags[m[i].slice(1)] = 1;
+    if(n.tags && n.tags.length) for(var j=0;j<n.tags.length;j++) tags[n.tags[j]] = 1;
     (n.children||[]).forEach(walk);
   })(data.nodeData);
   return Object.keys(tags).sort();
@@ -905,8 +931,19 @@ function renderTagsAsync(){
           if(curTag === t) curTag = null;
           else {
             curTag = t;
-            var ids = allTags[t] || [];
-            if(ids.length) loadNote(findNoteById(ids[0]));
+            var done = false;
+            /* 当前笔记内优先定位到含该标签的节点（自定义标签或文本 #标签） */
+            if(curNote){
+              noteStoreGet(curNote.id, function(data){
+                if(done || !data || !data.nodeData) return;
+                var hit = findTaggedNode(data.nodeData, t);
+                if(hit){ done = true; jumpToNote(curNote, hit.id); return; }
+                if(!done && allTags[t] && allTags[t].length) loadNote(findNoteById(allTags[t][0]));
+              });
+            } else {
+              var ids = allTags[t] || [];
+              if(ids.length) loadNote(findNoteById(ids[0]));
+            }
           }
           renderList();
         };
@@ -1759,6 +1796,129 @@ function toggleMark(){
   }catch(e){ setStatus('标记失败', true); }
 }
 
+/* ===== 节点自定义标签 ===== */
+var PRESET_TAGS = ['定义','不熟','重点','易错','公式','结论','真题','背诵','扩展'];
+var CUSTOM_TAGS_KEY = 'mm_tags_custom';
+var tagTargetNode = null;
+function getCustomTags(){
+  try{ var a = JSON.parse(localStorage.getItem(CUSTOM_TAGS_KEY)||'[]'); return Array.isArray(a)?a:[]; }catch(e){ return []; }
+}
+function addCustomTag(t){
+  t = String(t||'').trim();
+  if(!t) return;
+  var a = getCustomTags();
+  if(a.indexOf(t) < 0){ a.push(t); try{ localStorage.setItem(CUSTOM_TAGS_KEY, JSON.stringify(a)); }catch(e){} }
+}
+function allTagOptions(){
+  var set = {};
+  for(var i=0;i<PRESET_TAGS.length;i++) set[PRESET_TAGS[i]]=1;
+  var cs = getCustomTags();
+  for(var j=0;j<cs.length;j++) set[cs[j]]=1;
+  return Object.keys(set);
+}
+function openTagModal(){
+  if(!mind) return;
+  var cn = mind.currentNodes, cur = mind.currentNode;
+  var target = (cn && cn.length) ? cn[0] : cur;
+  if(!target || !target.nodeObj){ setStatus('请先点选一个节点', true); return; }
+  tagTargetNode = target.nodeObj;
+  document.getElementById('tag-node-topic').textContent = String(tagTargetNode.topic||'').slice(0,60);
+  document.getElementById('tag-msg').textContent = '';
+  renderTagChips();
+  document.getElementById('modalTag').classList.add('show');
+  setTimeout(function(){ var inp = document.getElementById('tag-new'); if(inp) inp.focus(); }, 50);
+}
+function renderTagChips(){
+  var nodeTags = (tagTargetNode && tagTargetNode.tags) || [];
+  var opts = allTagOptions();
+  var h = '';
+  for(var i=0;i<opts.length;i++){
+    var t = opts[i];
+    h += '<span class="tag-chip'+(nodeTags.indexOf(t)>=0?' on':'')+'" data-tag="'+escapeHtml(t)+'">'+escapeHtml(t)+'</span>';
+  }
+  document.getElementById('tag-chips').innerHTML = h;
+  var chips = document.getElementById('tag-chips').querySelectorAll('.tag-chip');
+  for(var k=0;k<chips.length;k++){
+    (function(el){
+      el.onclick = function(){ toggleNodeTag(tagTargetNode, el.getAttribute('data-tag')); renderTagChips(); };
+    })(chips[k]);
+  }
+}
+function toggleNodeTag(nodeObj, t){
+  if(!nodeObj) return;
+  var arr = (nodeObj.tags || []).slice();
+  var i = arr.indexOf(t);
+  if(i>=0) arr.splice(i,1); else arr.push(t);
+  if(arr.length) nodeObj.tags = arr; else delete nodeObj.tags;
+  queueSave();
+  if(mind && mind.refresh) mind.refresh();
+  if(typeof renderTagsAsync === 'function') renderTagsAsync();
+  setStatus(nodeObj.tags && nodeObj.tags.length ? '已打标签：'+nodeObj.tags.join('、') : '已移除标签「'+t+'」', true);
+}
+/* 节点标签徽标注入：监听 me-nodes 重建，refresh/展开/初始化后自动补徽标 */
+var tagObs = null, tagDecoTimer = null;
+function attachTagDeco(){
+  try{
+    if(tagObs){ try{ tagObs.disconnect(); }catch(e){} tagObs = null; }
+    decorateNodeTags();
+    var nodesEl = document.querySelector('#map me-nodes');
+    if(!nodesEl) return;
+    tagObs = new MutationObserver(function(){ scheduleTagDeco(); });
+    tagObs.observe(nodesEl, { childList:true, subtree:true });
+  }catch(e){}
+}
+function scheduleTagDeco(){
+  if(tagDecoTimer) clearTimeout(tagDecoTimer);
+  tagDecoTimer = setTimeout(decorateNodeTags, 120);
+}
+function decorateNodeTags(){
+  if(tagDecoTimer){ clearTimeout(tagDecoTimer); tagDecoTimer = null; }
+  if(tagObs){ try{ tagObs.disconnect(); }catch(e){} }
+  try{
+    if(!mind || !mind.nodeData) return;
+    var mapEl = document.getElementById('map'); if(!mapEl) return;
+    var tagsBy = {};
+    (function walk(n){
+      if(!n) return;
+      if(n.tags && n.tags.length) tagsBy[n.id] = n.tags.slice();
+      (n.children||[]).forEach(walk);
+    })(mind.nodeData);
+    var tps = mapEl.querySelectorAll('me-tpc');
+    for(var i=0;i<tps.length;i++){
+      var no = tps[i].nodeObj;
+      var arr = (no && no.id) ? tagsBy[no.id] : null;
+      var old = tps[i].querySelector('.nd-tags');
+      if(old) old.remove();
+      if(arr && arr.length){
+        var span = document.createElement('span');
+        span.className = 'nd-tags';
+        for(var j=0;j<arr.length;j++){
+          var b = document.createElement('i');
+          b.className = 'nd-tag';
+          b.textContent = arr[j];
+          span.appendChild(b);
+        }
+        tps[i].appendChild(span);
+      }
+    }
+  }catch(e){}
+  try{
+    var n2 = document.querySelector('#map me-nodes');
+    if(tagObs && n2) tagObs.observe(n2, { childList:true, subtree:true });
+  }catch(e){}
+}
+/* 找从根开始第一个含指定标签的节点（nodeObj.tags 或文本 #标签） */
+function findTaggedNode(root, t){
+  var res = null;
+  (function walk(n){
+    if(res || !n) return;
+    var has = (n.tags && n.tags.indexOf(t)>=0) || String(n.topic||'').indexOf('#'+t)>=0;
+    if(has){ res = n; return; }
+    (n.children||[]).forEach(walk);
+  })(root);
+  return res;
+}
+
 /* ===== 富文本节点编辑（公式/链接节点双击弹出编辑框） ===== */
 var rtEditTarget = null;
 function openRichTextEdit(nodeObj, nodeEle){
@@ -1837,6 +1997,7 @@ function initMind(data){
   });
   mind.init(data);
   if(mind.toCenter) mind.toCenter();
+  attachTagDeco();
   mind.bus.addListener('operation', function(){ queueSave(); });
   /* 图片异步加载 → 节点宽度会变，重算布局（防溢出）。
      事件委托在 #map 上捕获所有 img 的 load/error：折叠节点展开时动态渲染的新图片也能覆盖到。
@@ -2565,6 +2726,24 @@ document.addEventListener('DOMContentLoaded', function(){
   $('btnCloseStats').onclick = function(){ $('modalStats').classList.remove('show'); };
   $('btnBacklinks').onclick = openBacklinks;
   $('btnCloseBacklinks').onclick = function(){ $('modalBacklinks').classList.remove('show'); };
+
+  /* 节点自定义标签 */
+  $('btnTag').onclick = openTagModal;
+  $('btnTagClose').onclick = function(){ $('modalTag').classList.remove('show'); };
+  $('modalTag').onclick = function(e){ if(e.target===this) this.classList.remove('show'); };
+  $('btnTagAdd').onclick = function(){
+    var inp = $('tag-new');
+    var t = String(inp.value||'').trim();
+    if(!t){ $('tag-msg').textContent = '请输入标签名'; return; }
+    if(!tagTargetNode){ $('tag-msg').textContent = '请先选择节点'; return; }
+    addCustomTag(t);
+    inp.value = '';
+    toggleNodeTag(tagTargetNode, t);
+    renderTagChips();
+  };
+  $('tag-new').addEventListener('keydown', function(e){
+    if(e.key === 'Enter'){ e.preventDefault(); $('btnTagAdd').click(); }
+  });
 
   /* 全局搜索：输入实时搜，Enter 再搜一次，Esc 清空 */
   $('globalFind').addEventListener('input', function(){ renderGlobalResults(this.value); });
