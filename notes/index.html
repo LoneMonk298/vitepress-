@@ -52,6 +52,14 @@ html.dark .nd-tag{color:#a5b4fc;background:rgba(99,102,241,.22)}
 .tag-chip.on{background:#6366f1;color:#fff;border-color:#6366f1}
 #tag-node-topic{font-size:12px;color:var(--text2);word-break:break-all;margin-bottom:8px;max-height:48px;overflow:auto}
 #tag-msg{font-size:11px;color:var(--text2);min-height:16px;margin:4px 0 6px}
+/* 按标签分类视图 */
+.tn-head{font-size:12px;color:var(--text2);margin-bottom:8px}
+.tn-list{max-height:50vh;overflow-y:auto}
+.tn-item{padding:7px 9px;border:1px solid var(--bd);border-radius:8px;margin-bottom:6px;cursor:pointer;display:flex;flex-direction:column;gap:2px}
+.tn-item:hover{border-color:#6366f1;background:var(--bg)}
+.tn-name{font-size:11px;color:var(--text2)}
+.tn-topic{font-size:13px;font-weight:600}
+.tn-path{font-size:11px;color:var(--text2);opacity:.75}
 .note-move{padding:2px 6px;border:none;background:transparent;cursor:pointer;font-size:13px;color:var(--text2);border-radius:4px;opacity:0}
 .note:hover .note-move{opacity:1}
 .note-move:hover{color:#667eea;background:rgba(102,126,234,.1)}
@@ -392,6 +400,14 @@ html.dark .s-badge.run{color:#fbbf24}
       <button id="btnTagAdd">添加</button>
     </div>
     <div class="row" style="margin-top:14px"><button id="btnTagClose">完成</button></div>
+  </div>
+</div>
+
+<div class="modal" id="modalTagNodes">
+  <div class="mbox" style="max-width:520px">
+    <h3 id="tagnodes-title">标签节点</h3>
+    <div id="tagnodes-body"></div>
+    <div class="row"><button id="btnCloseTagNodes">关闭</button></div>
   </div>
 </div>
 
@@ -893,6 +909,7 @@ function renderList(){
 }
 
 function renderTagsAsync(){
+  invalidateTagAgg();
   var list = $('list');
   var tagRow = list && list.querySelector('.tag-row');
   if(!tagRow) return;
@@ -920,7 +937,7 @@ function renderTagsAsync(){
       }
       h += '</div>';
     } else {
-      h += '<div class="tag-empty">节点内写 #标签 即可添加</div>';
+      h += '<div class="tag-empty">选中节点 → 工具栏「标签」添加</div>';
     }
     row.innerHTML = h;
     var tags = row.querySelectorAll('.tag');
@@ -928,24 +945,9 @@ function renderTagsAsync(){
       (function(el){
         el.onclick = function(){
           var t = el.getAttribute('data-tag');
-          if(curTag === t) curTag = null;
-          else {
-            curTag = t;
-            var done = false;
-            /* 当前笔记内优先定位到含该标签的节点（自定义标签或文本 #标签） */
-            if(curNote){
-              noteStoreGet(curNote.id, function(data){
-                if(done || !data || !data.nodeData) return;
-                var hit = findTaggedNode(data.nodeData, t);
-                if(hit){ done = true; jumpToNote(curNote, hit.id); return; }
-                if(!done && allTags[t] && allTags[t].length) loadNote(findNoteById(allTags[t][0]));
-              });
-            } else {
-              var ids = allTags[t] || [];
-              if(ids.length) loadNote(findNoteById(ids[0]));
-            }
-          }
+          curTag = (curTag === t) ? null : t;
           renderList();
+          openTagNodes(t);
         };
       })(tags[j]);
     }
@@ -1919,6 +1921,75 @@ function findTaggedNode(root, t){
   return res;
 }
 
+/* ===== 按标签分类聚合（跨笔记） ===== */
+var tagAggCache = null;
+function invalidateTagAgg(){ tagAggCache = null; }
+function collectTagNodes(cb){
+  if(tagAggCache){ cb(tagAggCache); return; }
+  var ns = loadNotes();
+  noteStoreGetAll(function(map){
+    var agg = {}; /* tag → [{noteId,noteName,node,pathStr}] */
+    for(var i=0;i<ns.length;i++){
+      var n = ns[i], d = map[n.id] || null;
+      if(!d || !d.nodeData) continue;
+      (function walk(node, path){
+        if(!node) return;
+        var tags = (node.tags || []).slice();
+        var t = String(node.topic||'');
+        var m = t.match(/#([\u4e00-\u9fa5A-Za-z0-9_\-]+)/g);
+        if(m) for(var j=0;j<m.length;j++){ if(tags.indexOf(m[j].slice(1))<0) tags.push(m[j].slice(1)); }
+        var p = path.concat([node]);
+        if(tags.length){
+          for(var k=0;k<tags.length;k++){
+            if(!agg[tags[k]]) agg[tags[k]] = [];
+            agg[tags[k]].push({
+              noteId: n.id, noteName: n.name, node: node,
+              pathStr: p.slice(0,-1).map(function(x){ return plainTopic(x.topic); }).join(' / ')
+            });
+          }
+        }
+        (node.children||[]).forEach(function(c){ walk(c, p); });
+      })(d.nodeData, []);
+    }
+    tagAggCache = agg;
+    cb(agg);
+  });
+}
+/* 打开「标签 → 全部节点」聚合视图 */
+function openTagNodes(tag){
+  collectTagNodes(function(agg){
+    var list = agg[tag] || [];
+    var body = document.getElementById('tagnodes-body');
+    var h = '<div class="tn-head">#'+escapeHtml(tag)+' · 共 '+list.length+' 个节点（跨笔记）</div>';
+    if(!list.length){
+      h += '<div class="empty-tip">没有节点带此标签</div>';
+    } else {
+      h += '<div class="tn-list">';
+      for(var i=0;i<list.length;i++){
+        var it = list[i];
+        h += '<div class="tn-item" data-noteid="'+it.noteId+'" data-nid="'+it.node.id+'">';
+        h += '<span class="tn-name">📄 '+escapeHtml(it.noteName)+'</span>';
+        h += '<span class="tn-topic">'+escapeHtml(plainTopic(it.node.topic))+'</span>';
+        if(it.pathStr) h += '<span class="tn-path">'+escapeHtml(it.pathStr)+'</span>';
+        h += '</div>';
+      }
+      h += '</div>';
+    }
+    body.innerHTML = h;
+    var els = body.querySelectorAll('.tn-item');
+    for(var k=0;k<els.length;k++){
+      (function(el){
+        el.onclick = function(){
+          var note = findNoteById(el.getAttribute('data-noteid'));
+          if(note) jumpToNote(note, el.getAttribute('data-nid'));
+          document.getElementById('modalTagNodes').classList.remove('show');
+        };
+      })(els[k]);
+    }
+    document.getElementById('modalTagNodes').classList.add('show');
+  });
+}
+
 /* ===== 富文本节点编辑（公式/链接节点双击弹出编辑框） ===== */
 var rtEditTarget = null;
 function openRichTextEdit(nodeObj, nodeEle){
@@ -2744,6 +2815,8 @@ document.addEventListener('DOMContentLoaded', function(){
   $('tag-new').addEventListener('keydown', function(e){
     if(e.key === 'Enter'){ e.preventDefault(); $('btnTagAdd').click(); }
   });
+  $('btnCloseTagNodes').onclick = function(){ $('modalTagNodes').classList.remove('show'); };
+  $('modalTagNodes').onclick = function(e){ if(e.target===this) this.classList.remove('show'); };
 
   /* 全局搜索：输入实时搜，Enter 再搜一次，Esc 清空 */
   $('globalFind').addEventListener('input', function(){ renderGlobalResults(this.value); });
