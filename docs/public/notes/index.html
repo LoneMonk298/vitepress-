@@ -191,6 +191,10 @@ html.dark .s-badge.run{color:#fbbf24}
 .sort-bar{display:flex;align-items:center;gap:6px;padding:6px 10px;border-bottom:1px solid var(--bd);font-size:12px}
 .sort-bar .sb-label{color:var(--text2);flex:none}
 #sortSel{flex:1;min-width:0;padding:4px 6px;border:1px solid var(--bd);border-radius:7px;background:var(--bg);color:var(--text);font-size:12px;font-family:inherit}
+/* 侧栏一键折叠 */
+.fold-bar{display:flex;gap:6px;padding:6px 10px;border-bottom:1px solid var(--bd)}
+.fold-bar button{flex:1;font-size:11.5px;padding:3px 4px;border:1px solid var(--bd);border-radius:6px;background:var(--bg);color:var(--text);cursor:pointer}
+.fold-bar button:hover{background:var(--bd)}
 @media(max-width:768px){
   .sidebar{position:absolute;z-index:20;height:100%;box-shadow:4px 0 16px #0002}
   .topbar .t{font-size:13px}
@@ -220,6 +224,10 @@ html.dark .s-badge.run{color:#fbbf24}
         <option value="edited">最近编辑</option>
         <option value="created">创建时间</option>
       </select>
+    </div>
+    <div class="fold-bar">
+      <button id="btnFoldAll" title="折叠所有文件夹">▼ 全部折叠</button>
+      <button id="btnUnfoldAll" title="展开所有文件夹">▶ 全部展开</button>
     </div>
     <div class="side-list" id="list"></div>
     <div style="padding:10px;border-top:1px solid var(--bd);display:flex;gap:6px">
@@ -664,6 +672,8 @@ function bindViewControls(){
   function on(id, fn){ var b = $(id); if(b) b.onclick = function(e){ e.stopPropagation(); fn(); }; }
   on('btnExpandAll', function(){ setAllExpanded(true); });
   on('btnCollapseAll', function(){ setAllExpanded(false); });
+  on('btnFoldAll', function(){ toggleAllFolders(true); });
+  on('btnUnfoldAll', function(){ toggleAllFolders(false); });
   on('btnOutline', function(){ toggleOutline(); });
   on('btnZoomIn', function(){ setZoom(getZoom() + 0.15); });
   on('btnZoomOut', function(){ setZoom(getZoom() - 0.15); });
@@ -702,11 +712,30 @@ function loadNote(note, cb){
 
 /* ===== 侧栏笔记排序 ===== */
 var SORT_KEY = 'mm_notes_sort';
+var FOLD_KEY = 'mm_sidebar_fold';
 function getSortMode(){
   try{ return localStorage.getItem(SORT_KEY) || 'default'; }catch(e){ return 'default'; }
 }
 function setSortMode(m){
   try{ localStorage.setItem(SORT_KEY, m); }catch(e){}
+}
+/* 侧栏文件夹折叠状态：{ 文件夹名: true(collapsed) } */
+function getFoldState(){
+  try{ return JSON.parse(localStorage.getItem(FOLD_KEY) || '{}'); }catch(e){ return {}; }
+}
+function setFoldState(st){
+  try{ localStorage.setItem(FOLD_KEY, JSON.stringify(st)); }catch(e){}
+}
+function toggleAllFolders(collapsed){
+  var st = getFoldState();
+  var heads = document.querySelectorAll('#list .folder');
+  for(var i=0;i<heads.length;i++){
+    var fname = heads[i].getAttribute('data-folder');
+    heads[i].classList.toggle('collapsed', !!collapsed);
+    if(collapsed) st[fname] = true; else st[fname] = false;
+  }
+  setFoldState(st);
+  setStatus(collapsed ? '已折叠全部文件夹' : '已展开全部文件夹', true);
 }
 /* 对文件夹内的笔记数组按当前排序方式返回新副本 */
 function sortNotesArr(arr){
@@ -742,9 +771,10 @@ function renderList(){
     return a.localeCompare(b,'zh-CN');
   });
   var h = '';
+  var foldState = getFoldState();
   for(var fi=0;fi<order.length;fi++){
     var fname = order[fi], arr = sortNotesArr(folders[fname]);
-    h += '<div class="folder" data-folder="'+escapeHtml(fname)+'">';
+    h += '<div class="folder'+(foldState[fname]?' collapsed':'')+'" data-folder="'+escapeHtml(fname)+'">';
     h += '<div class="f-head" data-folder="'+escapeHtml(fname)+'">';
     h += '<span class="f-arrow">▾</span>';
     h += '<span class="f-icon">'+(fname==='未分类'?'📥':'📁')+'</span>';
@@ -779,6 +809,9 @@ function renderList(){
           ev.stopPropagation(); return;
         }
         el.parentNode.classList.toggle('collapsed');
+        var st = getFoldState();
+        st[el.getAttribute('data-folder')] = el.parentNode.classList.contains('collapsed');
+        setFoldState(st);
       };
     })(fheads[k]);
   }
@@ -1946,11 +1979,25 @@ function applyFocus(rootNode, hit){
 }
 function focusNodeElement(nodeId){
   setTimeout(function(){
-    var el=document.querySelector('[data-nodeid="'+nodeId+'"]');
+    var el=document.querySelector('[data-nodeid="me'+nodeId+'"]');
     if(!el) return;
-    try{ el.scrollIntoView({block:'center', inline:'center', behavior:'smooth'}); }catch(e){}
+    centerElInMap(el);
     el.classList.add('mm-hit');
   }, 500);
+}
+/* 把指定节点平移到导图可视区中心（循环逼近，考虑缩放；scrollIntoView 在 MindElixir transform 容器内不可靠） */
+function centerElInMap(el){
+  var s = document.querySelector('#map .map-container') || (mind && mind.mindElixirBox && mind.mindElixirBox.querySelector('.map-container'));
+  if(!s){ try{ el.scrollIntoView({block:'center',inline:'center'}); }catch(e){} return; }
+  var sc = (mind && mind.scaleVal) || 1;
+  for(var t=0;t<3;t++){
+    var b = el.getBoundingClientRect();
+    var c = s.getBoundingClientRect();
+    var dx = b.left + b.width/2 - (c.left + c.width/2);
+    var dy = b.top + b.height/2 - (c.top + c.height/2);
+    if(Math.abs(dx) < 30 && Math.abs(dy) < 30) break;
+    s.scrollBy(dx / sc, dy / sc);
+  }
 }
 
 /* ===== 导出 ===== */
@@ -2055,7 +2102,7 @@ function jumpToNote(note, nodeId){
         setTimeout(function(){
           var el = document.querySelector('[data-nodeid="me'+nodeId+'"]');
           if(!el) return;
-          try{ el.scrollIntoView({block:'center',inline:'center',behavior:'smooth'}); }catch(e){}
+          centerElInMap(el);
           el.classList.add('mm-hit');
         }, 400);
         setStatus('已定位「'+String(path[path.length-1].topic).slice(0,24)+'」', true);
