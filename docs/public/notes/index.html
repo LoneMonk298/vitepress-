@@ -282,7 +282,8 @@ html.dark .s-badge.run{color:#fbbf24}
       <button id="btnFocus" title="聚焦选中节点 (Ctrl+F)">聚焦</button>
       <button id="btnPresent" title="演示复习 (Ctrl+P)：选中节点则从该节点开始；未选中则继续上次进度">演示</button>
       <button id="btnMark" title="标记重点 (Ctrl+M)">重点</button>
-      <button id="btnErr" title="标记易错 (Ctrl+Shift+M)：一键打/取消易错标签" style="color:#1d4ed8">易错</button>
+      <button id="btnErr" title="标记易错 (Ctrl+Shift+M)：一键打/取消易错标签">易错</button>
+      <button id="btnNextTag" title="跳到下一个标注知识点 (Ctrl+J)：复用演示模式的平滑镜头动画">下一标注</button>
       <button id="btnTag" title="节点标签：定义 / 不熟 / 重点…">标签</button>
       <button id="btnStats" title="统计与复习进度">统计</button>
       <button id="btnRename">改名</button>
@@ -922,11 +923,23 @@ function renderTagsAsync(){
 function escapeHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
 /* ===== 导图 ===== */
+/* 清理节点正文里历史误写入的标签徽标 HTML（旧实现曾把徽标插进节点内容并被保存） */
+var _badgeFixCount = 0;
+function stripBadgeHtml(s){
+  s = String(s==null?'':s);
+  if(s.indexOf('nd-tag') < 0) return s;
+  s = s.replace(/<span[^>]*class\s*=\s*["'][^"']*\bnd-tags\b[^"']*["'][^>]*>[\s\S]*?<\/span>/gi, '');
+  s = s.replace(/<i[^>]*class\s*=\s*["'][^"']*\bnd-tag\b[^"']*["'][^>]*>[\s\S]*?<\/i>/gi, '');
+  s = s.replace(/<span[^>]*class\s*=\s*["'][^"']*\bnd-tag\b[^"']*["'][^>]*>[\s\S]*?<\/span>/gi, '');
+  return s.replace(/<span[^>]*>\s*<\/span>/gi, '').replace(/[ \t]+$/gm, '').replace(/\n{3,}/g, '\n\n').trim();
+}
+
 /* 递归为每个节点根据 topic 重新生成 dangerouslySetInnerHTML（编辑后 HTML 不丢失） */
 function applyInlineHtml(data){
   (function walk(n){
     if(!n) return;
-    var raw = String(n.topic||'');
+    var raw = stripBadgeHtml(String(n.topic||''));
+    if(raw !== String(n.topic||'')){ n.topic = raw; _badgeFixCount++; }   /* 清洗后写回，下次保存即持久化干净数据 */
     var h = inlineHtml(raw);
     var plain = raw.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
     if(h && h !== plain) n.dangerouslySetInnerHTML = h;
@@ -1275,6 +1288,7 @@ document.addEventListener('keydown', function(e){
   if(k === 'o'){ e.preventDefault(); toggleOutline(); return; }
   if(k === 'p'){ e.preventDefault(); enterPresent(); return; }
   if(k === 'm' && e.shiftKey){ e.preventDefault(); toggleMarkErr(); return; }
+  if(k === 'j'){ e.preventDefault(); jumpNextTagged(); return; }
   if(k === 'm'){ e.preventDefault(); toggleMark(); return; }
   if(k === '=' || k === '+'){ e.preventDefault(); setZoom(getZoom() + 0.15); return; }
   if(k === '-'){ e.preventDefault(); setZoom(getZoom() - 0.15); return; }
@@ -1896,6 +1910,9 @@ function decorateNodeTags(){
       var arr = (no && no.id) ? tagsBy[no.id] : null;
       var old = tps[i].querySelector('.nd-tags');
       if(old) old.remove();
+      /* 防御：清掉正文里散落的旧徽标（不在 .nd-tags 容器内的 .nd-tag） */
+      var stray = tps[i].querySelectorAll('.nd-tag');
+      for(var s=0;s<stray.length;s++){ if(!stray[s].closest('.nd-tags')) stray[s].remove(); }
       if(arr && arr.length){
         var span = document.createElement('span');
         span.className = 'nd-tags';
@@ -1924,6 +1941,64 @@ function findTaggedNode(root, t){
     (n.children||[]).forEach(walk);
   })(root);
   return res;
+}
+
+/* ===== 跳到下一个标注知识点（复用演示模式的平滑镜头动画） ===== */
+function taggedNodeList(){
+  var out = [];
+  (function walk(n, path){
+    if(!n) return;
+    var p = path.concat([n.id]);
+    if(n.tags && n.tags.length){ out.push({ id:n.id, path:p, tags:n.tags.slice(), topic:plainTopic(n.topic) }); }
+    (n.children||[]).forEach(function(c){ walk(c, p); });
+  })(mind.nodeData, []);
+  return out;
+}
+/* 展开目标节点整条父链（保留其他分支当前展开状态，不折叠） */
+function expandAllOnPath(path){
+  var d = mind.getData();
+  (function walk(n){
+    if(!n) return;
+    if(path.indexOf(n.id) >= 0) n.expanded = true;
+    (n.children||[]).forEach(walk);
+  })(d.nodeData);
+  mind.refresh(d);
+}
+/* 平滑移动镜头到单个节点（与演示模式同一套 animateCamera：460ms ease 移动 + 缩放） */
+function animateCameraToNode(el){
+  var ct = mind.container, cw = ct.clientWidth, ch = ct.clientHeight;
+  if(!cw || !ch) return;
+  var fromV = mind.scaleVal || 1;
+  var fromCx = CANVAS_O + (ct.scrollLeft + cw/2 - CANVAS_O)/fromV;
+  var fromCy = CANVAS_O + (ct.scrollTop + ch/2 - CANVAS_O)/fromV;
+  var cv = mind.map;
+  cv.style.transition = 'none';
+  mind.scale(1);
+  void ct.offsetWidth;
+  var cRect = ct.getBoundingClientRect(), sl = ct.scrollLeft, st = ct.scrollTop;
+  var rc = realRect(el, cRect, sl, st);
+  var targetV = Math.max(0.85, Math.min(1.25, fromV));
+  animateCamera({v:fromV,x:fromCx,y:fromCy}, {v:targetV, x:rc.x+rc.w/2, y:rc.y+rc.h/2});
+}
+function jumpNextTagged(){
+  if(!mind || !mind.nodeData){ setStatus('请先打开一篇笔记', true); return; }
+  var list = taggedNodeList();
+  if(!list.length){ setStatus('这篇笔记还没有标注节点（先用「重点」「易错」或「标签」标注）', true); return; }
+  var curId = null, curEl = mind.currentNode;
+  if(curEl && curEl.nodeObj) curId = curEl.nodeObj.id;
+  else if(mind.currentNodes && mind.currentNodes.length && mind.currentNodes[0].nodeObj) curId = mind.currentNodes[0].nodeObj.id;
+  var idx = -1;
+  for(var i=0;i<list.length;i++){ if(list[i].id === curId){ idx = i; break; } }
+  var next = (idx + 1) % list.length;
+  var item = list[next];
+  expandAllOnPath(item.path);
+  setTimeout(function(){
+    var el = document.querySelector('[data-nodeid="me'+item.id+'"]');
+    if(!el){ setStatus('没找到节点元素', true); return; }
+    try{ mind.selectNode(el); }catch(e){}
+    animateCameraToNode(el);
+    setStatus('标注 '+(next+1)+'/'+list.length+'：'+String(item.topic||'').slice(0,20), true);
+  }, 140);
 }
 
 /* ===== 按标签过滤（当前笔记导图剪枝显示） ===== */
@@ -2092,6 +2167,8 @@ function initMind(data){
   mind.init(data);
   if(mind.toCenter) mind.toCenter();
   attachTagDeco();
+  /* 历史数据里的徽标残留已清洗：立即回写一次，避免导出/编辑源带上垃圾 HTML */
+  if(_badgeFixCount){ _badgeFixCount = 0; try{ queueSave(); }catch(e){} }
   mind.bus.addListener('operation', function(){ queueSave(); });
   /* 撤销/重做：原生栈覆盖删除/编辑/移动/添加，完成后同步保存与标签徽标 */
   if(!mind._undoWrapped){
@@ -2133,6 +2210,7 @@ function initMind(data){
   bindPresent();
   var mb = $('btnMark'); if(mb) mb.onclick = function(e){ e.stopPropagation(); toggleMark(); };
   var eb = $('btnErr'); if(eb) eb.onclick = function(e){ e.stopPropagation(); toggleMarkErr(); };
+  var nb = $('btnNextTag'); if(nb) nb.onclick = function(e){ e.stopPropagation(); jumpNextTagged(); };
   installDblClickInterceptor();
   var _rtSave = document.getElementById('btnRtSave'); if(_rtSave) _rtSave.onclick = function(e){ e.stopPropagation(); saveRichTextEdit(); };
   var _rtCancel = document.getElementById('btnRtCancel'); if(_rtCancel) _rtCancel.onclick = function(e){ e.stopPropagation(); cancelRichTextEdit(); };
