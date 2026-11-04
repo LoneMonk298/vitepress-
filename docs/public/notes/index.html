@@ -51,6 +51,13 @@ me-tpc{position:relative}
 html.dark .nd-tag{color:#a5b4fc;background:rgba(99,102,241,.25)}
 html.dark .nd-tag[data-t="重点"]{background:rgba(254,243,199,.16);color:#fde68a;border-color:#fbbf24}
 html.dark .nd-tag[data-t="易错"]{background:rgba(219,234,254,.16);color:#93c5fd;border-color:#60a5fa}
+/* 大纲里的标签 chips */
+.ol-tag{font-size:10px;padding:0 5px;border-radius:8px;background:rgba(99,102,241,.13);color:#6366f1;font-weight:600;line-height:15px;margin-left:3px;flex:none}
+.ol-tag[data-t="重点"]{background:#fef3c7;color:#92400e}
+.ol-tag[data-t="易错"]{background:#dbeafe;color:#1e3a8a}
+html.dark .ol-tag{background:rgba(99,102,241,.2);color:#a5b4fc}
+html.dark .ol-tag[data-t="重点"]{background:rgba(254,243,199,.16);color:#fde68a}
+html.dark .ol-tag[data-t="易错"]{background:rgba(219,234,254,.16);color:#93c5fd}
 /* 节点标签面板 */
 .tag-chip{display:inline-block;font-size:12px;padding:4px 10px;border-radius:12px;background:var(--bg);border:1px solid var(--bd);cursor:pointer;margin:4px 4px 0 0}
 .tag-chip:hover{border-color:#6366f1}
@@ -72,6 +79,11 @@ html.dark .nd-tag[data-t="易错"]{background:rgba(219,234,254,.16);color:#93c5f
 .note-move:hover{color:#667eea;background:rgba(102,126,234,.1)}
 .tbar-group{display:flex;gap:3px;align-items:center;padding:0 4px;border-left:1px solid var(--bd);margin-left:2px}
 .tbar-group button{padding:5px 7px;font-size:12px}
+.more-wrap{position:relative;flex:none}
+.more-menu{position:absolute;right:0;top:calc(100% + 6px);min-width:118px;background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:5px;display:flex;flex-direction:column;gap:2px;box-shadow:0 10px 26px rgba(0,0,0,.14);z-index:80}
+.more-menu.hidden{display:none}
+.more-menu button{border:none;background:transparent;text-align:left;padding:7px 10px;border-radius:7px;font-size:12.5px}
+.more-menu button:hover{background:rgba(102,126,234,.12);color:var(--pri);border-color:transparent}
 .zoom-ic{font-size:14px;font-weight:600;line-height:1}
 .zoom-val{font-size:11px;color:var(--text2);min-width:38px;text-align:center;font-variant-numeric:tabular-nums}
 .focus-badge{font-size:11px;padding:2px 7px;border-radius:4px;background:#f59e0b;color:#fff;font-weight:600;animation:none}
@@ -190,11 +202,31 @@ html.dark .mm-hint code{background:rgba(255,255,255,.08)}
 .stat-item{display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid var(--bd);font-size:13px}
 .stat-item:last-child{border-bottom:none}
 .stat-item .s-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.stat-item .s-meta{font-size:11px;color:var(--text2);white-space:nowrap;font-variant-numeric:tabular-nums}
+.stat-item .s-meta{font-size:11px;color:var(--text2);white-space:nowrap;font-variant-numeric:tabular-nums;max-width:46%;overflow:hidden;text-overflow:ellipsis}
 .s-badge{font-size:11px;padding:2px 9px;border-radius:10px;white-space:nowrap;flex:none}
 .s-badge.done{background:rgba(16,185,129,.13);color:#0d9488}
 .s-badge.run{background:rgba(245,158,11,.16);color:#d97706}
 .s-badge.new{background:var(--bg);color:var(--text2);border:1px solid var(--bd)}
+/* 统计面板 · 标签总览 */
+.stat-sec{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;color:var(--text);margin:14px 0 8px;white-space:nowrap}
+.stat-hint{font-weight:400;color:var(--text2);opacity:.8;font-size:11px}
+.tag-stat{border:1px solid var(--bd);border-radius:10px;overflow:hidden;max-height:38vh;overflow-y:auto}
+.ts-row{display:flex;align-items:center;gap:8px;padding:8px 11px;cursor:pointer;border-bottom:1px solid var(--bd);font-size:12.5px;user-select:none}
+.ts-row:hover{background:rgba(102,126,234,.07)}
+.ts-row.open{background:rgba(102,126,234,.09)}
+.ts-dot{width:7px;height:7px;border-radius:50%;background:#6366f1;flex:none}
+.ts-dot[data-t="重点"]{background:#fbbf24}
+.ts-dot[data-t="易错"]{background:#60a5fa}
+.ts-name{font-weight:600}
+.ts-count{margin-left:auto;color:var(--text2);font-size:11.5px;font-variant-numeric:tabular-nums}
+.ts-caret{color:var(--text2);font-size:10px;transition:transform .15s}
+.ts-row.open .ts-caret{transform:rotate(90deg)}
+.ts-list{padding:2px 0 6px;border-bottom:1px solid var(--bd);background:rgba(102,126,234,.03)}
+.ts-item{display:flex;gap:10px;padding:5px 12px 5px 24px;cursor:pointer;font-size:12px;align-items:baseline}
+.ts-item:hover{background:rgba(102,126,234,.09)}
+.ts-topic{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ts-note{color:var(--text2);font-size:11px;flex:none;max-width:42%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ts-more{padding:4px 24px;color:var(--text2);font-size:11px}
 html.dark .s-badge.done{color:#34d399}
 html.dark .s-badge.run{color:#fbbf24}
 /* 全局搜索（侧栏顶部） */
@@ -224,6 +256,12 @@ html.dark .s-badge.run{color:#fbbf24}
   .sidebar{position:absolute;z-index:20;height:100%;box-shadow:4px 0 16px #0002}
   .topbar .t{font-size:13px}
   #find{width:100px}
+}
+@media(max-width:560px){
+  .stat-card{padding:9px 4px}
+  .stat-card b{font-size:18px}
+  .stat-card span{font-size:10px;white-space:nowrap}
+  .stat-hint{display:none}
 }
 </style>
 </head>
@@ -285,12 +323,17 @@ html.dark .s-badge.run{color:#fbbf24}
       <button id="btnErr" title="标记易错 (Ctrl+Shift+M)：一键打/取消易错标签">易错</button>
       <button id="btnNextTag" title="跳到下一个标注知识点 (Ctrl+J)：复用演示模式的平滑镜头动画">下一标注</button>
       <button id="btnTag" title="节点标签：定义 / 不熟 / 重点…">标签</button>
-      <button id="btnStats" title="统计与复习进度">统计</button>
+      <button id="btnStats" title="统计与复习进度（含标签总览）">统计</button>
       <button id="btnRename">改名</button>
-      <button id="btnEditSrc">编辑源</button>
-      <button id="btnExport">导出</button>
-      <button id="btnReset">重置</button>
-      <button id="btnSync">云同步</button>
+      <div class="more-wrap">
+        <button id="btnMore" class="ico" title="更多操作：云同步 / 编辑源 / 导出 / 重置">⋯</button>
+        <div id="moreMenu" class="more-menu hidden">
+          <button id="btnSync">云同步</button>
+          <button id="btnEditSrc">编辑源</button>
+          <button id="btnExport">导出</button>
+          <button id="btnReset">重置</button>
+        </div>
+      </div>
     </div>
     <div id="map"></div>
     <div id="outline" class="hidden"></div>
@@ -1166,8 +1209,14 @@ function _olNode(n, dep){
     ? '<span class="ol-caret'+(expanded?' open':'')+'" data-id="'+n.id+'">▶</span>'
     : '<span class="ol-caret ol-empty"></span>';
   var img = hasImg ? '<span class="ol-img" title="含图片">🖼</span>' : '';
+  /* 标签 chips（标签只在摘要类视图里显示，导图节点不再挂徽标） */
+  var tagHtml = '';
+  var tagArr = (n.tags || []).slice(0, 4);
+  for(var ti=0; ti<tagArr.length; ti++){
+    tagHtml += '<span class="ol-tag" data-t="'+escapeHtml(tagArr[ti])+'">'+escapeHtml(tagArr[ti])+'</span>';
+  }
   var cls = 'ol-item' + (dep===0 ? ' ol-root' : (dep===1 ? ' ol-depth1' : ''));
-  var html = '<li><div class="'+cls+'" data-id="'+n.id+'" title="点击定位到导图">'+caret+'<span class="ol-topic">'+escapeHtml(plainTopic(n.topic))+'</span>'+img+'</div>';
+  var html = '<li><div class="'+cls+'" data-id="'+n.id+'" title="点击定位到导图">'+caret+'<span class="ol-topic">'+escapeHtml(plainTopic(n.topic))+'</span>'+tagHtml+img+'</div>';
   if(hasKids){
     html += '<ul'+(expanded?'':' style="display:none"')+'>';
     for(var i=0;i<n.children.length;i++) html += _olNode(n.children[i], dep+1);
@@ -1876,8 +1925,9 @@ function toggleNodeTag(nodeObj, t){
   }
   setStatus(nodeObj.tags && nodeObj.tags.length ? '已打标签：'+nodeObj.tags.join('、') : '已移除标签「'+t+'」', true);
 }
-/* 节点标签徽标注入：监听 me-nodes 重建，refresh/展开/初始化后自动补徽标 */
-var tagObs = null, tagDecoTimer = null;
+/* 节点标签徽标注入：监听 me-nodes 重建，refresh/展开/初始化后自动补徽标
+   标签不再显示在导图节点上（改到大纲 / 统计面板里查看），此处只负责清理旧徽标 */
+var tagObs = null, tagDecoTimer = null, TAG_MAP_BADGE = false;
 function attachTagDeco(){
   try{
     if(tagObs){ try{ tagObs.disconnect(); }catch(e){} tagObs = null; }
@@ -1907,7 +1957,7 @@ function decorateNodeTags(){
     var tps = mapEl.querySelectorAll('me-tpc');
     for(var i=0;i<tps.length;i++){
       var no = tps[i].nodeObj;
-      var arr = (no && no.id) ? tagsBy[no.id] : null;
+      var arr = TAG_MAP_BADGE && (no && no.id) ? tagsBy[no.id] : null;
       var old = tps[i].querySelector('.nd-tags');
       if(old) old.remove();
       /* 防御：清掉正文里散落的旧徽标（不在 .nd-tags 容器内的 .nd-tag） */
@@ -2211,6 +2261,15 @@ function initMind(data){
   var mb = $('btnMark'); if(mb) mb.onclick = function(e){ e.stopPropagation(); toggleMark(); };
   var eb = $('btnErr'); if(eb) eb.onclick = function(e){ e.stopPropagation(); toggleMarkErr(); };
   var nb = $('btnNextTag'); if(nb) nb.onclick = function(e){ e.stopPropagation(); jumpNextTagged(); };
+  /* 工具栏「⋯ 更多」下拉：收纳低频操作，减少按钮堆叠 */
+  var moreBtn = $('btnMore'), moreMenu = $('moreMenu');
+  if(moreBtn && moreMenu){
+    moreBtn.onclick = function(e){ e.stopPropagation(); moreMenu.classList.toggle('hidden'); };
+    document.addEventListener('click', function(e){
+      if(!moreMenu.classList.contains('hidden') && !moreMenu.contains(e.target) && e.target !== moreBtn){ moreMenu.classList.add('hidden'); }
+    });
+    moreMenu.addEventListener('click', function(e){ if(e.target.closest('button')) moreMenu.classList.add('hidden'); });
+  }
   installDblClickInterceptor();
   var _rtSave = document.getElementById('btnRtSave'); if(_rtSave) _rtSave.onclick = function(e){ e.stopPropagation(); saveRichTextEdit(); };
   var _rtCancel = document.getElementById('btnRtCancel'); if(_rtCancel) _rtCancel.onclick = function(e){ e.stopPropagation(); cancelRichTextEdit(); };
@@ -2393,6 +2452,46 @@ function openStats(){
     h += '<div class="stat-card"><b>'+totalNodes+'</b><span>节点</span></div>';
     h += '<div class="stat-card"><b>'+doneN+'/'+ns.length+'</b><span>已复习完成</span></div>';
     h += '</div>';
+
+    /* 标签总览：跨笔记聚合全部标签；点击标签展开节点清单，点条目直接跳转定位 */
+    var tagAgg = {};
+    for(var k=0;k<ns.length;k++){
+      var nt = ns[k], dd = map[nt.id];
+      if(!dd || !dd.nodeData) continue;
+      (function walkTag(x, crumbs){
+        if(!x) return;
+        var c = crumbs.concat([plainTopic(x.topic)]);
+        if(x.tags && x.tags.length){
+          for(var q=0;q<x.tags.length;q++){
+            var tg = x.tags[q];
+            if(!tagAgg[tg]) tagAgg[tg] = [];
+            tagAgg[tg].push({ noteId:nt.id, noteName:nt.name, nodeId:x.id, topic:plainTopic(x.topic), path:c.slice(0,-1).slice(-2).join(' / ') });
+          }
+        }
+        (x.children||[]).forEach(function(ch){ walkTag(ch, c); });
+      })(dd.nodeData, []);
+    }
+    var tagKeys = Object.keys(tagAgg).sort(function(a,b){ return tagAgg[b].length - tagAgg[a].length; });
+    if(tagKeys.length){
+      h += '<div class="stat-sec">标签总览<span class="stat-hint">点击标签展开节点清单，点条目跳转定位</span></div>';
+      h += '<div class="tag-stat" id="tagStat">';
+      for(var tk=0; tk<tagKeys.length; tk++){
+        var tg2 = tagKeys[tk], list = tagAgg[tg2];
+        h += '<div class="ts-row" data-idx="'+tk+'"><span class="ts-dot" data-t="'+escapeHtml(tg2)+'"></span><span class="ts-name">'+escapeHtml(tg2)+'</span><span class="ts-count">'+list.length+'</span><span class="ts-caret">▸</span></div>';
+        h += '<div class="ts-list" data-idx="'+tk+'" style="display:none">';
+        var lim = Math.min(list.length, 40);
+        for(var li2=0; li2<lim; li2++){
+          var rec = list[li2];
+          h += '<div class="ts-item" data-snote="'+escapeHtml(rec.noteId)+'" data-snode="'+escapeHtml(rec.nodeId)+'" title="'+escapeHtml((rec.path?rec.path+' / ':'')+rec.topic)+'">'
+            + '<span class="ts-topic">'+escapeHtml(String(rec.topic||'').slice(0,32)||'（无标题）')+'</span>'
+            + '<span class="ts-note">'+escapeHtml(rec.noteName)+'</span></div>';
+        }
+        if(list.length > lim) h += '<div class="ts-more">…还有 '+(list.length-lim)+' 条</div>';
+        h += '</div>';
+      }
+      h += '</div>';
+    }
+
     if(!rows.length){
       h += '<div class="empty-tip">还没有笔记<br>点侧栏「新建」或「导入」开始</div>';
     } else {
@@ -2412,6 +2511,29 @@ function openStats(){
     }
     var body = $('stats-body');
     if(body) body.innerHTML = h;
+    if(body && !body._tagBound){
+      body._tagBound = true;
+      body.addEventListener('click', function(e){
+        var row = e.target.closest('.ts-row');
+        if(row){
+          var lst = body.querySelector('.ts-list[data-idx="'+row.getAttribute('data-idx')+'"]');
+          if(lst){
+            var willOpen = (lst.style.display === 'none' || !lst.style.display);
+            lst.style.display = willOpen ? '' : 'none';
+            row.classList.toggle('open', willOpen);
+          }
+          return;
+        }
+        var item = e.target.closest('.ts-item');
+        if(item){
+          var note = findNoteById(item.getAttribute('data-snote'));
+          var nodeId = item.getAttribute('data-snode');
+          $('modalStats').classList.remove('show');
+          if(note) jumpToNote(note, nodeId);
+          else setStatus('笔记不存在（可能已删除）', true);
+        }
+      });
+    }
   });
 }
 
