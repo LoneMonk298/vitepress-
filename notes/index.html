@@ -43,9 +43,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei
 .tag.on{background:#10b981;color:#fff}
 .tag-empty{font-size:11px;color:var(--text2);opacity:.7}
 /* 节点自定义标签徽标（定义/不熟/重点…） */
-.nd-tags{display:inline-flex;gap:3px;flex-wrap:wrap;margin-left:6px;vertical-align:middle;pointer-events:auto}
-.nd-tag{font-size:10px;padding:0 6px;border-radius:8px;background:rgba(99,102,241,.13);color:#6366f1;font-style:normal;font-weight:500;line-height:1.7;white-space:nowrap}
-html.dark .nd-tag{color:#a5b4fc;background:rgba(99,102,241,.22)}
+me-tpc{position:relative}
+.nd-tags{position:absolute;top:-9px;right:-6px;display:flex;gap:2px;flex-wrap:wrap;justify-content:flex-end;z-index:5;pointer-events:auto}
+.nd-tag{font-size:10px;padding:0 5px;border-radius:8px;background:#eef2ff;color:#3730a3;font-style:normal;font-weight:600;line-height:14px;white-space:nowrap;border:1px solid rgba(99,102,241,.35)}
+.nd-tag[data-t="重点"]{background:#fef3c7;color:#92400e;border-color:#fbbf24}
+.nd-tag[data-t="易错"]{background:#dbeafe;color:#1e3a8a;border-color:#60a5fa}
+html.dark .nd-tag{color:#a5b4fc;background:rgba(99,102,241,.25)}
+html.dark .nd-tag[data-t="重点"]{background:rgba(254,243,199,.16);color:#fde68a;border-color:#fbbf24}
+html.dark .nd-tag[data-t="易错"]{background:rgba(219,234,254,.16);color:#93c5fd;border-color:#60a5fa}
 /* 节点标签面板 */
 .tag-chip{display:inline-block;font-size:12px;padding:4px 10px;border-radius:12px;background:var(--bg);border:1px solid var(--bd);cursor:pointer;margin:4px 4px 0 0}
 .tag-chip:hover{border-color:#6366f1}
@@ -277,6 +282,7 @@ html.dark .s-badge.run{color:#fbbf24}
       <button id="btnFocus" title="聚焦选中节点 (Ctrl+F)">聚焦</button>
       <button id="btnPresent" title="演示复习 (Ctrl+P)：选中节点则从该节点开始；未选中则继续上次进度">演示</button>
       <button id="btnMark" title="标记重点 (Ctrl+M)">重点</button>
+      <button id="btnErr" title="标记易错 (Ctrl+Shift+M)：一键打/取消易错标签" style="color:#1d4ed8">易错</button>
       <button id="btnTag" title="节点标签：定义 / 不熟 / 重点…">标签</button>
       <button id="btnStats" title="统计与复习进度">统计</button>
       <button id="btnRename">改名</button>
@@ -694,12 +700,10 @@ function loadNotes(){
 }
 
 function collectTags(data){
+  /* 标签只来自节点 tags 数组（正文不再支持 #标签 文本标记） */
   var tags = {};
   (function walk(n){
     if(!n) return;
-    var t = String(n.topic||'');
-    var m = t.match(/#([\u4e00-\u9fa5A-Za-z0-9_\-]+)/g);
-    if(m) for(var i=0;i<m.length;i++) tags[m[i].slice(1)] = 1;
     if(n.tags && n.tags.length) for(var j=0;j<n.tags.length;j++) tags[n.tags[j]] = 1;
     (n.children||[]).forEach(walk);
   })(data.nodeData);
@@ -1270,6 +1274,7 @@ document.addEventListener('keydown', function(e){
   if(k === '0'){ e.preventDefault(); fitView(); return; }
   if(k === 'o'){ e.preventDefault(); toggleOutline(); return; }
   if(k === 'p'){ e.preventDefault(); enterPresent(); return; }
+  if(k === 'm' && e.shiftKey){ e.preventDefault(); toggleMarkErr(); return; }
   if(k === 'm'){ e.preventDefault(); toggleMark(); return; }
   if(k === '=' || k === '+'){ e.preventDefault(); setZoom(getZoom() + 0.15); return; }
   if(k === '-'){ e.preventDefault(); setZoom(getZoom() - 0.15); return; }
@@ -1737,26 +1742,58 @@ document.addEventListener('keydown', function(e){
 }, true);
 
 /* ===== 重点标记 ===== */
-function toggleMark(){
-  if(!mind) return;
-  try{
-    /* 兼容单选（单击选中的 currentNode）与多选（currentNodes） */
-    var cn = mind.currentNodes;
-    var cur = mind.currentNode;
-    var target = (cn && cn.length) ? cn[0] : cur;
-    if(!target || !target.nodeObj){
-      setStatus('请先点选一个节点', true); return;
-    }
-    var nodeObj = target.nodeObj;
-    if(!nodeObj.style || !nodeObj.style.background){
-      nodeObj.style = { background:'#fef3c7', color:'#92400e', fontWeight:'600' };
-      setStatus('已标记重点「'+String(nodeObj.topic||'').slice(0,12)+'」', true);
+function pickTargetNode(){
+  if(!mind) return null;
+  var cn = mind.currentNodes, cur = mind.currentNode;
+  var target = (cn && cn.length) ? cn[0] : cur;
+  return (target && target.nodeObj) ? target.nodeObj : null;
+}
+/* 固定标签分类（重点/易错一键标记，颜色区分；其他标签走面板） */
+var TAG_COLORS = { '重点':['#fef3c7','#92400e'], '易错':['#dbeafe','#1e3a8a'] };
+function toggleTagQuick(nodeObj, t){
+  var arr = (nodeObj.tags || []).slice();
+  var i = arr.indexOf(t);
+  if(i>=0){ arr.splice(i,1); } else { arr.push(t); }
+  if(arr.length) nodeObj.tags = arr; else delete nodeObj.tags;
+  var has = arr.indexOf(t) >= 0;
+  var c = TAG_COLORS[t];
+  if(c){
+    if(has){
+      nodeObj.style = { background:c[0], color:c[1], fontWeight:'600' };
     } else {
-      delete nodeObj.style;
-      setStatus('已取消重点', true);
+      if(nodeObj.style && nodeObj.style.background === c[0]) delete nodeObj.style;
     }
+  }
+  queueSave();
+  if(mind && mind.refresh){
+    var selId = 'me' + nodeObj.id;
     mind.refresh();
-  }catch(e){ setStatus('标记失败', true); }
+    /* refresh 重建 DOM 会丢选中，延迟到新元素挂载后按 id 恢复 */
+    setTimeout(function(){
+      var el = document.querySelector('#map [data-nodeid="'+selId+'"]');
+      if(el && mind.selectNode){ try{ mind.selectNode(el); }catch(e){} }
+    }, 60);
+  }
+  setStatus(has ? '已标记「'+t+'」' : '已取消「'+t+'」', true);
+}
+function toggleMark(){
+  var nodeObj = pickTargetNode();
+  if(!nodeObj){ setStatus('请先点选一个节点', true); return; }
+  /* 兼容旧数据：老的重点标记是 style.background=#fef3c7（无 tags） */
+  var legacy = nodeObj.style && nodeObj.style.background === '#fef3c7' && ((nodeObj.tags||[]).indexOf('重点') < 0);
+  if(legacy){
+    delete nodeObj.style;
+    queueSave();
+    if(mind && mind.refresh) mind.refresh();
+    setStatus('已取消重点', true);
+    return;
+  }
+  toggleTagQuick(nodeObj, '重点');
+}
+function toggleMarkErr(){
+  var nodeObj = pickTargetNode();
+  if(!nodeObj){ setStatus('请先点选一个节点', true); return; }
+  toggleTagQuick(nodeObj, '易错');
 }
 
 /* ===== 节点自定义标签 ===== */
@@ -1815,7 +1852,14 @@ function toggleNodeTag(nodeObj, t){
   if(i>=0) arr.splice(i,1); else arr.push(t);
   if(arr.length) nodeObj.tags = arr; else delete nodeObj.tags;
   queueSave();
-  if(mind && mind.refresh) mind.refresh();
+  if(mind && mind.refresh){
+    var selId = 'me' + nodeObj.id;
+    mind.refresh();
+    setTimeout(function(){
+      var el = document.querySelector('#map [data-nodeid="'+selId+'"]');
+      if(el && mind.selectNode){ try{ mind.selectNode(el); }catch(e){} }
+    }, 60);
+  }
   setStatus(nodeObj.tags && nodeObj.tags.length ? '已打标签：'+nodeObj.tags.join('、') : '已移除标签「'+t+'」', true);
 }
 /* 节点标签徽标注入：监听 me-nodes 重建，refresh/展开/初始化后自动补徽标 */
@@ -1858,6 +1902,7 @@ function decorateNodeTags(){
         for(var j=0;j<arr.length;j++){
           var b = document.createElement('i');
           b.className = 'nd-tag';
+          b.setAttribute('data-t', arr[j]);
           b.textContent = arr[j];
           span.appendChild(b);
         }
@@ -1870,13 +1915,12 @@ function decorateNodeTags(){
     if(tagObs && n2) tagObs.observe(n2, { childList:true, subtree:true });
   }catch(e){}
 }
-/* 找从根开始第一个含指定标签的节点（nodeObj.tags 或文本 #标签） */
+/* 找从根开始第一个含指定标签的节点（仅 nodeObj.tags，正文 #标签 不再识别） */
 function findTaggedNode(root, t){
   var res = null;
   (function walk(n){
     if(res || !n) return;
-    var has = (n.tags && n.tags.indexOf(t)>=0) || String(n.topic||'').indexOf('#'+t)>=0;
-    if(has){ res = n; return; }
+    if(n.tags && n.tags.indexOf(t)>=0){ res = n; return; }
     (n.children||[]).forEach(walk);
   })(root);
   return res;
@@ -1896,7 +1940,7 @@ function filterByTag(tag){
   var keep = {};
   (function walk(n){
     if(!n) return false;
-    var hasTag = (n.tags && n.tags.indexOf(tag)>=0) || String(n.topic||'').indexOf('#'+tag)>=0;
+    var hasTag = (n.tags && n.tags.indexOf(tag)>=0);
     var childHas = false;
     (n.children||[]).forEach(function(c){ childHas = walk(c) || childHas; });
     if(hasTag || childHas) keep[n.id] = true;
@@ -2088,6 +2132,7 @@ function initMind(data){
   bindViewControls();
   bindPresent();
   var mb = $('btnMark'); if(mb) mb.onclick = function(e){ e.stopPropagation(); toggleMark(); };
+  var eb = $('btnErr'); if(eb) eb.onclick = function(e){ e.stopPropagation(); toggleMarkErr(); };
   installDblClickInterceptor();
   var _rtSave = document.getElementById('btnRtSave'); if(_rtSave) _rtSave.onclick = function(e){ e.stopPropagation(); saveRichTextEdit(); };
   var _rtCancel = document.getElementById('btnRtCancel'); if(_rtCancel) _rtCancel.onclick = function(e){ e.stopPropagation(); cancelRichTextEdit(); };
