@@ -42,6 +42,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei
 .tag:hover{border-color:#10b981}
 .tag.on{background:#10b981;color:#fff}
 .tag-empty{font-size:11px;color:var(--text2);opacity:.7}
+.tag-hint{font-size:10px;color:var(--text2);opacity:.75;margin-top:6px;line-height:1.5}
 /* 节点自定义标签徽标（定义/不熟/重点…） */
 me-tpc{position:relative}
 .nd-tags{position:absolute;top:-9px;right:-6px;display:flex;gap:2px;flex-wrap:wrap;justify-content:flex-end;z-index:5;pointer-events:auto}
@@ -124,8 +125,16 @@ button.ok:hover{opacity:.9;color:#fff}
 .ico{padding:7px 10px;font-size:15px}
 #find{padding:6px 10px;border:1px solid var(--bd);border-radius:7px;background:var(--bg);color:var(--text);font-size:12.5px;font-family:inherit;width:140px}
 #map{flex:1;min-height:0;background:var(--bg)}
-/* MindElixir 会把 nodeData.tags 原生渲染成节点内的一排标签，挤占正文；标签改在大纲/统计查看，这里隐藏库原生渲染 */
-#map me-tpc .tags{display:none}
+/* MindElixir 会把 nodeData.tags 原生渲染成节点内一排标签；缩小字号避免挤占正文，
+   并用 chip 配色区分类型（重点黄 / 易错蓝 / 其余中性灰） */
+#map me-tpc .tags{display:flex;flex-wrap:wrap;gap:3px;margin:4px 0 0;max-width:100%;direction:ltr}
+#map me-tpc .tags span{display:inline-block;font-size:10px;line-height:1.4;padding:0 5px;border-radius:7px;background:rgba(255,255,255,.75);color:#64748b;border:1px solid transparent;margin:0;font-weight:500;letter-spacing:0}
+#map me-tpc .tags span.nt-key{background:rgba(255,255,255,.92);color:#92400e;border-color:#fcd34d}
+#map me-tpc .tags span.nt-err{background:rgba(255,255,255,.92);color:#1e3a8a;border-color:#93c5fd}
+html.dark #map me-tpc .tags span{background:rgba(15,23,42,.55);color:#94a3b8;border-color:rgba(148,163,184,.35)}
+html.dark #map me-tpc .tags span.nt-key{background:rgba(15,23,42,.6);color:#fcd34d;border-color:rgba(245,158,11,.55)}
+html.dark #map me-tpc .tags span.nt-err{background:rgba(15,23,42,.6);color:#93c5fd;border-color:rgba(59,130,246,.55)}
+/* 高亮标签（重点/易错）在节点上的底色保持不变 */
 /* 搜索匹配高亮框（DOM 层，不改节点数据） */
 #map me-tpc.mm-match{box-shadow:0 0 0 2px rgba(245,158,11,.85), 0 0 0 6px rgba(245,158,11,.18);border-radius:6px}
 #map me-tpc.mm-match-cur{box-shadow:0 0 0 2px #6366e8, 0 0 0 8px rgba(99,102,241,.28);border-radius:6px}
@@ -460,7 +469,7 @@ html.dark .s-badge.run{color:#fbbf24}
       <button id="btnTagAdd">添加</button>
     </div>
     <div style="border-top:1px solid var(--bd);margin-top:12px;padding-top:10px">
-      <div class="tag-title" style="margin-bottom:2px">按标签过滤（当前笔记）</div>
+      <div class="tag-title" style="margin-bottom:2px">按标签过滤（可多选，实时生效）</div>
       <div id="tag-filter"></div>
     </div>
     <div class="row" style="margin-top:14px"><button id="btnTagClose">完成</button></div>
@@ -846,7 +855,7 @@ function bindViewControls(){
 function loadNote(note, cb){
   curNote = note;
   /* 切换笔记时重置标签过滤（临时视图不跨笔记） */
-  if(filterTag){ filterTag = null; preFilterExpand = null; updateFilterBadge(); }
+  if(filterTags.length){ filterTags = []; preFilterExpand = null; updateFilterBadge(); }
   $('cur').textContent = note.name;
   var els = document.querySelectorAll('.note');
   for(var i=0;i<els.length;i++) els[i].classList.toggle('on', els[i].dataset.id===note.id);
@@ -1939,9 +1948,11 @@ function openTagModal(){
   if(!mind) return;
   var cn = mind.currentNodes, cur = mind.currentNode;
   var target = (cn && cn.length) ? cn[0] : cur;
-  if(!target || !target.nodeObj){ setStatus('请先点选一个节点', true); return; }
-  tagTargetNode = target.nodeObj;
-  document.getElementById('tag-node-topic').textContent = String(tagTargetNode.topic||'').slice(0,60);
+  /* 不强制先选节点：没选中时也能打开面板，直接用下半部分的「按标签过滤」 */
+  tagTargetNode = (target && target.nodeObj) ? target.nodeObj : null;
+  document.getElementById('tag-node-topic').textContent = tagTargetNode
+    ? String(tagTargetNode.topic||'').slice(0,60)
+    : '（未选中节点：可直接用下方「按标签过滤」；想打标签请先在导图上点一个节点）';
   document.getElementById('tag-msg').textContent = '';
   renderTagChips();
   renderTagFilter();
@@ -2019,6 +2030,14 @@ function decorateNodeTags(){
       /* 防御：清掉正文里散落的旧徽标（不在 .nd-tags 容器内的 .nd-tag） */
       var stray = tps[i].querySelectorAll('.nd-tag');
       for(var s=0;s<stray.length;s++){ if(!stray[s].closest('.nd-tags')) stray[s].remove(); }
+      /* 库原生 tags 的 span 无 class，这里按标签名补配色 class（重点黄 / 易错蓝 / 其余灰） */
+      var nsp = tps[i].querySelectorAll('.tags span');
+      for(var q=0;q<nsp.length;q++){
+        var txt = String(nsp[q].textContent||'').trim();
+        if(txt === '重点') nsp[q].className = 'nt-key';
+        else if(txt === '易错') nsp[q].className = 'nt-err';
+        else if(nsp[q].className) nsp[q].className = '';
+      }
       if(arr && arr.length){
         var span = document.createElement('span');
         span.className = 'nd-tags';
@@ -2060,15 +2079,17 @@ function taggedNodeList(){
   })(mind.nodeData, []);
   return out;
 }
-/* 展开目标节点整条父链（保留其他分支当前展开状态，不折叠） */
+/* 展开目标节点整条父链（保留其他分支当前展开状态，不折叠）
+   直接改当前渲染根（聚焦模式下是子树根，因此不会破坏聚焦视图，也不会覆盖 nodeDataBackup） */
 function expandAllOnPath(path){
-  var d = mind.getData();
+  var root = (mind && mind.nodeData) ? mind.nodeData : null;
+  if(!root) return;
   (function walk(n){
     if(!n) return;
     if(path.indexOf(n.id) >= 0) n.expanded = true;
     (n.children||[]).forEach(walk);
-  })(d.nodeData);
-  mind.refresh(d);
+  })(root);
+  try{ mind.refresh(); }catch(e){}
 }
 /* 平滑移动镜头到单个节点（与演示模式同一套 animateCamera：460ms ease 移动 + 缩放） */
 function animateCameraToNode(el){
@@ -2088,8 +2109,14 @@ function animateCameraToNode(el){
 }
 function jumpNextTagged(){
   if(!mind || !mind.nodeData){ setStatus('请先打开一篇笔记', true); return; }
+  /* 聚焦模式下 collected 只覆盖当前子树（nodeData 已被替换为子树根） */
   var list = taggedNodeList();
-  if(!list.length){ setStatus('这篇笔记还没有标注节点（先用「重点」「易错」或「标签」标注）', true); return; }
+  var scope = '';
+  try{ if(mind.isFocusMode) scope = '（聚焦范围内）'; }catch(e){}
+  if(!list.length){
+    setStatus(scope ? '当前聚焦范围里没有标注节点（Ctrl+F 退出聚焦后再试）' : '这篇笔记还没有标注节点（先用「重点」「易错」或「标签」标注）', true);
+    return;
+  }
   var curId = null, curEl = mind.currentNode;
   if(curEl && curEl.nodeObj) curId = curEl.nodeObj.id;
   else if(mind.currentNodes && mind.currentNodes.length && mind.currentNodes[0].nodeObj) curId = mind.currentNodes[0].nodeObj.id;
@@ -2099,64 +2126,75 @@ function jumpNextTagged(){
   var item = list[next];
   expandAllOnPath(item.path);
   setTimeout(function(){
-    var el = document.querySelector('[data-nodeid="me'+item.id+'"]');
+    var el = document.querySelector('#map [data-nodeid="me'+item.id+'"]') || document.querySelector('[data-nodeid="me'+item.id+'"]');
     if(!el){ setStatus('没找到节点元素', true); return; }
     try{ mind.selectNode(el); }catch(e){}
     animateCameraToNode(el);
-    setStatus('标注 '+(next+1)+'/'+list.length+'：'+String(item.topic||'').slice(0,20), true);
+    setStatus('标注 '+(next+1)+'/'+list.length+scope+'：'+String(item.topic||'').slice(0,20), true);
   }, 140);
 }
 
-/* ===== 按标签过滤（当前笔记导图剪枝显示） ===== */
-var filterTag = null, preFilterExpand = null;
-function filterByTag(tag){
+/* ===== 按标签过滤（当前笔记导图剪枝显示，支持多标签组合） ===== */
+var filterTags = [], preFilterExpand = null;
+function applyTagFilter(tags){
   if(!mind) return;
-  if(filterTag === tag){ cancelFilter(); return; }
+  tags = (tags||[]).filter(function(t){ return !!String(t||'').trim(); });
+  if(!tags.length){
+    if(preFilterExpand !== null) cancelFilter();
+    else { filterTags = []; updateFilterBadge(); }
+    return;
+  }
   if(preFilterExpand === null){
     preFilterExpand = {};
     (function walk(n){ if(!n) return; preFilterExpand[n.id] = !!n.expanded; (n.children||[]).forEach(walk); })(mind.nodeData);
   }
-  filterTag = tag;
-  /* 收集 keep 集合：带 tag 节点 + 全部祖先 */
-  var keep = {};
+  filterTags = tags.slice();
+  /* 收集 keep 集合：含任一选中标签的节点 + 全部祖先 */
+  var keep = {}, hitCount = 0;
   (function walk(n){
     if(!n) return false;
-    var hasTag = (n.tags && n.tags.indexOf(tag)>=0);
+    var hasTag = false;
+    if(n.tags){ for(var i=0;i<tags.length;i++){ if(n.tags.indexOf(tags[i])>=0){ hasTag = true; break; } } }
+    if(hasTag) hitCount++;
     var childHas = false;
     (n.children||[]).forEach(function(c){ childHas = walk(c) || childHas; });
     if(hasTag || childHas) keep[n.id] = true;
     return hasTag || childHas;
   })(mind.nodeData);
-  /* 剪枝：keep 链上的节点按是否有 keep 子孙决定展开；非 keep 分支一律折叠（隐藏无关内容） */
+  /* 剪枝：keep 链上的节点按是否有 keep 子孙决定展开；非 keep 分支一律折叠 */
   (function walk(n){
     if(!n) return;
-    if(keep[n.id]){
-      n.expanded = (n.children||[]).some(function(c){ return keep[c.id]; });
-    } else {
-      n.expanded = false;
-    }
+    if(keep[n.id]) n.expanded = (n.children||[]).some(function(c){ return keep[c.id]; });
+    else n.expanded = false;
     (n.children||[]).forEach(walk);
   })(mind.nodeData);
-  mind.refresh();
+  try{ mind.refresh(); }catch(e){}
   updateFilterBadge();
-  setStatus('按标签「'+tag+'」过滤：仅显示带该标签的节点及其父链', true);
+  setStatus('过滤：' + tags.map(function(t){ return '#'+t; }).join(' ') + '（'+hitCount+' 个标注节点）', true);
+}
+/* 兼容单标签调用：切换该标签的选中状态 */
+function filterByTag(tag){
+  var cur = filterTags.slice();
+  var i = cur.indexOf(tag);
+  if(i>=0) cur.splice(i,1); else cur.push(tag);
+  applyTagFilter(cur);
 }
 function cancelFilter(){
-  if(!mind || preFilterExpand === null) return;
+  if(!mind || preFilterExpand === null){ filterTags = []; updateFilterBadge(); return; }
   (function walk(n){
     if(!n) return;
     if(preFilterExpand.hasOwnProperty(n.id)) n.expanded = preFilterExpand[n.id];
     (n.children||[]).forEach(walk);
   })(mind.nodeData);
-  filterTag = null; preFilterExpand = null;
-  mind.refresh();
+  filterTags = []; preFilterExpand = null;
+  try{ mind.refresh(); }catch(e){}
   updateFilterBadge();
   setStatus('已取消标签过滤', true);
 }
 function updateFilterBadge(){
   var b = $('filterBadge');
   if(!b) return;
-  if(filterTag){ b.textContent = '过滤：#'+filterTag+' ✕'; b.classList.remove('hidden'); }
+  if(filterTags.length){ b.textContent = '过滤：' + filterTags.map(function(t){ return '#'+t; }).join(' ') + ' ✕'; b.classList.remove('hidden'); }
   else b.classList.add('hidden');
   if(!b._fb){
     b._fb = true;
@@ -2178,15 +2216,22 @@ function renderTagFilter(){
     var h = '<div class="tags">';
     for(var i=0;i<names.length;i++){
       var t = names[i];
-      h += '<span class="tag'+(filterTag===t?' on':'')+'" data-tag="'+escapeHtml(t)+'" title="点击过滤导图，再点取消">#'+escapeHtml(t)+'</span>';
+      h += '<span class="tag'+(filterTags.indexOf(t)>=0?' on':'')+'" data-tag="'+escapeHtml(t)+'" title="点击加入/移出过滤（可多选）">#'+escapeHtml(t)+'</span>';
     }
-    if(filterTag) h += '<span class="tag-clear" data-clear="1" title="取消过滤">✕ 取消</span>';
-    h += '</div>';
+    if(filterTags.length) h += '<span class="tag-clear" data-clear="1" title="清除全部过滤">✕ 清除</span>';
+    h += '</div><div class="tag-hint">可累计多选：勾选后立即应用到导图并回到导图查看，再次打开本面板可继续增减；顶部徽标或「清除」可取消过滤</div>';
     box.innerHTML = h;
     var els = box.querySelectorAll('.tag[data-tag]');
     for(var j=0;j<els.length;j++){
       (function(el){
-        el.onclick = function(){ filterByTag(el.getAttribute('data-tag')); document.getElementById('modalTag').classList.remove('show'); };
+        el.onclick = function(){
+          var tg = el.getAttribute('data-tag');
+          var cur = filterTags.slice();
+          var k = cur.indexOf(tg);
+          if(k>=0) cur.splice(k,1); else cur.push(tg);
+          applyTagFilter(cur);
+          document.getElementById('modalTag').classList.remove('show');  /* 关掉面板，立刻看到导图过滤结果 */
+        };
       })(els[j]);
     }
     var clr = box.querySelector('.tag-clear');
@@ -3156,6 +3201,8 @@ document.addEventListener('DOMContentLoaded', function(){
   function findJump(dir){
     var kw = ($('find') ? $('find').value : '').trim();
     if(!kw || !mind || !curNote){ setStatus('请先选择笔记', true); return; }
+    /* 聚焦模式下导图只渲染子树，全局搜索会搜到子树外的节点导致找不到元素：先退出聚焦 */
+    try{ if(mind.isFocusMode){ exitFocus(); _findKw = ''; _findMatches = []; _findIdx = -1; } }catch(e){}
     if(_findKw !== kw){
       _findKw = kw;
       try{ _findMatches = collectTopicMatches(mind.getData().nodeData, kw); }catch(e){ _findMatches = []; }
