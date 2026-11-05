@@ -124,6 +124,11 @@ button.ok:hover{opacity:.9;color:#fff}
 .ico{padding:7px 10px;font-size:15px}
 #find{padding:6px 10px;border:1px solid var(--bd);border-radius:7px;background:var(--bg);color:var(--text);font-size:12.5px;font-family:inherit;width:140px}
 #map{flex:1;min-height:0;background:var(--bg)}
+/* MindElixir 会把 nodeData.tags 原生渲染成节点内的一排标签，挤占正文；标签改在大纲/统计查看，这里隐藏库原生渲染 */
+#map me-tpc .tags{display:none}
+/* 搜索匹配高亮框（DOM 层，不改节点数据） */
+#map me-tpc.mm-match{box-shadow:0 0 0 2px rgba(245,158,11,.85), 0 0 0 6px rgba(245,158,11,.18);border-radius:6px}
+#map me-tpc.mm-match-cur{box-shadow:0 0 0 2px #6366e8, 0 0 0 8px rgba(99,102,241,.28);border-radius:6px}
 #map.ol-hidden{display:none}
 /* 大纲模式 */
 #outline{flex:1;min-height:0;background:var(--bg);overflow:auto;padding:14px 24px 90px}
@@ -515,6 +520,46 @@ function noteLinkHtml(target, label){
   return '<a data-note="'+t+'" style="color:#f59e0b;text-decoration:underline;cursor:pointer;font-weight:600">'+l+'</a>';
 }
 
+/* 从 data URL 读取图片原始尺寸（PNG/GIF/JPEG），用于渲染时写死宽高，
+   避免图片尺寸未就绪导致 MindElixir 布局错位（收起再展开才正常的老问题） */
+function imgSizeFromDataUrl(url){
+  try{
+    if(!/^data:image\//i.test(url)) return null;
+    var comma = url.indexOf(',');
+    if(comma < 0 || !/;base64/i.test(url.slice(0, comma))) return null;
+    var bin = atob(url.slice(comma+1, comma+1+16000));
+    /* PNG：89 50 4E 47，IHDR 起始 16，宽高各 4 字节大端 */
+    if(bin.charCodeAt(0)===0x89 && bin.charCodeAt(1)===0x50){
+      var p = 16, w = 0, h = 0, k;
+      for(k=0;k<4;k++){ w = (w<<8) | (bin.charCodeAt(p+k)&0xff); }
+      for(k=0;k<4;k++){ h = (h<<8) | (bin.charCodeAt(p+4+k)&0xff); }
+      if(w>0 && h>0) return { w:w, h:h };
+    }
+    /* GIF */
+    if(bin.slice(0,4)==='GIF8'){
+      var gw = (bin.charCodeAt(6)&0xff) | ((bin.charCodeAt(7)&0xff)<<8);
+      var gh = (bin.charCodeAt(8)&0xff) | ((bin.charCodeAt(9)&0xff)<<8);
+      if(gw>0 && gh>0) return { w:gw, h:gh };
+    }
+    /* JPEG：SOFn 段里的高/宽 */
+    if(bin.charCodeAt(0)===0xFF && bin.charCodeAt(1)===0xD8){
+      var i = 2;
+      while(i > 0 && i < bin.length - 9){
+        if(bin.charCodeAt(i) !== 0xFF){ i++; continue; }
+        var mk = bin.charCodeAt(i+1);
+        if(mk >= 0xC0 && mk <= 0xCF && mk !== 0xC4 && mk !== 0xC8 && mk !== 0xCC){
+          var jh = (bin.charCodeAt(i+5)<<8) | bin.charCodeAt(i+6);
+          var jw = (bin.charCodeAt(i+7)<<8) | bin.charCodeAt(i+8);
+          if(jw>0 && jh>0) return { w:jw, h:jh };
+        }
+        var seg = (bin.charCodeAt(i+2)<<8) | bin.charCodeAt(i+3);
+        i += 2 + seg;
+      }
+    }
+  }catch(e){}
+  return null;
+}
+
 function inlineHtml(text){
   text = String(text==null?'':text);
   var ph = [];
@@ -525,9 +570,20 @@ function inlineHtml(text){
     var url = u.replace(/"/g,'&quot;');
     var a = escL(alt).replace(/"/g,'&quot;');
     var st = 'max-width:100%;border-radius:6px;display:block;margin:2px 0;';
-    if(w && h) st += 'width:'+w+'px;height:'+h+'px;object-fit:contain;';
-    else st += 'max-height:170px;';
-    return put('<img src="'+url+'" alt="'+a+'" style="'+st+'" loading="lazy">');
+    if(w && h){
+      st += 'width:'+w+'px;height:'+h+'px;object-fit:contain;';
+    } else {
+      var sz = imgSizeFromDataUrl(u);
+      if(sz){
+        /* 按原图比例缩到 340x170 以内，并写死宽高：布局阶段就有确定尺寸，展开不再错位 */
+        var sc = Math.min(1, 340/sz.w, 170/sz.h);
+        var dw = Math.max(40, Math.round(sz.w*sc)), dh = Math.max(24, Math.round(sz.h*sc));
+        st += 'width:'+dw+'px;height:'+dh+'px;object-fit:contain;';
+      } else {
+        st += 'max-height:170px;';
+      }
+    }
+    return put('<img src="'+url+'" alt="'+a+'" style="'+st+'" decoding="async">');
   });
   /* 笔记跳转 [[目标笔记名]] */
   text = text.replace(/\[\[([^\]]+)\]\]/g, function(_, nm){
@@ -2518,7 +2574,7 @@ function openStats(){
         if(row){
           var lst = body.querySelector('.ts-list[data-idx="'+row.getAttribute('data-idx')+'"]');
           if(lst){
-            var willOpen = (lst.style.display === 'none' || !lst.style.display);
+            var willOpen = !row.classList.contains('open');
             lst.style.display = willOpen ? '' : 'none';
             row.classList.toggle('open', willOpen);
           }
@@ -3026,6 +3082,10 @@ document.addEventListener('DOMContentLoaded', function(){
   $('btnCloseSync').onclick = function(){ $('modalSync').classList.remove('show'); };
   $('btnStats').onclick = openStats;
   $('btnCloseStats').onclick = function(){ $('modalStats').classList.remove('show'); };
+  /* 点统计面板外部（遮罩）自动关闭，省去滚到底部找关闭按钮 */
+  $('modalStats').addEventListener('click', function(e){
+    if(e.target === this) this.classList.remove('show');
+  });
   $('btnBacklinks').onclick = openBacklinks;
   $('btnCloseBacklinks').onclick = function(){ $('modalBacklinks').classList.remove('show'); };
 
@@ -3077,17 +3137,60 @@ document.addEventListener('DOMContentLoaded', function(){
     goToNote(el.getAttribute('data-note'));
   }, true);
 
+  /* 顶部搜索：收集全部匹配，Enter 循环下一个 / Shift+Enter 上一个；平滑镜头 + 高亮框 */
+  var _findMatches = [], _findKw = '', _findIdx = -1;
+  function collectTopicMatches(root, kw){
+    var out = [], k = kw.toLowerCase();
+    (function walk(n, path){
+      if(!n) return;
+      var p = path.concat([n]);
+      if(String(plainTopic(n.topic)||'').toLowerCase().indexOf(k) >= 0) out.push({ node:n, path:p });
+      (n.children||[]).forEach(function(c){ walk(c, p); });
+    })(root, []);
+    return out;
+  }
+  function clearFindMarks(){
+    var els = document.querySelectorAll('#map me-tpc.mm-match, #map me-tpc.mm-match-cur');
+    for(var i=0;i<els.length;i++) els[i].classList.remove('mm-match', 'mm-match-cur');
+  }
+  function findJump(dir){
+    var kw = ($('find') ? $('find').value : '').trim();
+    if(!kw || !mind || !curNote){ setStatus('请先选择笔记', true); return; }
+    if(_findKw !== kw){
+      _findKw = kw;
+      try{ _findMatches = collectTopicMatches(mind.getData().nodeData, kw); }catch(e){ _findMatches = []; }
+      _findIdx = -1;
+    }
+    if(!_findMatches.length){ setStatus('未找到「'+kw+'」'); return; }
+    var n = _findMatches.length;
+    _findIdx = ((_findIdx + dir) % n + n) % n;
+    var hit = _findMatches[_findIdx];
+    var ids = hit.path.map(function(x){ return x.id; });
+    expandAllOnPath(ids);
+    setTimeout(function(){
+      var el = document.querySelector('[data-nodeid="me'+hit.node.id+'"]');
+      if(!el){ setStatus('没找到节点元素', true); return; }
+      /* 所有匹配框出来，当前匹配用更醒目的框 */
+      clearFindMarks();
+      for(var i=0;i<_findMatches.length;i++){
+        var e2 = document.querySelector('[data-nodeid="me'+_findMatches[i].node.id+'"]');
+        if(e2) e2.classList.add('mm-match');
+      }
+      el.classList.add('mm-match-cur');
+      try{ mind.selectNode(el); }catch(e){}
+      /* selectNode 会重置该元素的 className，选中后再补一次高亮框 */
+      el.classList.add('mm-match', 'mm-match-cur');
+      animateCameraToNode(el);
+      setStatus('匹配 '+(_findIdx+1)+'/'+n+'：'+String(plainTopic(hit.node.topic)||'').slice(0,20), true);
+    }, 140);
+  }
+  $('find').addEventListener('input', function(){
+    _findKw = ''; _findMatches = []; _findIdx = -1; clearFindMarks();
+  });
   $('find').addEventListener('keydown', function(e){
     if(e.key !== 'Enter') return;
-    var kw = this.value.trim();
-    if(!kw || !mind || !curNote){ setStatus('请先选择笔记'); return; }
-    var hit = locateInData(mind.getData().nodeData, kw);
-    if(!hit){ setStatus('未找到「'+kw+'」'); return; }
-    var d = mind.getData();
-    applyFocus(d.nodeData, hit);
-    initMind(d);
-    focusNodeElement(hit.node.id);
-    setStatus('已定位「'+String(hit.node.topic).slice(0,20)+'」', true);
+    e.preventDefault();
+    findJump(e.shiftKey ? -1 : 1);
   });
 
   renderList();
