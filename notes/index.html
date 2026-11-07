@@ -424,8 +424,13 @@ html.dark .s-badge.run{color:#fbbf24}
 <div class="modal" id="modalEditRt">
   <div class="mbox">
     <h3>编辑节点内容</h3>
-    <p>此节点含公式或链接，编辑原始文本后保存。支持 $公式$、!$公式$（行间）、[文字](链接)、![图片](链接)、[[笔记名]]。</p>
+    <p>支持 $公式$、![图片](链接)、[[笔记名]]、<b>**粗体**</b>、<i>*斜体*</i>、<del>~~删除线~~</del>。</p>
     <label>节点内容</label>
+    <div style="display:flex;gap:6px;margin-bottom:6px">
+      <button type="button" id="rtBtnB" title="粗体：**文字**" style="font-weight:700;padding:2px 10px">B</button>
+      <button type="button" id="rtBtnI" title="斜体：*文字*" style="font-style:italic;padding:2px 10px">I</button>
+      <button type="button" id="rtBtnS" title="删除线：~~文字~~" style="text-decoration:line-through;padding:2px 10px">S</button>
+    </div>
     <textarea id="rt-topic-input" spellcheck="false"></textarea>
     <label>预览</label>
     <div id="rt-preview"><span class="hint">输入内容后自动预览</span></div>
@@ -617,6 +622,16 @@ function inlineHtml(text){
     var isDisp = disp!==undefined;
     try{ return put(window.katex ? katex.renderToString(tex,{throwOnError:false,displayMode:isDisp}) : escL('$'+tex+'$')); }
     catch(e){ return put(escL('$'+tex+'$')); }
+  });
+  /* 内联格式：删除线 ~~文字~~ / 粗体 **文字** / 斜体 *文字*（先占位，再 HTML 转义） */
+  text = text.replace(/~~([\s\S]+?)~~/g, function(_, s){
+    return put('<del style="text-decoration:line-through;opacity:.6">'+escL(s)+'</del>');
+  });
+  text = text.replace(/\*\*([\s\S]+?)\*\*/g, function(_, s){
+    return put('<b style="font-weight:700">'+escL(s)+'</b>');
+  });
+  text = text.replace(/\*([^*\n]+?)\*/g, function(_, s){
+    return put('<i style="font-style:italic">'+escL(s)+'</i>');
   });
   text = escL(text);
   text = text.replace(/\u0000(\d+)\u0000/g, function(_, i){ return ph[+i]||''; });
@@ -2303,6 +2318,18 @@ function renderTagFilter(){
 
 /* ===== 富文本节点编辑（公式/链接节点双击弹出编辑框） ===== */
 var rtEditTarget = null;
+function wrapRtSelection(pre, post){
+  var ta = document.getElementById('rt-topic-input');
+  if(!ta) return;
+  var s = ta.selectionStart, e = ta.selectionEnd;
+  var v = ta.value;
+  var sel = v.slice(s, e) || '文字';
+  ta.value = v.slice(0,s) + pre + sel + post + v.slice(e);
+  ta.focus();
+  ta.selectionStart = s + pre.length;
+  ta.selectionEnd = s + pre.length + sel.length;
+  updateRtPreview();
+}
 function openRichTextEdit(nodeObj, nodeEle){
   if(!nodeObj) return;
   rtEditTarget = nodeObj;
@@ -2312,6 +2339,13 @@ function openRichTextEdit(nodeObj, nodeEle){
   ta.value = String(nodeObj.topic || '');
   updateRtPreview();
   ta.oninput = updateRtPreview;
+  /* 内联格式快捷按钮（幂等绑定） */
+  var bB = document.getElementById('rtBtnB');
+  if(bB) bB.onclick = function(){ wrapRtSelection('**','**'); };
+  var bI = document.getElementById('rtBtnI');
+  if(bI) bI.onclick = function(){ wrapRtSelection('*','*'); };
+  var bS = document.getElementById('rtBtnS');
+  if(bS) bS.onclick = function(){ wrapRtSelection('~~','~~'); };
   document.getElementById('modalEditRt').classList.add('show');
   setTimeout(function(){ ta.focus(); }, 50);
 }
@@ -2472,12 +2506,16 @@ function queueSave(){
   clearTimeout(queueSave._t);
   queueSave._t = setTimeout(function(){
     try{
-      noteStorePut(curNote.id, mind.getData());
+      var data = mind.getData();
+      /* 重新解析节点内联语法（**粗体** / *斜体* / ~~删除线~~ / $公式$ / 图片），让刚编辑的文本立即按 HTML 渲染 */
+      applyInlineHtml(data);
+      noteStorePut(curNote.id, data);
       /* 记录最近编辑时间（供统计面板展示） */
       curNote.updated = Date.now();
       var arr = loadNotes();
       for(var i=0;i<arr.length;i++) if(arr[i].id===curNote.id) arr[i].updated = curNote.updated;
       saveNotes(arr);
+      try{ mind.refresh(); }catch(e){}
       setStatus('已自动保存', true);
     }catch(e){ setStatus('保存失败：'+e.message); }
   }, 800);
