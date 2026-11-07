@@ -424,7 +424,8 @@ html.dark .s-badge.run{color:#fbbf24}
 <div class="modal" id="modalEditRt">
   <div class="mbox">
     <h3>编辑节点内容</h3>
-    <p>支持 $公式$、![图片](链接)、[[笔记名]]、<b>**粗体**</b>、<i>*斜体*</i>、<del>~~删除线~~</del>。</p>
+    <p>支持 $公式$、![图片](链接)、[[笔记名]]、<b>**粗体**</b>、<i>*斜体*</i>、<del>~~删除线~~</del>。<br>
+       在文本框里<b>选中几个字</b>再点下方 B / I / S 按钮，只包裹选中部分；节点上直接 Ctrl+B / I / D 则作用于整行。</p>
     <label>节点内容</label>
     <div style="display:flex;gap:6px;margin-bottom:6px">
       <button type="button" id="rtBtnB" title="粗体：**文字**" style="font-weight:700;padding:2px 10px">B</button>
@@ -2442,7 +2443,9 @@ function initMind(data){
     mind.undo = wrapUndoRedo(_u);
     mind.redo = wrapUndoRedo(_r);
   }
-  /* 节点内联格式快捷键：Ctrl+B 粗体 / Ctrl+I 斜体 / Ctrl+S 删除线（toggle 包裹） */
+  /* 节点内联格式快捷键：Ctrl+B 粗体 / Ctrl+I 斜体 / Ctrl+D 删除线（toggle 包裹；
+     Ctrl+S 与浏览器保存冲突，改用 Ctrl+D = delete/删除线）；
+     修改后 fire operation 事件，让库 undo 栈能撤销这些快捷修改 */
   if(!mind._inlineHotkeyBound){
     mind._inlineHotkeyBound = true;
     document.addEventListener('keydown', function(e){
@@ -2451,7 +2454,7 @@ function initMind(data){
       if(/INPUT|TEXTAREA/.test(tag)) return;   /* 弹窗输入时不拦截 */
       if(!(e.ctrlKey || e.metaKey)) return;
       var k = (e.key || '').toLowerCase();
-      if(k !== 'b' && k !== 'i' && k !== 's') return;
+      if(k !== 'b' && k !== 'i' && k !== 'd') return;
       var el = mind.currentNode || (mind.currentNodes && mind.currentNodes[0]);
       if(!el || !el.nodeObj) return;
       var no = el.nodeObj;
@@ -2459,14 +2462,17 @@ function initMind(data){
       e.preventDefault();
       var wrap = k === 'b' ? '**' : (k === 'i' ? '*' : '~~');
       var t = String(no.topic || '');
+      var origin = t;
       /* toggle：首尾已有同一包裹则去掉，否则包裹 */
       if(t.length >= wrap.length * 2 && t.slice(0, wrap.length) === wrap && t.slice(-wrap.length) === wrap){
         no.topic = t.slice(wrap.length, -wrap.length);
       } else {
         no.topic = wrap + t + wrap;
       }
+      /* fire operation 进 undo 栈（与双击编辑完成同一事件），Ctrl+Z 可撤销 */
+      try{ mind.bus.fire('operation', {name:'finishEdit', obj:no, origin:origin}); }catch(err){}
       queueSave();
-      setStatus((k==='b'?'粗体':k==='i'?'斜体':'删除线') + ' ' + (t.indexOf(wrap) === 0 ? '已取消' : '已应用'), true);
+      setStatus((k==='b'?'粗体':k==='i'?'斜体':'删除线') + ' ' + (origin.indexOf(wrap) === 0 ? '已取消（Ctrl+Z 可撤销）' : '已应用（Ctrl+Z 可撤销）'), true);
     });
   }
   /* 图片异步加载 → 节点宽度会变，重算布局（防溢出）。

@@ -402,7 +402,9 @@ setLocale / install
 ## 十、更新日志
 
 ### 2026-11-07 · 快捷键直改 + 撤销视图修复
-- 选中节点后直接按 **Ctrl+B** 粗体、**Ctrl+I** 斜体、**Ctrl+S** 删除线（toggle，再按一次取消包裹），无需打开编辑弹窗手动输入语法
+- 选中节点后直接按 **Ctrl+B** 粗体、**Ctrl+I** 斜体、**Ctrl+D** 删除线（toggle，再按一次取消包裹；Ctrl+S 与浏览器保存冲突，已改为 Ctrl+D = delete）
+- 这些快捷修改现在**可撤销**：Ctrl+B/I/D 后 Ctrl+Z 能还原（fire 了库的 `finishEdit` operation 事件，进 undo 栈）
+- **选中部分文字**：双击节点打开富文本弹窗，在文本框里选中几个字再点 B / I / S 按钮，只包裹选中内容；节点上快捷键则作用于整行
 - 修复撤销/重做后视图乱跑：库 `refresh(prevData)` 重新布局导致镜头跳走，现在撤销/重做完成后自动把镜头拉回操作节点位置
 - 修复编辑后内联格式（`**粗体**`）不渲染：`queueSave` 改为先在实时数据上跑 `applyInlineHtml` 再 `getData()` 存盘，且只在 HTML 真的变化时才重建 DOM，避免重复刷新
 
