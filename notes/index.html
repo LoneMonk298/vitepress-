@@ -2445,35 +2445,67 @@ function initMind(data){
   }
   /* 节点内联格式快捷键：Ctrl+B 粗体 / Ctrl+I 斜体 / Ctrl+D 删除线（toggle 包裹；
      Ctrl+S 与浏览器保存冲突，改用 Ctrl+D = delete/删除线）；
-     修改后 fire operation 事件，让库 undo 栈能撤销这些快捷修改 */
-  if(!mind._inlineHotkeyBound){
-    mind._inlineHotkeyBound = true;
+     修改后 fire operation 事件，让库 undo 栈能撤销这些快捷修改。
+     监听绑在 document 上，去重标记也必须放 document：放 mind 上会随每次切换笔记
+     重复绑定，一次按键触发 N 次 toggle，表现为「提示已取消但实际没变」 */
+  if(!document._inlineHotkeyCapture){
+    document._inlineHotkeyCapture = true;
+    /* 必须用捕获阶段：库给节点编辑框 #input-box 的 keydown 里做了 stopPropagation，
+       冒泡阶段收不到；捕获阶段先于它执行，才能接管 Ctrl+B/I/D */
     document.addEventListener('keydown', function(e){
       if(!mind || !mind.editable) return;
-      var tag = (e.target && e.target.tagName) || '';
-      if(/INPUT|TEXTAREA/.test(tag)) return;   /* 弹窗输入时不拦截 */
       if(!(e.ctrlKey || e.metaKey)) return;
       var k = (e.key || '').toLowerCase();
       if(k !== 'b' && k !== 'i' && k !== 'd') return;
+      var tag = (e.target && e.target.tagName) || '';
+      if(/INPUT|TEXTAREA/.test(tag)) return;   /* 富文本弹窗的 textarea：交给弹窗内 B/I/S 按钮 */
+      var wrap = k === 'b' ? '**' : (k === 'i' ? '*' : '~~');
+      var nm = k === 'b' ? '粗体' : (k === 'i' ? '斜体' : '删除线');
+
+      /* ① 节点正处于库的 contenteditable 编辑框里 → 对「选中的那几段字」包裹语法，
+         插入的是纯文本 **...**，blur 时库按 textContent 存回 topic，随后被 inlineHtml 渲染 */
+      var editor = document.getElementById('input-box');
+      if(editor && editor.isContentEditable){
+        var sel = window.getSelection();
+        if(sel && sel.rangeCount && !sel.isCollapsed){
+          var range = sel.getRangeAt(0);
+          if(editor.contains(range.commonAncestorContainer)){
+            var txt = sel.toString();
+            if(txt){
+              e.preventDefault();
+              range.deleteContents();
+              var tn = document.createTextNode(wrap + txt + wrap);
+              range.insertNode(tn);
+              var r2 = document.createRange();
+              r2.setStart(tn, wrap.length);
+              r2.setEnd(tn, wrap.length + txt.length);
+              sel.removeAllRanges(); sel.addRange(r2);
+              setStatus('选中文字已加' + nm + '，按 Enter 结束编辑后生效', true);
+              return;
+            }
+          }
+        }
+        e.preventDefault();
+        setStatus('编辑中：先框选要加' + nm + '的文字，或按 Enter 结束后用 Ctrl+B/I/D 作用于整行', true);
+        return;
+      }
+
+      /* ② 未编辑：作用于整行（首尾包裹 / 已有则取消） */
       var el = mind.currentNode || (mind.currentNodes && mind.currentNodes[0]);
       if(!el || !el.nodeObj) return;
       var no = el.nodeObj;
       if(!no.topic) return;
       e.preventDefault();
-      var wrap = k === 'b' ? '**' : (k === 'i' ? '*' : '~~');
       var t = String(no.topic || '');
-      var origin = t;
-      /* toggle：首尾已有同一包裹则去掉，否则包裹 */
-      if(t.length >= wrap.length * 2 && t.slice(0, wrap.length) === wrap && t.slice(-wrap.length) === wrap){
-        no.topic = t.slice(wrap.length, -wrap.length);
-      } else {
-        no.topic = wrap + t + wrap;
-      }
+      /* 判据用 no.topic（DOM textContent 里标签语法已被吃掉，不能用） */
+      var has = (t.length >= wrap.length * 2 && t.slice(0, wrap.length) === wrap && t.slice(-wrap.length) === wrap);
+      if(has) no.topic = t.slice(wrap.length, -wrap.length);
+      else no.topic = wrap + t + wrap;
       /* fire operation 进 undo 栈（与双击编辑完成同一事件），Ctrl+Z 可撤销 */
-      try{ mind.bus.fire('operation', {name:'finishEdit', obj:no, origin:origin}); }catch(err){}
+      try{ mind.bus.fire('operation', {name:'finishEdit', obj:no, origin:t}); }catch(err){}
       queueSave();
-      setStatus((k==='b'?'粗体':k==='i'?'斜体':'删除线') + ' ' + (origin.indexOf(wrap) === 0 ? '已取消（Ctrl+Z 可撤销）' : '已应用（Ctrl+Z 可撤销）'), true);
-    });
+      setStatus('整行' + nm + (has ? '已取消' : '已应用') + '（Ctrl+Z 可撤销）', true);
+    }, true);
   }
   /* 图片异步加载 → 节点宽度会变，重算布局（防溢出）。
      事件委托在 #map 上捕获所有 img 的 load/error：折叠节点展开时动态渲染的新图片也能覆盖到。
