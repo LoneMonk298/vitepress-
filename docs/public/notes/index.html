@@ -209,6 +209,15 @@ html.dark .mm-hint code{background:rgba(255,255,255,.08)}
 .lb-tip{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);color:#fff;background:rgba(0,0,0,.55);font-size:12px;padding:4px 12px;border-radius:20px;white-space:nowrap;pointer-events:none}
 .lb-close{position:fixed;top:16px;right:20px;width:40px;height:40px;border:none;border-radius:50%;background:rgba(255,255,255,.15);color:#fff;font-size:22px;cursor:pointer;z-index:1001;line-height:1}
 .lb-close:hover{background:rgba(255,255,255,.3)}
+/* 内嵌网页预览面板（demo） */
+#modalWeb{padding:0;flex-direction:column;background:rgba(0,0,0,.72)}
+#modalWeb.show{display:flex}
+.wv-bar{display:flex;align-items:center;gap:8px;padding:10px 14px;background:var(--card);border-bottom:1px solid var(--bd);z-index:2}
+.wv-url{flex:1;font-size:12.5px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wv-btn{padding:6px 12px;border:1px solid var(--bd);border-radius:7px;background:var(--bg);color:var(--text);font-size:12.5px;cursor:pointer;white-space:nowrap}
+.wv-btn:hover{border-color:var(--text2)}
+#wvFrame{flex:1;width:100%;border:none;background:#fff;min-height:0}
+.wv-tip{padding:6px 14px;font-size:11.5px;color:var(--text2);background:var(--card);text-align:center}
 /* 统计面板 */
 .stat-cards{display:flex;gap:10px;margin-bottom:14px}
 .stat-card{flex:1;background:var(--bg);border:1px solid var(--bd);border-radius:10px;padding:12px 8px;text-align:center}
@@ -502,6 +511,16 @@ html.dark .s-badge.run{color:#fbbf24}
     <div class="lb-tip">滚轮缩放 · 拖拽移动 · 双击重置 · 点击关闭</div>
   </div>
   <button class="lb-close" id="lbClose" title="关闭 (Esc)">×</button>
+</div>
+
+<div class="modal" id="modalWeb">
+  <div class="wv-bar">
+    <span class="wv-url" id="wvUrl"></span>
+    <button class="wv-btn" id="wvOpen">新标签打开</button>
+    <button class="wv-btn" id="wvClose">关闭 ×</button>
+  </div>
+  <iframe id="wvFrame" title="内嵌网页预览" sandbox="allow-scripts allow-same-origin allow-popups allow-forms"></iframe>
+  <div class="wv-tip">若页面白屏，说明该网站禁止被内嵌，请点「新标签打开」</div>
 </div>
 
 <script src="./vendor/mind-elixir.global.js"></script>
@@ -1936,6 +1955,23 @@ function openLightbox(src, alt){
   $('imgLightbox').classList.add('show');
 }
 function closeLightbox(){ $('imgLightbox').classList.remove('show'); }
+
+/* ===== 内嵌网页预览面板（demo） ===== */
+function openWebview(url){
+  var m = $('modalWeb'), f = $('wvFrame');
+  if(!m || !f) return;
+  $('wvUrl').textContent = url;
+  f.src = url;
+  m.classList.add('show');
+  $('wvOpen').onclick = function(){ try{ window.open(url, '_blank','noopener'); }catch(e){} };
+}
+function closeWebview(){
+  var m = $('modalWeb'), f = $('wvFrame');
+  if(!m) return;
+  m.classList.remove('show');
+  /* 关闭即置空 src，释放外部页面的内存与进程 */
+  if(f){ f.src = 'about:blank'; }
+}
 /* 点击导图里的图片 → 放大（pointerdown 捕获阶段拦截：MindElixir 在 mousedown/pointerdown 就处理节点选中，
    click 阶段拦截太晚；preventDefault 同时阻止兼容鼠标事件与节点操作） */
 document.addEventListener('pointerdown', function(e){
@@ -1961,6 +1997,23 @@ document.addEventListener('click', function(e){
     openLightbox(src, t.getAttribute('alt'));
   }
 }, true);
+/* 外链点击 → 内嵌预览面板（demo）；内部笔记链接 data-note 不受影响 */
+document.addEventListener('click', function(e){
+  var a = e.target.closest && e.target.closest('a[href]');
+  if(!a) return;
+  var href = a.getAttribute('href') || '';
+  if(!/^https?:\/\//i.test(href)) return;
+  if(a.hasAttribute('data-note')) return;
+  e.preventDefault();
+  e.stopImmediatePropagation();
+  openWebview(href);
+}, true);
+/* 内嵌面板按钮与遮罩关闭 */
+(function(){
+  var m = $('modalWeb'); if(!m) return;
+  $('wvClose').onclick = closeWebview;
+  m.addEventListener('click', function(e){ if(e.target===m) closeWebview(); });
+})();
 /* Lightbox 内部交互 */
 (function(){
   var lb = $('imgLightbox'), img = $('lbImg');
@@ -1988,13 +2041,19 @@ document.addEventListener('click', function(e){
   img.addEventListener('pointerup', function(){ lbDragging = false; img.classList.remove('drag'); });
   img.addEventListener('pointercancel', function(){ lbDragging = false; img.classList.remove('drag'); });
 })();
-/* Esc 关闭 Lightbox（优先于演示模式退出） */
+/* Esc 关闭 Lightbox / 内嵌面板（优先于演示模式退出） */
 document.addEventListener('keydown', function(e){
   if(e.key !== 'Escape') return;
   var lb = $('imgLightbox');
   if(lb && lb.classList.contains('show')){
     e.preventDefault(); e.stopImmediatePropagation();
     closeLightbox();
+    return;
+  }
+  var wv = $('modalWeb');
+  if(wv && wv.classList.contains('show')){
+    e.preventDefault(); e.stopImmediatePropagation();
+    closeWebview();
   }
 }, true);
 
