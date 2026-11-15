@@ -856,12 +856,14 @@ const _t = function(e) {
 };
 function Lt(e) {
   let t = [], n = -1, o = e.getData();
+  const MAX_HISTORY = 30;
   e.bus.addListener("operation", (s) => {
     if (s.name === "beginEdit")
       return;
     t = t.slice(0, n + 1);
     const i = e.getData();
     t.push({ prev: o, currentObject: _t(s), next: i }), o = i, n = t.length - 1;
+    if (t.length > MAX_HISTORY) { t.shift(); n = t.length - 1; }
   }), e.undo = function() {
     if (n > -1) {
       const s = t[n];
@@ -879,9 +881,12 @@ function Lt(e) {
       const s = t[n];
       o = s.next, e.refresh(s.next), s.currentObject.type === "node" ? e.selectNode(S(s.currentObject.value)) : s.currentObject.type === "nodes" && e.selectNodes(s.currentObject.value.map((i) => S(i)));
     }
-  }, e.map.addEventListener("keydown", (s) => {
+  };
+  const onUndoKey = (s) => {
     (s.metaKey || s.ctrlKey) && (s.shiftKey && s.key === "Z" || s.key === "y") ? e.redo() : (s.metaKey || s.ctrlKey) && s.key === "z" && e.undo();
-  });
+  };
+  e.map.addEventListener("keydown", onUndoKey);
+  e.disposable.push(() => { if (e.map) e.map.removeEventListener("keydown", onUndoKey); });
 }
 const q = (e, t) => {
   const n = document.createElement("span");
