@@ -1203,14 +1203,14 @@ function setAllExpanded(val){
     /* 无参 refresh：沿用当前 this.nodeData（聚焦子树）重绘，不触碰全局 */
     try{ mind.refresh(); }catch(e){}
   }else{
-    var d = mind.getData();
-    if(!d || !d.nodeData) return;
+    var root = mind.nodeData;
+    if(!root) return;
     (function walk(n){
       if(!n) return;
       n.expanded = !!val;
       if(n.children) for(var i=0;i<n.children.length;i++) walk(n.children[i]);
-    })(d.nodeData);
-    try{ mind.refresh(d); }catch(e){}
+    })(root);
+    try{ mind.refresh(); }catch(e){}
   }
   /* 恢复选中 */
   if(selId){
@@ -1531,13 +1531,39 @@ function findNodeData(root, id){
 
 /* ===== 拖拽 / 粘贴截图 → 图片节点 ===== */
 function fileToDataUrl(file, cb){
-  var fr = new FileReader();
-  fr.onload = function(){ cb(fr.result); };
-  fr.onerror = function(){ setStatus('图片读取失败', true); };
-  fr.readAsDataURL(file);
+  function fallback(){
+    var fr = new FileReader();
+    fr.onload = function(){ cb(fr.result, 0, 0); };
+    fr.onerror = function(){ setStatus('图片读取失败', true); };
+    fr.readAsDataURL(file);
+  }
+  /* GIF 保留原帧；其余截图经 canvas 降采样转 WebP，压低 base64 体积
+     （内存、IndexedDB 存储、撤销快照同时受益）；压缩后宽高回传给节点写死尺寸 */
+  if(!/^image\//.test(file.type) || file.type === 'image/gif'){ fallback(); return; }
+  var url = URL.createObjectURL(file);
+  var img = new Image();
+  img.onload = function(){
+    try{
+      URL.revokeObjectURL(url);
+      var MAX = 1200;
+      var w = img.naturalWidth || 1, h = img.naturalHeight || 1;
+      var sc = Math.min(1, MAX / Math.max(w, h));
+      var c = document.createElement('canvas');
+      c.width = Math.max(1, Math.round(w*sc));
+      c.height = Math.max(1, Math.round(h*sc));
+      var g = c.getContext('2d');
+      g.fillStyle = '#ffffff';
+      g.fillRect(0, 0, c.width, c.height);
+      g.drawImage(img, 0, 0, c.width, c.height);
+      /* 老浏览器不支持 WebP 时 toDataURL 自动回退 image/png，结果仍可用 */
+      cb(c.toDataURL('image/webp', 0.85), c.width, c.height);
+    }catch(e){ fallback(); }
+  };
+  img.onerror = function(){ URL.revokeObjectURL(url); fallback(); };
+  img.src = url;
 }
 /* 在选中节点下插入一个 base64 内嵌图片节点；无选中则挂根节点 */
-function insertImageNode(dataUrl, alt){
+function insertImageNode(dataUrl, alt, w, h){
   if(!mind || !mind.nodeData || !curNote){ setStatus('请先打开一篇笔记', true); return null; }
   if(filterBackup){ setStatus('过滤视图中不能加图片，取消过滤后再操作', true); return null; }
   var parent = mind.nodeData;
@@ -1549,7 +1575,14 @@ function insertImageNode(dataUrl, alt){
   if(!parent.children) parent.children = [];
   var safeAlt = String(alt||'截图').replace(/[\]\[()]/g,'').trim() || '截图';
   var id = 'n' + Date.now().toString(36) + Math.random().toString(36).slice(2,7);
-  var node = { id:id, topic:'!['+safeAlt+']('+dataUrl+')', expanded:true, children:[] };
+  /* 压缩后的像素尺寸仅用于等比缩到导图显示上限 340×170，避免节点内图片过宽 */
+  var dw = 0, dh = 0;
+  if(w && h){
+    var sc = Math.min(1, 340/w, 170/h);
+    dw = Math.max(40, Math.round(w*sc)); dh = Math.max(24, Math.round(h*sc));
+  }
+  var size = (dw && dh) ? ' ='+dw+'x'+dh : '';
+  var node = { id:id, topic:'!['+safeAlt+']('+dataUrl+size+')', expanded:true, children:[] };
   parent.children.push(node);
   try{ mind.bus.fire('operation', {name:'addChild', obj:node}); }catch(e){}
   queueSave();
@@ -2615,7 +2648,7 @@ function initMind(data){
         var f = pickImageFile(e.dataTransfer.files);
         if(!f) return;
         e.preventDefault();
-        fileToDataUrl(f, function(url){ insertImageNode(url, f.name); });
+        fileToDataUrl(f, function(url, w, h){ insertImageNode(url, f.name, w, h); });
       });
     }
     document.addEventListener('paste', function(e){
@@ -2630,7 +2663,7 @@ function initMind(data){
           var f = items[i].getAsFile();
           if(f){
             e.preventDefault();
-            fileToDataUrl(f, function(url){ insertImageNode(url, '粘贴截图'); });
+            fileToDataUrl(f, function(url, w, h){ insertImageNode(url, '粘贴截图', w, h); });
             break;
           }
         }
@@ -3523,7 +3556,7 @@ document.addEventListener('DOMContentLoaded', function(){
     try{ if(mind.isFocusMode){ exitFocus(); _findKw = ''; _findMatches = []; _findIdx = -1; } }catch(e){}
     if(_findKw !== kw){
       _findKw = kw;
-      try{ _findMatches = collectTopicMatches(mind.getData().nodeData, kw); }catch(e){ _findMatches = []; }
+      try{ _findMatches = collectTopicMatches(mind.nodeData, kw); }catch(e){ _findMatches = []; }
       _findIdx = -1;
     }
     if(!_findMatches.length){ setStatus('未找到「'+kw+'」'); return; }
