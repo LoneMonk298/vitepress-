@@ -396,6 +396,7 @@ html.dark .s-badge.run{color:#fbbf24}
       <br>• <code>[[目标笔记名]]</code> 跳到另一篇笔记
       <br>• <code>[文字](note:目标笔记名)</code> 同上（可改显示文字）
       <br>• <code>![说明](图片地址)</code> 插入图片（可写 <code>=300x200</code> 指定尺寸）
+      <br>• 也可直接把图片文件<b>拖进画布</b>，或截图后 <b>Ctrl+V</b> 粘贴成图片节点
     </div>
     <div class="imp-xmind">
       <div class="ix-row"><span class="ix-sep">或</span></div>
@@ -1528,6 +1529,41 @@ function findNodeData(root, id){
   return res;
 }
 
+/* ===== 拖拽 / 粘贴截图 → 图片节点 ===== */
+function fileToDataUrl(file, cb){
+  var fr = new FileReader();
+  fr.onload = function(){ cb(fr.result); };
+  fr.onerror = function(){ setStatus('图片读取失败', true); };
+  fr.readAsDataURL(file);
+}
+/* 在选中节点下插入一个 base64 内嵌图片节点；无选中则挂根节点 */
+function insertImageNode(dataUrl, alt){
+  if(!mind || !mind.nodeData || !curNote){ setStatus('请先打开一篇笔记', true); return null; }
+  if(filterBackup){ setStatus('过滤视图中不能加图片，取消过滤后再操作', true); return null; }
+  var parent = mind.nodeData;
+  var selEl = getSelectedEl();
+  if(selEl && selEl.nodeObj){
+    var found = findNodeData(mind.nodeData, selEl.nodeObj.id);
+    if(found) parent = found;
+  }
+  if(!parent.children) parent.children = [];
+  var safeAlt = String(alt||'截图').replace(/[\]\[()]/g,'').trim() || '截图';
+  var id = 'n' + Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+  var node = { id:id, topic:'!['+safeAlt+']('+dataUrl+')', expanded:true, children:[] };
+  parent.children.push(node);
+  try{ mind.bus.fire('operation', {name:'addChild', obj:node}); }catch(e){}
+  queueSave();
+  setTimeout(function(){
+    var dom = document.querySelector('#map [data-nodeid="'+id+'"]');
+    if(dom){
+      try{ mind.selectNode(dom); }catch(e){}
+      try{ centerElInMap(dom); }catch(e2){}
+    }
+  }, 260);
+  setStatus('已插入图片节点', true);
+  return node;
+}
+
 /* ===== 复习进度记忆（按笔记分别记录，方便一天天复习）===== */
 function loadPosAll(){
   try{ return JSON.parse(localStorage.getItem(PRESENT_POS_KEY)||'{}'); }catch(e){ return {}; }
@@ -2557,6 +2593,49 @@ function initMind(data){
       queueSave();
       setStatus('整行' + nm + (has ? '已取消' : '已应用') + '（Ctrl+Z 可撤销）', true);
     }, true);
+  }
+  /* 拖拽图片文件到画布 / 粘贴剪贴板截图 → 生成图片节点（监听 document 去重，跨笔记不重复绑定） */
+  if(!document._imgDropBound){
+    document._imgDropBound = true;
+    var mapEl0 = document.getElementById('map');
+    function pickImageFile(files){
+      for(var i=0;i<files.length;i++){
+        if(/^image\//.test(files[i].type)) return files[i];
+      }
+      return null;
+    }
+    if(mapEl0){
+      mapEl0.addEventListener('dragover', function(e){
+        if(e.dataTransfer && Array.prototype.indexOf.call(e.dataTransfer.types, 'Files') >= 0){
+          e.preventDefault(); e.dataTransfer.dropEffect = 'copy';
+        }
+      });
+      mapEl0.addEventListener('drop', function(e){
+        if(!e.dataTransfer || !e.dataTransfer.files || !e.dataTransfer.files.length) return;
+        var f = pickImageFile(e.dataTransfer.files);
+        if(!f) return;
+        e.preventDefault();
+        fileToDataUrl(f, function(url){ insertImageNode(url, f.name); });
+      });
+    }
+    document.addEventListener('paste', function(e){
+      var tag = (e.target && e.target.tagName) || '';
+      if(/INPUT|TEXTAREA/.test(tag)) return;
+      if(e.target && e.target.isContentEditable) return;
+      if(document.querySelector('.modal.show')) return;   /* 弹窗打开时粘贴交给弹窗 */
+      var items = e.clipboardData && e.clipboardData.items;
+      if(!items) return;
+      for(var i=0;i<items.length;i++){
+        if(items[i].type && /^image\//.test(items[i].type)){
+          var f = items[i].getAsFile();
+          if(f){
+            e.preventDefault();
+            fileToDataUrl(f, function(url){ insertImageNode(url, '粘贴截图'); });
+            break;
+          }
+        }
+      }
+    });
   }
   /* 图片异步加载 → 节点宽度会变，重算布局（防溢出）。
      事件委托在 #map 上捕获所有 img 的 load/error：折叠节点展开时动态渲染的新图片也能覆盖到。
