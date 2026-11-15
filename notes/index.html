@@ -594,6 +594,18 @@ function imgSizeFromDataUrl(url){
         i += 2 + seg;
       }
     }
+    /* WebP：RIFF....WEBP，VP8 有损 / VP8X 容器读取画布宽高 */
+    if(bin.slice(0,4)==='RIFF' && bin.slice(8,12)==='WEBP'){
+      var fmt = bin.slice(12,16), ww = 0, hh = 0;
+      if(fmt==='VP8X'){
+        ww = 1 + ((bin.charCodeAt(24)&0xff) | ((bin.charCodeAt(25)&0xff)<<8) | ((bin.charCodeAt(26)&0xff)<<16));
+        hh = 1 + ((bin.charCodeAt(27)&0xff) | ((bin.charCodeAt(28)&0xff)<<8) | ((bin.charCodeAt(29)&0xff)<<16));
+      } else if(fmt==='VP8 '){
+        ww = (bin.charCodeAt(26) | (bin.charCodeAt(27)<<8)) & 0x3fff;
+        hh = (bin.charCodeAt(28) | (bin.charCodeAt(29)<<8)) & 0x3fff;
+      }
+      if(ww>0 && hh>0) return { w:ww, h:hh };
+    }
   }catch(e){}
   return null;
 }
@@ -609,7 +621,11 @@ function inlineHtml(text){
     var a = escL(alt).replace(/"/g,'&quot;');
     var st = 'max-width:100%;border-radius:6px;display:block;margin:2px 0;';
     if(w && h){
-      st += 'width:'+w+'px;height:'+h+'px;object-fit:contain;';
+      /* 显式声明的尺寸同样按 340×170 上限等比收缩，避免早期写了原始像素的大图撑爆节点 */
+      var ew = Number(w), eh = Number(h);
+      var esc = Math.min(1, 340/ew, 170/eh);
+      var edw = Math.max(40, Math.round(ew*esc)), edh = Math.max(24, Math.round(eh*esc));
+      st += 'width:'+edw+'px;height:'+edh+'px;object-fit:contain;';
     } else {
       var sz = imgSizeFromDataUrl(u);
       if(sz){
@@ -618,7 +634,8 @@ function inlineHtml(text){
         var dw = Math.max(40, Math.round(sz.w*sc)), dh = Math.max(24, Math.round(sz.h*sc));
         st += 'width:'+dw+'px;height:'+dh+'px;object-fit:contain;';
       } else {
-        st += 'max-height:170px;';
+        /* 尺寸解析不出时也限死宽高上限，避免未压缩原图按原始像素撑爆节点 */
+        st += 'max-width:340px;max-height:170px;object-fit:contain;';
       }
     }
     return put('<img src="'+url+'" alt="'+a+'" style="'+st+'" decoding="async">');
@@ -2710,24 +2727,31 @@ function initMind(data){
         fileToDataUrl(f, function(url, w, h){ insertImageNode(url, f.name, w, h); });
       });
     }
+    /* 结束可能激活的编辑框，并移除浏览器原生插进去的 <img>：
+       contenteditable 失焦时库只按 textContent 回写 topic，img 会被直接丢弃（图片“点一下就消失”的根因） */
+    function flushEditorIfPasted(){
+      var ed = document.getElementById('input-box');
+      if(ed && ed.isContentEditable){
+        var ims = ed.querySelectorAll('img');
+        for(var i=0;i<ims.length;i++) ims[i].remove();
+        try{ ed.blur(); }catch(e){}
+      }
+    }
+    /* 捕获阶段先于浏览器默认行为：剪贴板里有图片就拦截，不往编辑框/页面里原生插入 */
     document.addEventListener('paste', function(e){
-      var tag = (e.target && e.target.tagName) || '';
-      if(/INPUT|TEXTAREA/.test(tag)) return;
-      if(e.target && e.target.isContentEditable) return;
       if(document.querySelector('.modal.show')) return;   /* 弹窗打开时粘贴交给弹窗 */
       var items = e.clipboardData && e.clipboardData.items;
       if(!items) return;
+      var file = null;
       for(var i=0;i<items.length;i++){
-        if(items[i].type && /^image\//.test(items[i].type)){
-          var f = items[i].getAsFile();
-          if(f){
-            e.preventDefault();
-            fileToDataUrl(f, function(url, w, h){ insertImageNode(url, '粘贴截图', w, h); });
-            break;
-          }
-        }
+        if(items[i].type && /^image\//.test(items[i].type)){ file = items[i].getAsFile(); if(file) break; }
       }
-    });
+      if(!file) return;   /* 非图片：放行给输入框/编辑框默认行为 */
+      e.preventDefault();
+      e.stopPropagation();
+      flushEditorIfPasted();
+      fileToDataUrl(file, function(url, w, h){ insertImageNode(url, file.name || '粘贴截图', w, h); });
+    }, true);
   }
   /* 图片异步加载 → 节点宽度会变，重算布局（防溢出）。
      事件委托在 #map 上捕获所有 img 的 load/error：折叠节点展开时动态渲染的新图片也能覆盖到。
