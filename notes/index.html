@@ -388,9 +388,10 @@ html.dark .s-badge.run{color:#fbbf24}
   - 子点2"></textarea>
     <div class="mm-hint">支持：
       <br>• <code>## / ### / ####</code> 层级
-      <br>• <code>- / * / +</code> 列表
-      <br>• <code>1.</code> 有序列表
+      <br>• <code>- / * / +</code> 列表、<code>1.</code> 有序列表
       <br>• <code>[[空格]]</code> 缩进嵌套
+      <br>• <b>Markdown 表格</b>：自动拆成「行节点 → 各列（列名：值）」
+      <br>• <code>**粗体**</code>、<code>*斜体*</code>、<code>~~删除线~~</code>、<code>$公式$</code>
       <br>• <code>[文字](https://...)</code> 外链
       <br>• <code>[[目标笔记名]]</code> 跳到另一篇笔记
       <br>• <code>[文字](note:目标笔记名)</code> 同上（可改显示文字）
@@ -639,6 +640,18 @@ function inlineHtml(text){
   return text;
 }
 
+/* 拆一行表格：`| a | b |` → ['a','b'] */
+function parseTableRow(row){
+  var cells = row.split('|');
+  var out = [];
+  for(var i=0;i<cells.length;i++){
+    var c = cells[i].trim();
+    if(i===0 && c==='') continue;
+    if(i===cells.length-1 && c==='') continue;
+    out.push(c);
+  }
+  return out;
+}
 function mdToNodeData(md){
   var counter = 0;
   function gid(){ counter++; return 'n'+counter; }
@@ -648,67 +661,105 @@ function mdToNodeData(md){
     text = String(text==null?'':text).trim();
     var n = { id: gid(), topic: text, expanded: true, children: [] };
     var h = inlineHtml(text);
-    if(h && h !== text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')) n.dangerouslySetInnerHTML = h;
+    var plain = esc(text);
+    if(h && h !== plain) n.dangerouslySetInnerHTML = h;
     return n;
+  }
+  function pushNode(parent, text){ var n=mkNode(text); parent.children.push(n); return n; }
+  /* 表格内容挂到 parent 下：每行一个节点，其余列按表头生成「列名：值」孙节点 */
+  function fillTable(parent, it){
+    it.rows.forEach(function(row){
+      var rowNode = pushNode(parent, row[0] || '行');
+      for(var c=1;c<it.header.length;c++){
+        var lab = it.header[c] || '';
+        var val = row[c] !== undefined ? row[c] : '';
+        pushNode(rowNode, (lab ? lab+'：' : '') + val);
+      }
+    });
   }
 
   var lines = String(md||'').split(/\r?\n/);
   var items = [];
+  var curTitle = '';
   for(var i=0;i<lines.length;i++){
     var line = lines[i];
     if(!line || !line.trim()) continue;
     if(/^\s*<!--/.test(line)) continue;
+    if(/^\s*---+\s*$/.test(line)) continue;   /* 分隔线 */
     var s = line.replace(/\t/g, '  ');
+
+    /* 连续的 | 行 → 表格块 */
+    if(/^\s*\|/.test(s)){
+      var block = [];
+      while(i<lines.length){
+        var sl = String(lines[i]||'').replace(/\t/g,'  ').trim();
+        if(!/^\|/.test(sl)) break;
+        block.push(sl); i++;
+      }
+      i--;
+      if(block.length >= 2){
+        var header = parseTableRow(block[0]);
+        var start = 1;
+        if(/^\|?[\s\-:|]+\|?$/.test(block[1])) start = 2;   /* 跳过分隔线 |---|---| */
+        var rows = [];
+        for(var r=start;r<block.length;r++) rows.push(parseTableRow(block[r]));
+        if(rows.length) items.push({ kind:'table', title:curTitle||'对比表', header:header, rows:rows, indent:0, underHeading:!!curTitle });
+      }
+      continue;
+    }
+
     var mh = s.match(/^(\s*)(#+)\s+(.+?)\s*$/);
-    if(mh){ items.push({ indent: mh[1].length, text: mh[3], kind:'h', lvl: mh[2].length }); continue; }
+    if(mh){ items.push({ indent: mh[1].length, text: mh[3], kind:'h', lvl: mh[2].length }); curTitle = mh[3]; continue; }
     var ml = s.match(/^(\s*)(?:[-*+]|\d+[.)])\s+(.+?)\s*$/);
-    if(ml){ items.push({ indent: ml[1].length, text: ml[2], kind:'l', lvl: 0 }); continue; }
+    if(ml){ items.push({ indent: ml[1].length, text: ml[2], kind:'l' }); continue; }
+    /* 普通段落也收为节点，避免 AI 正文被整段丢掉 */
+    items.push({ indent: 0, text: s.trim(), kind:'p' });
   }
   if(!items.length) return { nodeData: mkNode('空笔记'), firstH1: '' };
 
-  var hasH = items.some(function(it){ return it.kind==='h'; });
-  var hasL = items.some(function(it){ return it.kind==='l'; });
+  /* depth 计算：标题按 # 层级归一；列表/段落/表格挂在最近标题下 */
+  var lvls = [], listInds = [];
+  items.forEach(function(it){ if(it.kind==='h' && lvls.indexOf(it.lvl)<0) lvls.push(it.lvl); });
+  lvls.sort(function(a,b){return a-b;});
+  items.forEach(function(it){ if(it.kind!=='h' && listInds.indexOf(it.indent)<0) listInds.push(it.indent); });
+  listInds.sort(function(a,b){return a-b;});
+  var curH = -1, firstTitle = '';
+  items.forEach(function(it){
+    if(it.kind==='h'){ it.depth = lvls.indexOf(it.lvl); curH = it.depth; if(!firstTitle) firstTitle = it.text; }
+    else if(it.kind==='table'){ it.depth = curH<0 ? 0 : curH+1; }
+    else { it.depth = (curH<0?0:curH)+1+listInds.indexOf(it.indent); }
+  });
 
-  if(hasL && !hasH){
-    /* 纯列表：缩进归一化（自动兼容 2/4 空格） */
-    var inds = [];
-    items.forEach(function(it){ if(inds.indexOf(it.indent)<0) inds.push(it.indent); });
-    inds.sort(function(a,b){return a-b;});
-    items.forEach(function(it){ it.depth = inds.indexOf(it.indent); });
-  } else if(hasH && !hasL){
-    /* 纯标题：按 # 层级归一 */
-    var lvls = [];
-    items.forEach(function(it){ if(lvls.indexOf(it.lvl)<0) lvls.push(it.lvl); });
-    lvls.sort(function(a,b){return a-b;});
-    items.forEach(function(it){ it.depth = lvls.indexOf(it.lvl); });
+  /* 建树：第一个节点作根 */
+  var first = items[0];
+  var root;
+  if(first.kind==='table'){
+    root = mkNode(first.title || '对比表');
+    fillTable(root, first);
   } else {
-    /* 混合：标题按层级，列表 = 最近标题 depth + 1 + 缩进序 */
-    var lvls2 = [];
-    items.forEach(function(it){ if(it.kind==='h' && lvls2.indexOf(it.lvl)<0) lvls2.push(it.lvl); });
-    lvls2.sort(function(a,b){return a-b;});
-    var curH = -1, listInds = [];
-    items.forEach(function(it){
-      if(it.kind==='h'){ it.depth = lvls2.indexOf(it.lvl); curH = it.depth; }
-      else { if(listInds.indexOf(it.indent)<0) listInds.push(it.indent); }
-    });
-    listInds.sort(function(a,b){return a-b;});
-    items.forEach(function(it){
-      if(it.kind==='l') it.depth = (curH<0?0:curH) + 1 + listInds.indexOf(it.indent);
-    });
+    root = mkNode(first.text);
   }
-
-  /* 建树：第一个节点作根（不建占位） */
-  var root = mkNode(items[0].text);
-  var stack = [{ depth: items[0].depth, node: root }];
+  var stack = [{ depth: first.depth, node: root }];
   for(var k=1;k<items.length;k++){
     var it = items[k];
     while(stack.length>1 && stack[stack.length-1].depth >= it.depth) stack.pop();
     var parent = stack[stack.length-1].node;
-    var node = mkNode(it.text);
-    parent.children.push(node);
-    stack.push({ depth: it.depth, node: node });
+    var node;
+    if(it.kind==='table'){
+      if(it.underHeading){
+        /* 表格紧跟标题：行直接挂标题下，不另起同名表节点 */
+        fillTable(parent, it);
+        node = parent;
+      } else {
+        node = pushNode(parent, it.title);
+        fillTable(node, it);
+      }
+    } else {
+      node = pushNode(parent, it.text);
+    }
+    if(node !== parent) stack.push({ depth: it.depth, node: node });
   }
-  return { nodeData: root, firstH1: items[0].text || '' };
+  return { nodeData: root, firstH1: firstTitle || first.text || '' };
 }
 
 /* ===== IndexedDB 笔记存储 =====
