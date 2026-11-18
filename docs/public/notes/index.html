@@ -140,6 +140,9 @@ html.dark #map me-tpc .tags span.nt-err{background:rgba(15,23,42,.6);color:#93c5
 /* 搜索匹配高亮框（DOM 层，不改节点数据） */
 #map me-tpc.mm-match{box-shadow:0 0 0 2px rgba(245,158,11,.85), 0 0 0 6px rgba(245,158,11,.18);border-radius:6px}
 #map me-tpc.mm-match-cur{box-shadow:0 0 0 2px #6366e8, 0 0 0 8px rgba(99,102,241,.28);border-radius:6px}
+/* 概念跳转落点闪烁 */
+#map me-tpc.mm-jump-flash{animation:mmJumpFlash 1.4s ease}
+@keyframes mmJumpFlash{0%{box-shadow:0 0 0 3px #f59e0b,0 0 0 12px rgba(245,158,11,.55)}60%{box-shadow:0 0 0 3px #f59e0b,0 0 0 8px rgba(245,158,11,.22)}100%{box-shadow:none}}
 #map.ol-hidden{display:none}
 /* 大纲模式 */
 #outline{flex:1;min-height:0;background:var(--bg);overflow:auto;padding:14px 24px 90px}
@@ -206,18 +209,30 @@ html.dark .mm-hint code{background:rgba(255,255,255,.08)}
 .lb-box{position:relative;max-width:92vw;max-height:90vh;overflow:hidden;border-radius:10px;box-shadow:0 10px 50px rgba(0,0,0,.6);background:#111}
 .lb-box img{display:block;max-width:92vw;max-height:90vh;object-fit:contain;transform-origin:center;cursor:grab;user-select:none;-webkit-user-drag:none}
 .lb-box img.drag{cursor:grabbing}
-.lb-tip{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);color:#fff;background:rgba(0,0,0,.55);font-size:12px;padding:4px 12px;border-radius:20px;white-space:nowrap;pointer-events:none}
+.lb-tip{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);color:#fff;background:rgba(0,0,0,.55);font-size:12px;padding:4px 12px;border-radius:20px;white-space:nowrap;pointer-events:none;opacity:1;transition:opacity .55s ease}
+.lb-tip.fade{opacity:0}
 .lb-close{position:fixed;top:16px;right:20px;width:40px;height:40px;border:none;border-radius:50%;background:rgba(255,255,255,.15);color:#fff;font-size:22px;cursor:pointer;z-index:1001;line-height:1}
 .lb-close:hover{background:rgba(255,255,255,.3)}
-/* 内嵌网页预览面板（demo） */
-#modalWeb{padding:0;flex-direction:column;background:rgba(0,0,0,.72)}
+/* 内嵌网页预览面板（demo）：全屏模式 / 右侧贴边抽屉模式 */
+#modalWeb{padding:0;background:rgba(0,0,0,.72)}
 #modalWeb.show{display:flex}
+.wv-shell{flex:1;display:flex;flex-direction:column;min-width:0;min-height:0;background:var(--card)}
+/* 抽屉模式：贴右侧、宽度随窗口自适应，左侧导图保持可见可点（面板本身不接收遮罩点击） */
+#modalWeb.dock{background:transparent;pointer-events:none;justify-content:flex-end;align-items:stretch}
+#modalWeb.dock .wv-shell{flex:0 0 auto;width:clamp(360px, 42vw, 720px);max-width:64vw;border-left:1px solid var(--bd);box-shadow:-10px 0 34px rgba(0,0,0,.45);pointer-events:auto}
 .wv-bar{display:flex;align-items:center;gap:8px;padding:10px 14px;background:var(--card);border-bottom:1px solid var(--bd);z-index:2}
 .wv-url{flex:1;font-size:12.5px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .wv-btn{padding:6px 12px;border:1px solid var(--bd);border-radius:7px;background:var(--bg);color:var(--text);font-size:12.5px;cursor:pointer;white-space:nowrap}
 .wv-btn:hover{border-color:var(--text2)}
 #wvFrame{flex:1;width:100%;border:none;background:#fff;min-height:0}
 .wv-tip{padding:6px 14px;font-size:11.5px;color:var(--text2);background:var(--card);text-align:center}
+/* 合并笔记弹窗 */
+.mg-list{max-height:46vh;overflow-y:auto;border:1px solid var(--bd);border-radius:8px;margin-top:6px}
+.mg-row{display:flex;align-items:center;gap:9px;padding:9px 12px;border-bottom:1px solid var(--bd);font-size:13px;cursor:pointer}
+.mg-row:last-child{border-bottom:none}
+.mg-row:hover{background:var(--bg)}
+.mg-row input{flex:none;width:auto;margin:0}
+.mg-row .mg-folder{font-size:11px;color:var(--text2);margin-left:auto;white-space:nowrap}
 /* 统计面板 */
 .stat-cards{display:flex;gap:10px;margin-bottom:14px}
 .stat-card{flex:1;background:var(--bg);border:1px solid var(--bd);border-radius:10px;padding:12px 8px;text-align:center}
@@ -353,6 +368,7 @@ html.dark .s-badge.run{color:#fbbf24}
       <div class="more-wrap">
         <button id="btnMore" class="ico" title="更多操作：云同步 / 编辑源 / 导出 / 重置">⋯</button>
         <div id="moreMenu" class="more-menu hidden">
+          <button id="btnMerge">合并笔记</button>
           <button id="btnSync">云同步</button>
           <button id="btnEditSrc">编辑源</button>
           <button id="btnExport">导出</button>
@@ -514,13 +530,33 @@ html.dark .s-badge.run{color:#fbbf24}
 </div>
 
 <div class="modal" id="modalWeb">
-  <div class="wv-bar">
-    <span class="wv-url" id="wvUrl"></span>
-    <button class="wv-btn" id="wvOpen">新标签打开</button>
-    <button class="wv-btn" id="wvClose">关闭 ×</button>
+  <div class="wv-shell">
+    <div class="wv-bar">
+      <span class="wv-url" id="wvUrl"></span>
+      <button class="wv-btn" id="wvOpen">新标签打开</button>
+      <button class="wv-btn" id="wvDock" title="切换为右侧贴边抽屉，导图仍可操作">右侧抽屉</button>
+      <button class="wv-btn" id="wvClose">关闭 ×</button>
+    </div>
+    <iframe id="wvFrame" title="内嵌网页预览" sandbox="allow-scripts allow-same-origin allow-popups allow-forms"></iframe>
+    <div class="wv-tip">若页面白屏，说明该网站禁止被内嵌，请点「新标签打开」</div>
   </div>
-  <iframe id="wvFrame" title="内嵌网页预览" sandbox="allow-scripts allow-same-origin allow-popups allow-forms"></iframe>
-  <div class="wv-tip">若页面白屏，说明该网站禁止被内嵌，请点「新标签打开」</div>
+</div>
+
+<div class="modal" id="modalMerge">
+  <div class="mbox" style="max-width:560px">
+    <h3>合并笔记</h3>
+    <p>勾选要合并的笔记，合并后每篇笔记的中心主题成为总图下的一个并列分支（章节）。<br>
+      原笔记保持不变；合并后可用 <code>[[#关键词]]</code> 在总图内互跳。</p>
+    <label>新笔记名</label>
+    <input id="mg-name" placeholder="如：408 全书总复习">
+    <label>选择要合并的笔记</label>
+    <div class="mg-list" id="mg-list"></div>
+    <div class="mm-hint" id="mg-hint" style="margin-top:8px"></div>
+    <div class="row">
+      <button id="mgCancel">取消</button>
+      <button class="pri" id="mgOk">合并</button>
+    </div>
+  </div>
 </div>
 
 <script src="./vendor/mind-elixir.global.js"></script>
@@ -551,11 +587,12 @@ function loadScript(src){
 }
 
 /* ===== Markdown → nodeData ===== */
-/* 行内 HTML：Markdown 链接 + 裸 URL + LaTeX，占位符保护后转义 */
-function noteLinkHtml(target, label){
+/* 行内链接：target=笔记名（空表示「本篇」），kw=节点关键词（跳到该节点） */
+function noteLinkHtml(target, label, kw){
   var t = String(target==null?'':target).replace(/"/g,'&quot;');
+  var k = String(kw==null?'':kw).replace(/"/g,'&quot;');
   var l = String(label==null?'':label).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  return '<a data-note="'+t+'" style="color:#f59e0b;text-decoration:underline;cursor:pointer;font-weight:600">'+l+'</a>';
+  return '<a data-note="'+t+'"'+(k?' data-kw="'+k+'"':'')+' title="'+(k?'跳转到节点：'+k:t)+'" style="color:#f59e0b;text-decoration:underline;cursor:pointer;font-weight:600">'+l+'</a>';
 }
 
 /* 从 data URL 读取图片原始尺寸（PNG/GIF/JPEG），用于渲染时写死宽高，
@@ -640,15 +677,31 @@ function inlineHtml(text){
     }
     return put('<img src="'+url+'" alt="'+a+'" style="'+st+'" decoding="async">');
   });
-  /* 笔记跳转 [[目标笔记名]] */
+  /* 笔记/节点跳转 [[目标笔记名]]、[[目标笔记名#关键词]]、[[#关键词]]（本篇内跳转） */
   text = text.replace(/\[\[([^\]]+)\]\]/g, function(_, nm){
-    nm = nm.trim();
+    nm = String(nm||'').trim();
+    var hp = nm.indexOf('#');
+    if(hp >= 0){
+      var nName = nm.slice(0, hp).trim();
+      var kw = nm.slice(hp+1).trim();
+      if(!kw) return put(noteLinkHtml(nName, nName || '本节点'));
+      if(!nName) return put(noteLinkHtml('', '↪ '+kw, kw));   /* 本篇内跳 */
+      return put(noteLinkHtml(nName, nName+' · '+kw, kw));      /* 跨笔记跳 */
+    }
     return put(noteLinkHtml(nm, nm));
   });
   /* Markdown 链接 [text](url)：note: 前缀 → 笔记跳转 */
   text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, function(_, t, u){
     var uu = String(u).trim();
-    if(/^note:/.test(uu)) return put(noteLinkHtml(uu.slice(5).trim(), t));
+    if(/^note:/.test(uu)){
+      var rest = uu.slice(5).trim(), hp2 = rest.indexOf('#');
+      if(hp2 >= 0){
+        var nn = rest.slice(0, hp2).trim(), kk = rest.slice(hp2+1).trim();
+        if(kk) return put(noteLinkHtml(nn, t, kk));
+        return put(noteLinkHtml(nn, t));
+      }
+      return put(noteLinkHtml(rest, t));
+    }
     return put('<a href="'+u.replace(/"/g,'&quot;')+'" target="_blank" rel="noopener" style="color:#667eea;text-decoration:underline">'+escL(t)+'</a>');
   });
   /* 裸 URL */
@@ -1194,11 +1247,64 @@ function findNoteById(id){
   for(var i=0;i<ns.length;i++) if(ns[i].id === id) return ns[i];
   return null;
 }
-function goToNote(name){
+function goToNote(name, kw){
   var t = findNoteByName(name);
-  if(!t){ setStatus('未找到笔记「'+name+'」'); return; }
+  if(!t){ setStatus('未找到笔记「'+name+'」', true); return; }
   if(curNote && curNote.id !== t.id) navStack.push(curNote.id);
-  loadNote(t);
+  loadNote(t, kw ? function(){ setTimeout(function(){ gotoNodeByKeyword(kw); }, 120); } : null);
+}
+/* 节点文本用于关键词匹配：折叠图片 base64，并剔除跳转链接本身
+   （否则「概念引出：[[#OSPF]]」这种节点会被自己的链接词命中，跳回自己） */
+function jumpText(n){
+  return String((n && n.topic) || '')
+    .replace(/!\[[^\]]*\]\([^)]*\)/g,'图片')
+    .replace(/\[\[[^\]]*\]\]/g,'')
+    .replace(/\[([^\]]+)\]\([^)]*\)/g,'$1')
+    .replace(/\s+/g,' ')
+    .trim();
+}
+/* 在当前笔记里按关键词跳到节点：打分选最优 → 展开父链 → 选中 → 镜头居中 */
+function gotoNodeByKeyword(kw){
+  kw = String(kw||'').trim();
+  if(!kw){ setStatus('跳转关键词为空'); return; }
+  if(!mind || !mind.nodeData){ setStatus('请先打开一篇笔记', true); return; }
+  if(filterActive()){ setStatus('过滤视图中节点已剪枝，先取消过滤再跳转', true); return; }
+  var low = kw.toLowerCase();
+  var best = null;
+  (function walk(n, path){
+    if(!n) return;
+    var p = path.concat([n.id]);
+    /* 两套文本：去链接的原文（优先）、纯文本化（兜底跨标记匹配） */
+    var cands = [jumpText(n), String(plainTopic(n.topic)||'')];
+    var score = 0, txt = '';
+    for(var c=0;c<cands.length;c++){
+      var s = String(cands[c]||'').toLowerCase();
+      if(!s) continue;
+      var sc = 0;
+      if(s === low) sc = 100;
+      else if(s.indexOf(low) === 0) sc = 85;
+      else if(s.indexOf(low) >= 0) sc = 60;
+      if(sc > score){ score = sc; txt = cands[c]; }
+    }
+    if(score){
+      score -= Math.min(40, p.length * 2);   /* 同样命中时浅层节点优先 */
+      if(!best || score > best.score) best = { id:n.id, path:p, topic:txt, score:score };
+    }
+    (n.children||[]).forEach(function(c){ walk(c, p); });
+  })(mind.nodeData, []);
+  if(!best){ setStatus('本笔记里没找到「'+kw+'」', true); return; }
+  var hit = best;
+  var rootPath = hit.path.slice(0, -1);
+  expandAllOnPath(rootPath);
+  setTimeout(function(){
+    var el = document.querySelector('#map [data-nodeid="me'+hit.id+'"]') || document.querySelector('[data-nodeid="me'+hit.id+'"]');
+    if(!el){ setStatus('节点已定位但未渲染出来', true); return; }
+    try{ mind.selectNode(el); }catch(e){}
+    animateCameraToNode(el);
+    el.classList.add('mm-jump-flash');
+    setTimeout(function(){ try{ el.classList.remove('mm-jump-flash'); }catch(e){} }, 1400);
+    setStatus('已跳到「'+String(hit.topic||'').slice(0,20)+'」', true);
+  }, 160);
 }
 function goBack(){
   var id = navStack.pop();
@@ -1957,6 +2063,15 @@ function bindPresent(){
 
 /* ===== 图片点击放大预览（Lightbox）===== */
 var lbScale = 1, lbX = 0, lbY = 0, lbDragging = false, lbSX = 0, lbSY = 0;
+var lbTipTimer = null;
+/* 放大后底部操作提示：显示片刻自动淡出，不长期压在大图上 */
+function showLightboxTip(){
+  var tip = document.querySelector('#imgLightbox .lb-tip');
+  if(!tip) return;
+  tip.classList.remove('fade');
+  if(lbTipTimer) clearTimeout(lbTipTimer);
+  lbTipTimer = setTimeout(function(){ tip.classList.add('fade'); }, 2600);
+}
 function lbApply(){
   var img = $('lbImg');
   if(!img) return;
@@ -1970,16 +2085,35 @@ function openLightbox(src, alt){
   img.src = src; img.alt = alt || '';
   lbReset();
   $('imgLightbox').classList.add('show');
+  showLightboxTip();
 }
-function closeLightbox(){ $('imgLightbox').classList.remove('show'); }
+function closeLightbox(){
+  $('imgLightbox').classList.remove('show');
+  if(lbTipTimer){ clearTimeout(lbTipTimer); lbTipTimer = null; }
+}
 
-/* ===== 内嵌网页预览面板（demo） ===== */
+/* ===== 内嵌网页预览面板（demo）：全屏 / 右侧抽屉两种形态 =====
+   抽屉形态为后续右侧笔记卡片、Anki 背诵面板预留：贴右边缘、宽度随窗口自适应、左侧导图仍可操作 */
+var WV_MODE_KEY = 'mm_webview_mode';
+function getWvMode(){ try{ return localStorage.getItem(WV_MODE_KEY) === 'dock' ? 'dock' : 'full'; }catch(e){ return 'full'; } }
+function applyWvMode(mode){
+  var m = $('modalWeb'); if(!m) return;
+  m.classList.toggle('dock', mode === 'dock');
+  var b = $('wvDock');
+  if(b){ b.textContent = mode === 'dock' ? '全屏' : '右侧抽屉'; b.title = mode === 'dock' ? '切换回全屏预览' : '切换为右侧贴边抽屉，导图仍可操作'; }
+  try{ localStorage.setItem(WV_MODE_KEY, mode); }catch(e){}
+}
+function toggleWvMode(){
+  var m = $('modalWeb'); if(!m) return;
+  applyWvMode(m.classList.contains('dock') ? 'full' : 'dock');
+}
 function openWebview(url){
   var m = $('modalWeb'), f = $('wvFrame');
   if(!m || !f) return;
   $('wvUrl').textContent = url;
   f.src = url;
   m.classList.add('show');
+  applyWvMode(getWvMode());
   $('wvOpen').onclick = function(){ try{ window.open(url, '_blank','noopener'); }catch(e){} };
 }
 function closeWebview(){
@@ -2029,6 +2163,7 @@ document.addEventListener('click', function(e){
 (function(){
   var m = $('modalWeb'); if(!m) return;
   $('wvClose').onclick = closeWebview;
+  var dockBtn = $('wvDock'); if(dockBtn) dockBtn.onclick = function(e){ e.stopPropagation(); toggleWvMode(); };
   m.addEventListener('click', function(e){ if(e.target===m) closeWebview(); });
 })();
 /* Lightbox 内部交互 */
@@ -3328,6 +3463,90 @@ function importXmindFile(file){
   rd.readAsArrayBuffer(file);
 }
 
+/* ===== 合并多篇笔记 → 一篇总图 =====
+   典型用法：各章分别用 XMind 导入成笔记，复习前合并成「全书总图」，
+   每章的中心主题成为总图下一个并列分支，后续可按概念/协议自行归并、用 [[#关键词]] 互跳。 */
+function mgNewId(){ return 'n'+Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+function renewNodeIds(n){
+  if(!n) return;
+  n.id = mgNewId();
+  (n.children||[]).forEach(renewNodeIds);
+}
+function openMergeModal(){
+  var list = $('mg-list');
+  if(!list) return;
+  var ns = allNotes();
+  if(!ns.length){ setStatus('还没有笔记可以合并', true); return; }
+  var h = '';
+  for(var i=0;i<ns.length;i++){
+    h += '<label class="mg-row"><input type="checkbox" value="'+ns[i].id+'">'
+       + '<span>'+escapeHtml(ns[i].name)+'</span>'
+       + '<span class="mg-folder">'+escapeHtml(ns[i].folder||'未分类')+'</span></label>';
+  }
+  list.innerHTML = h;
+  $('mg-name').value = curNote ? (curNote.name + ' 总图') : '总复习';
+  $('mg-hint').textContent = '共 '+ns.length+' 篇；按列表顺序依次挂到总图下，原笔记不受影响。';
+  $('modalMerge').classList.add('show');
+}
+function doMerge(){
+  var ids = [];
+  var boxes = document.querySelectorAll('#mg-list input[type=checkbox]');
+  for(var i=0;i<boxes.length;i++) if(boxes[i].checked) ids.push(boxes[i].value);
+  if(ids.length < 2){ setStatus('至少勾选 2 篇笔记', true); return; }
+  var name = String($('mg-name').value||'').trim() || '总复习';
+  var notesArr = loadNotes();
+  /* 按侧栏列表顺序取，勾选先后不影响结果 */
+  var ordered = [];
+  for(var a=0;a<notesArr.length;a++) if(ids.indexOf(notesArr[a].id)>=0) ordered.push(notesArr[a]);
+  /* 重名自动加序号 */
+  var base = name, k2 = 2;
+  while(notesArr.some(function(x){ return x.name === name; })) name = base+' ('+(k2++)+')';
+  var root = { id:mgNewId(), topic:name, expanded:true, children:[] };
+  var pending = ordered.length;
+  var empty = 0;
+  var okBtn = $('mgOk');
+  if(okBtn) okBtn.disabled = true;
+  ordered.forEach(function(note){
+    noteStoreGet(note.id, function(data){
+      var d = data && data.nodeData;
+      if(d){
+        var rt = String(d.topic||'');
+        var br = { id:mgNewId(), topic:note.name, expanded:true, children:[] };
+        if(d.children && d.children.length){
+          if(rt && rt !== note.name){
+            /* 中心主题与笔记名不同：保留原中心主题，再挂其子节点 */
+            br.children.push({ id:mgNewId(), topic:rt, expanded:true, children:d.children });
+          } else {
+            br.children = d.children;   /* 同名：直接接管子节点，少一层 */
+          }
+        } else if(rt){
+          br.children.push({ id:mgNewId(), topic:rt, expanded:false, children:[] });
+        }
+        if(br.children.length) root.children.push(br);
+        else empty++;
+      } else empty++;
+      if(--pending === 0) finish();
+    });
+  });
+  function finish(){
+    if(okBtn) okBtn.disabled = false;
+    if(!root.children.length){ setStatus('选中的笔记都是空的，没东西可合并', true); return; }
+    /* 跨笔记可能有重复 id，全部重生成，避免 DOM 定位串台 */
+    renewNodeIds(root);
+    var id = 'n'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+    var now = Date.now();
+    noteStorePut(id, { nodeData:root, arrows:[], summaries:[], direction:'right' }, function(){
+      var arr = loadNotes();
+      arr.push({ id:id, name:name, folder:'未分类', created:now, updated:now });
+      saveNotes(arr);
+      renderList();
+      $('modalMerge').classList.remove('show');
+      for(var z=0;z<arr.length;z++) if(arr[z].id===id){ loadNote(arr[z]); break; }
+      setStatus('已合并 '+root.children.length+' 篇为新笔记「'+name+'」'+(empty?'（跳过 '+empty+' 篇空笔记':'')+'）', true);
+    });
+  }
+}
+
 /* ===== 云同步 ===== */
 var SYNC_CONFIG_KEY='mm_notes_sync_config';
 var syncConfig = { keyId:'', accessKey:'', binId:'' };
@@ -3551,6 +3770,9 @@ document.addEventListener('DOMContentLoaded', function(){
     }
   };
   $('btnExport').onclick = exportNote;
+  $('btnMerge').onclick = openMergeModal;
+  $('mgCancel').onclick = function(){ $('modalMerge').classList.remove('show'); };
+  $('mgOk').onclick = doMerge;
   $('btnReset').onclick = function(){
     if(!curNote) return;
     if(!confirm('放弃本机修改，重置为空？')) return;
@@ -3613,7 +3835,10 @@ document.addEventListener('DOMContentLoaded', function(){
     var el = e.target && e.target.closest ? e.target.closest('[data-note]') : null;
     if(!el) return;
     e.preventDefault(); e.stopPropagation();
-    goToNote(el.getAttribute('data-note'));
+    var noteName = el.getAttribute('data-note') || '';
+    var kw = el.getAttribute('data-kw') || '';
+    if(kw && !noteName) gotoNodeByKeyword(kw);   /* [[#关键词]]：本篇内跳 */
+    else goToNote(noteName, kw);                 /* 跨笔记跳，可带关键词 */
   }, true);
 
   /* 顶部搜索：收集全部匹配，Enter 循环下一个 / Shift+Enter 上一个；平滑镜头 + 高亮框 */
