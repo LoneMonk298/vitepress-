@@ -1129,7 +1129,11 @@ function migrateTopicImages(topic, cb){
     }
     var iid = newImgId();
     imgStorePut(iid, blob, function(ok){
-      if(ok){ reps[i] = '!['+it.alt+']('+IMG_PREFIX+iid+(dw&&dh?' ='+dw+'x'+dh:'')+')'; migrated++; }
+      if(ok){
+        reps[i] = '!['+it.alt+']('+IMG_PREFIX+iid+(dw&&dh?' ='+dw+'x'+dh:'')+')';
+        migrated++;
+        try{ _imgUrlCache[iid] = URL.createObjectURL(blob); }catch(e){}   /* 预热，渲染时直接可用 */
+      }
       pending--; maybeDone();
     });
   });
@@ -1158,6 +1162,34 @@ function migrateNoteImages(data, cb){
       if(--pending === 0) cb(cnt);
     });
   });
+}
+/* 启动后静默整理其余笔记：一篇一篇读、一篇一篇写，不渲染不建树，
+   内存峰值只有单篇数据。这样「一打开就 OOM」的大笔记能先被瘦下来 */
+function autoMigrateAll(){
+  if(!window.indexedDB) return;
+  try{ if(localStorage.getItem('mm_img_mig_v1') === 'done') return; }catch(e){}
+  var arr = loadNotes(), i = 0, done = 0;
+  function next(){
+    if(i >= arr.length){
+      try{ localStorage.setItem('mm_img_mig_v1','done'); }catch(e){}
+      if(done) setStatus('已整理 '+done+' 篇笔记的截图，之后打开更快', true);
+      return;
+    }
+    var note = arr[i++];
+    if(curNote && curNote.id === note.id){ next(); return; }   /* 当前笔记由 loadNote 处理，避免并发写 */
+    noteStoreGet(note.id, function(data){
+      if(!data || !hasBase64Image(data)){ next(); return; }
+      migrateNoteImages(data, function(cnt){
+        /* 回写前再看一眼：用户可能已经切到这篇并开始编辑 */
+        if(!cnt || (curNote && curNote.id === note.id)){ next(); return; }
+        noteStorePut(note.id, data, function(){
+          done++;
+          setTimeout(next, 250);
+        });
+      });
+    });
+  }
+  next();
 }
 
 /* 旧数据迁移：localStorage → IndexedDB（仅在 IndexedDB 可用时执行） */
@@ -1248,23 +1280,25 @@ function loadNote(note, cb){
   setStatus('加载中…', true);
   noteStoreGet(note.id, function(data){
     if(!data) data = newNodeData();
-    /* 先把图片读进缓存再渲染，避免先出一排 1px 占位再回填 */
-    preloadNoteImages(data, function(){
-      initMind(data);
-      setStatus('已载入「'+note.name+'」', true);
-      cb&&cb();
-      /* 后台把这篇里残留的 base64 截图搬进图片库（只在首次打开时发生，不阻塞渲染） */
-      if(!hasBase64Image(data)) return;
-      setStatus('正在优化图片存储…', true);
-      var seq0 = _saveSeq;
-      migrateNoteImages(data, function(cnt){
-        if(!cnt){ setStatus('已载入「'+note.name+'」', true); return; }
-        /* 迁移期间用户若已编辑过，存储里是新树，不能拿迁移后的旧树覆盖回去 */
-        if(_saveSeq !== seq0){ setStatus('截图已整理，下次打开自动生效', true); return; }
-        noteStorePut(note.id, data, function(){
-          setStatus('已把 '+cnt+' 张截图移入图片库，下次打开更快', true);
-        });
+    function render(){
+      /* 先把图片读进缓存再渲染，避免先出一排 1px 占位再回填 */
+      preloadNoteImages(data, function(){
+        initMind(data);
+        setStatus('已载入「'+note.name+'」', true);
+        cb&&cb();
       });
+    }
+    if(!hasBase64Image(data)){ render(); return; }
+    /* 首次打开旧笔记：先把 base64 截图搬进图片库再渲染，
+       这样整树只有一份（渲染后 mind 还会再持一份副本），不会两倍峰值 */
+    setStatus('首次打开：正在把截图移入图片库…', true);
+    var seq0 = _saveSeq, cnt0 = 0;
+    migrateNoteImages(data, function(cnt){
+      cnt0 = cnt;
+      /* 迁移期间用户若已编辑过，存储里是新树，不能拿迁移后的旧树覆盖回去 */
+      if(cnt && _saveSeq === seq0) noteStorePut(note.id, data);
+      render();
+      setStatus(cnt ? ('已把 '+cnt+' 张截图移入图片库，下次打开更快') : ('已载入「'+note.name+'」'), true);
     });
   });
 }
@@ -4272,6 +4306,8 @@ document.addEventListener('DOMContentLoaded', function(){
     loadNote(notes[0]);
   }
   if(window.innerWidth>768) $('sidebar').classList.remove('hide');
+  /* 首屏稳定后再静默整理其余笔记的截图（一次性，标记记在 mm_img_mig_v1） */
+  setTimeout(function(){ try{ autoMigrateAll(); }catch(e){} }, 1800);
 });
 })();
 </script>
