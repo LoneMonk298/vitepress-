@@ -197,7 +197,7 @@ html.dark #map me-tpc .tags span.nt-err{background:rgba(15,23,42,.6);color:#93c5
 .mm-hint code{background:rgba(0,0,0,.06);padding:1px 5px;border-radius:3px;font-family:monospace;font-size:11.5px}
 html.dark .mm-hint code{background:rgba(255,255,255,.08)}
 /* Markdown 表格（节点内原地渲染：替代截图，可选中复制、可编辑） */
-.md-tb-wrap{display:block;max-width:min(820px,88vw);overflow-x:auto;overflow-y:hidden;margin:3px 0;border-radius:6px}
+.md-tb-wrap{display:block;max-width:min(520px,80vw);overflow-x:auto;overflow-y:hidden;margin:3px 0;border-radius:6px}
 .md-tb-bar{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:10.5px;color:#8b8bb0;padding:2px 2px 4px;font-weight:400}
 .md-tb-zoom{cursor:pointer;color:#5b63d3;border:1px solid rgba(102,126,234,.4);border-radius:5px;padding:1px 7px;background:#fff;font-size:10.5px;white-space:nowrap;user-select:none}
 .md-tb-zoom:hover{background:#667eea;color:#fff;border-color:#667eea}
@@ -205,7 +205,7 @@ html.dark .md-tb-bar{color:#8b8bb0}
 html.dark .md-tb-zoom{background:#262636;color:#a9b0f5;border-color:rgba(140,150,240,.45)}
 #rt-preview .md-tb-bar{display:none}
 .md-tb{border-collapse:collapse;font-size:11.5px;line-height:1.45;background:#fff;font-weight:400}
-.md-tb th,.md-tb td{border:1px solid #e5e4f2;padding:5px 9px;text-align:left;vertical-align:top;white-space:normal;min-width:84px}
+.md-tb th,.md-tb td{border:1px solid #e5e4f2;padding:4px 8px;text-align:left;vertical-align:top;white-space:normal;min-width:72px}
 .md-tb th{background:#f4f2fc;color:#5b4fa8;font-weight:600;white-space:nowrap;position:sticky;top:0}
 .md-tb tr:nth-child(even) td{background:#fcfcff}
 html.dark .md-tb{background:#1e1e2a;color:#e4e4f0}
@@ -2138,9 +2138,10 @@ function insertTableNode(mdText){
   var up = parent;
   while(up && up !== mind.nodeData){ up.expanded = true; up = up.parent; }
   try{ mind.bus.fire('operation', {name:'addChild', obj:node}); }catch(e){}
+  try{ mind.refresh(); }catch(e){}      /* 不重建 DOM 的话要手动刷新页面才看得到新表格 */
   queueSave();
   setTimeout(function(){
-    var dom = document.querySelector('#map [data-nodeid="'+id+'"]');
+    var dom = findNodeDom(id);
     if(dom){
       try{ mind.selectNode(dom); }catch(e){}
       try{ centerElInMap(dom); }catch(e2){}
@@ -2148,6 +2149,12 @@ function insertTableNode(mdText){
   }, 260);
   setStatus('已插入表格节点（双击可改内容）', true);
   return node;
+}
+/* 节点 id 与 DOM 上 data-nodeid 的对应（库给 DOM 加了 me 前缀） */
+function findNodeDom(id){
+  if(!id) return null;
+  return document.querySelector('#map [data-nodeid="'+id+'"]')
+      || document.querySelector('#map [data-nodeid="me'+id+'"]');
 }
 /* 判断一段粘贴文本的形态：纯表格 / 含结构的 Markdown / 普通文字 */
 function classifyPasteMarkdown(t){
@@ -2187,9 +2194,10 @@ function insertMarkdownSubtree(md){
   while(up && up !== mind.nodeData){ up.expanded = true; up = up.parent; }
   root.expanded = true;
   try{ mind.bus.fire('operation', {name:'addChild', obj:root}); }catch(e){}
+  try{ mind.refresh(); }catch(e){}      /* 立即重建 DOM，不用手动刷新 */
   queueSave();
   setTimeout(function(){
-    var dom = document.querySelector('#map [data-nodeid="'+root.id+'"]');
+    var dom = findNodeDom(root.id);
     if(dom){ try{ mind.selectNode(dom); }catch(e){} try{ centerElInMap(dom); }catch(e2){} }
   }, 300);
   setStatus('已按 Markdown 生成节点树（标题/表格/列表各成节点）', true);
@@ -3250,53 +3258,21 @@ function installDblClickInterceptor(){  try{
     }
   }catch(err){}
 }
-/* 焦点不在输入类控件时，把焦点还给导图画布 */
+/* 焦点不在输入类控件时，把焦点还给导图画布。
+   注意目标必须是库内部的 .map-canvas（MindElixir 把 onkeydown 绑在它身上，并已给它 tabindex=0），
+   聚焦 #map 外层容器没用 —— Tab/Enter/Delete/Ctrl+Z 一律得靠 .map-canvas 收到 keydown */
 function ensureMapFocus(){
   try{
     var ae = document.activeElement;
     if(ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable)) return;
-    var m = document.getElementById('map');
+    if(document.querySelector('.modal.show')) return;
+    var m = document.querySelector('#map .map-canvas');
+    if(!m){ m = document.getElementById('map'); }
     if(m && ae !== m) m.focus({preventScroll:true});
   }catch(e){}
 }
-/* Tab 加子节点 / Enter 加兄弟节点：不依赖库的键盘分发（库要求 keydown 的 target 恰好是 #map，
-   点过节点/跳转链接后焦点不在画布上，库的快捷键会整体失效） */
-function installMapHotkeys(){
-  if(document._mapHotkeysBound) return;
-  document._mapHotkeysBound = true;
-  document.addEventListener('keydown', function(e){
-    if(e.key !== 'Tab' && e.key !== 'Enter') return;
-    if(e.ctrlKey || e.metaKey || e.altKey || e.shiftKey && e.key === 'Tab') return;
-    var t = e.target;
-    if(t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
-    if(!mind || !mind.editable || !mind.nodeData) return;
-    if(document.querySelector('.modal.show')) return;
-    if(!getSelectedEl()) return;
-    e.preventDefault();
-    e.stopPropagation();
-    hotkeyNewNode(e.key === 'Tab' ? 'child' : 'sibling');
-  }, true);
-}
-/* 按 id 找父节点（插入的子树可能还没有 parent 指针） */
-function findParentByTree(n, id, parent){
-  if(!n) return null;
-  if(n.id === id) return parent;
-  var ch = n.children || [];
-  for(var i=0;i<ch.length;i++){
-    var r = findParentByTree(ch[i], id, n);
-    if(r) return r;
-  }
-  return null;
-}
-function hotkeyNewNode(mode){
-  if(!mind) return;
-  try{
-    if(mode === 'child') mind.addChild();
-    else mind.insertSibling('after');
-  }catch(e){
-    setStatus('添加节点失败：'+(e && e.message ? e.message : e), true);
-  }
-}
+/* Tab/Enter/Delete/Ctrl+Z/方向键全部交给库自己处理：只要焦点落在 .map-canvas 上，
+   库的 onkeydown 就会接管（见 ensureMapFocus）。这里只保留点击后回填焦点。 */
 
 function initMind(data){
   if(mind){ try{ mind.destroy(); }catch(e){} }
@@ -3511,7 +3487,6 @@ function initMind(data){
     moreMenu.addEventListener('click', function(e){ if(e.target.closest('button')) moreMenu.classList.add('hidden'); });
   }
   installDblClickInterceptor();
-  installMapHotkeys();
   var _rtSave = document.getElementById('btnRtSave'); if(_rtSave) _rtSave.onclick = function(e){ e.stopPropagation(); saveRichTextEdit(); };
   var _rtCancel = document.getElementById('btnRtCancel'); if(_rtCancel) _rtCancel.onclick = function(e){ e.stopPropagation(); cancelRichTextEdit(); };
   var _rtModal = document.getElementById('modalEditRt'); if(_rtModal) _rtModal.onclick = function(e){ if(e.target===this) cancelRichTextEdit(); };
