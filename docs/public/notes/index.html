@@ -19,6 +19,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei
 .note{padding:10px;border-radius:8px;cursor:pointer;font-size:13.5px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;gap:6px;border:1px solid transparent}
 .note:hover{background:var(--bg)}
 .note.on{background:linear-gradient(135deg,#667eea22,#764ba222);color:var(--pri);font-weight:600;border-color:var(--pri)}
+/* 自定义排序：可拖拽 */
+.note[draggable="true"]{cursor:grab}
+.note.dragging{opacity:.45}
+.note.drag-over{outline:1px dashed var(--pri);outline-offset:-1px}
 .note .n-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .note .n-meta{font-size:11px;color:var(--text2);white-space:nowrap}
 .note .n-del{border:none;background:transparent;color:var(--text2);cursor:pointer;padding:2px 6px;font-size:14px;border-radius:4px}
@@ -66,6 +70,8 @@ html.dark .ol-tag[data-t="易错"]{background:rgba(219,234,254,.16);color:#93c5f
 .tag-chip{display:inline-block;font-size:12px;padding:4px 10px;border-radius:12px;background:var(--bg);border:1px solid var(--bd);cursor:pointer;margin:4px 4px 0 0}
 .tag-chip:hover{border-color:#6366f1}
 .tag-chip.on{background:#6366f1;color:#fff;border-color:#6366f1}
+.tag-x{margin-left:5px;font-style:normal;font-size:11px;opacity:.5;cursor:pointer}
+.tag-x:hover{opacity:1;color:#ef4444}
 #tag-node-topic{font-size:12px;color:var(--text2);word-break:break-all;margin-bottom:8px;max-height:48px;overflow:auto}
 #tag-msg{font-size:11px;color:var(--text2);min-height:16px;margin:4px 0 6px}
 .tag-clear{font-size:11px;color:#6366f1;cursor:pointer;margin-left:4px;white-space:nowrap}
@@ -356,6 +362,7 @@ html.dark .s-badge.run{color:#fbbf24}
         <option value="name">按名称</option>
         <option value="edited">最近编辑</option>
         <option value="created">创建时间</option>
+        <option value="custom">自定义（可拖拽）</option>
       </select>
     </div>
     <div class="fold-bar">
@@ -1312,7 +1319,8 @@ function collectTags(data){
     if(n.tags && n.tags.length) for(var j=0;j<n.tags.length;j++) tags[n.tags[j]] = 1;
     (n.children||[]).forEach(walk);
   })(data.nodeData);
-  return Object.keys(tags).sort();
+  var hidden = getHiddenTags();
+  return Object.keys(tags).filter(function(t){ return hidden.indexOf(t) < 0; }).sort();
 }
 function saveNotes(arr){
   localStorage.setItem(LS_LIST, JSON.stringify(arr));
@@ -1411,8 +1419,23 @@ function toggleAllFolders(collapsed){
   setFoldState(st);
   setStatus(collapsed ? '已折叠全部文件夹' : '已展开全部文件夹', true);
 }
+/* 自定义排序顺序：{ 文件夹名: [笔记id...] }，只在「自定义（可拖拽）」模式下使用 */
+var ORDER_KEY = 'mm_notes_order';
+function getOrderMap(){
+  try{ var m = JSON.parse(localStorage.getItem(ORDER_KEY) || '{}'); return (m && typeof m === 'object') ? m : {}; }catch(e){ return {}; }
+}
+function setOrderMap(m){
+  try{ localStorage.setItem(ORDER_KEY, JSON.stringify(m)); }catch(e){}
+}
+function getFolderOrder(folder){
+  var m = getOrderMap(); var a = m[folder];
+  return Array.isArray(a) ? a : [];
+}
+function saveFolderOrder(folder, ids){
+  var m = getOrderMap(); m[folder] = ids; setOrderMap(m);
+}
 /* 对文件夹内的笔记数组按当前排序方式返回新副本 */
-function sortNotesArr(arr){
+function sortNotesArr(arr, folder){
   var m = getSortMode();
   var copy = arr.slice();
   if(m==='name'){
@@ -1421,13 +1444,29 @@ function sortNotesArr(arr){
     copy.sort(function(a,b){ return (b.updated||0)-(a.updated||0); });
   } else if(m==='created'){
     copy.sort(function(a,b){ return (b.created||0)-(a.created||0); });
+  } else if(m==='custom'){
+    var ord = getFolderOrder(folder);
+    var rank = {};
+    for(var i=0;i<ord.length;i++) rank[ord[i]] = i;
+    copy.sort(function(a,b){
+      var ia = rank[a.id], ib = rank[b.id];
+      var ka = (ia===undefined) ? 1e9 : ia, kb = (ib===undefined) ? 1e9 : ib;
+      if(ka !== kb) return ka - kb;
+      return String(a.name).localeCompare(String(b.name),'zh-CN');   /* 未登记过的按名字排 */
+    });
   }
   return copy;
 }
+/* 清掉拖拽过程中的高亮标记 */
+function clearDragMarks(){
+  var a = document.querySelectorAll('#list .note.drag-over');
+  for(var i=0;i<a.length;i++) a[i].classList.remove('drag-over');
+  var b = document.querySelectorAll('#list .note.dragging');
+  for(var j=0;j<b.length;j++) b[j].classList.remove('dragging');
+}
 function renderList(){
   var list = $('list');
-  notes = loadNotes();
-  $('cnt').textContent = notes.length ? notes.length+' 篇' : '';
+  notes = loadNotes();  $('cnt').textContent = notes.length ? notes.length+' 篇' : '';
   if(!notes.length){
     list.innerHTML = '<div class="empty-tip">还没有笔记<br><br>点下方「新建」或「导入」开始</div>';
     return;
@@ -1447,7 +1486,7 @@ function renderList(){
   var h = '';
   var foldState = getFoldState();
   for(var fi=0;fi<order.length;fi++){
-    var fname = order[fi], arr = sortNotesArr(folders[fname]);
+    var fname = order[fi], arr = sortNotesArr(folders[fname], fname);
     h += '<div class="folder'+(foldState[fname]?' collapsed':'')+'" data-folder="'+escapeHtml(fname)+'">';
     h += '<div class="f-head" data-folder="'+escapeHtml(fname)+'">';
     h += '<span class="f-arrow">▾</span>';
@@ -1458,7 +1497,7 @@ function renderList(){
     h += '</div><div class="f-notes">';
     for(var ni=0;ni<arr.length;ni++){
       var n = arr[ni];
-      h += '<div class="note'+(curNote&&curNote.id===n.id?' on':'')+'" data-id="'+n.id+'">';
+      h += '<div class="note'+(curNote&&curNote.id===n.id?' on':'')+'" data-id="'+n.id+'"'+(getSortMode()==='custom'?' draggable="true"':'')+'>';
       h += '<span class="n-name">'+escapeHtml(n.name)+'</span>';
       h += '<button class="note-move" data-id="'+n.id+'" title="移动文件夹">📁</button>';
       h += '<button class="n-del" data-id="'+n.id+'" title="删除">×</button>';
@@ -1534,6 +1573,42 @@ function renderList(){
         saveNotes(notes); renderList(); setStatus('已移到「'+n.folder+'」', true);
       };
     })(moves[k]);
+  }
+  /* 自定义排序：拖拽调整同文件夹内的顺序（顺序存 localStorage，换设备不同步） */
+  if(getSortMode()==='custom'){
+    var dragId = null;
+    for(k=0;k<els.length;k++){
+      (function(el){
+        el.ondragstart = function(ev){
+          dragId = el.dataset.id;
+          el.classList.add('dragging');
+          try{ ev.dataTransfer.effectAllowed = 'move'; ev.dataTransfer.setData('text/plain', dragId); }catch(e){}
+        };
+        el.ondragend = function(){ el.classList.remove('dragging'); dragId = null; clearDragMarks(); };
+        el.ondragover = function(ev){
+          if(!dragId || dragId === el.dataset.id) return;
+          ev.preventDefault();
+          clearDragMarks(); el.classList.add('drag-over');
+        };
+        el.ondrop = function(ev){
+          ev.preventDefault(); ev.stopPropagation();
+          var toId = el.dataset.id;
+          if(!dragId || dragId === toId) return;
+          var owner = el.closest('.folder');
+          var folder = owner ? owner.getAttribute('data-folder') : null;
+          var box = el.parentNode;              /* .f-notes */
+          var ids = [];
+          for(var z=0;z<box.children.length;z++) ids.push(box.children[z].dataset.id);
+          var from = ids.indexOf(dragId), to = ids.indexOf(toId);
+          if(from < 0 || to < 0) return;
+          ids.splice(from,1);
+          ids.splice(to,0,dragId);
+          if(folder !== null) saveFolderOrder(folder, ids);
+          renderList();
+          setStatus('顺序已保存（仅自定义排序模式生效）', true);
+        };
+      })(els[k]);
+    }
   }
   /* 标签：入口在工具栏「标签」面板（打标签 + 按标签过滤） */
 }
@@ -2779,13 +2854,56 @@ function addCustomTag(t){
   if(!t) return;
   var a = getCustomTags();
   if(a.indexOf(t) < 0){ a.push(t); try{ localStorage.setItem(CUSTOM_TAGS_KEY, JSON.stringify(a)); }catch(e){} }
+  unhideTag(t);   /* 重新添加曾被删掉的标签时解除隐藏 */
+}
+/* 被删掉的标签（预设标签删不掉常量，只能隐藏；自定义标签直接移除） */
+var HIDDEN_TAGS_KEY = 'mm_tags_hidden';
+function getHiddenTags(){
+  try{ var a = JSON.parse(localStorage.getItem(HIDDEN_TAGS_KEY)||'[]'); return Array.isArray(a)?a:[]; }catch(e){ return []; }
+}
+function setHiddenTags(a){
+  try{ localStorage.setItem(HIDDEN_TAGS_KEY, JSON.stringify(a)); }catch(e){}
+}
+function hideTag(t){
+  var a = getHiddenTags();
+  if(a.indexOf(t) < 0){ a.push(t); setHiddenTags(a); }
+}
+function unhideTag(t){
+  var a = getHiddenTags(), i = a.indexOf(t);
+  if(i >= 0){ a.splice(i,1); setHiddenTags(a); }
+}
+function removeCustomTag(t){
+  var a = getCustomTags(), i = a.indexOf(t);
+  if(i >= 0){ a.splice(i,1); try{ localStorage.setItem(CUSTOM_TAGS_KEY, JSON.stringify(a)); }catch(e){} }
+}
+/* 删除一个标签：清掉当前笔记所有节点上的它，再从可选列表里去掉 */
+function deleteTagEverywhere(t){
+  if(filterActive()){ setStatus('过滤视图中不能删标签，先点顶部徽标取消过滤', true); return 0; }
+  if(!mind || !mind.nodeData) return 0;
+  var n = 0;
+  (function walk(x){
+    if(!x) return;
+    if(x.tags && x.tags.length){
+      var i = x.tags.indexOf(t);
+      while(i >= 0){ x.tags.splice(i,1); n++; i = x.tags.indexOf(t); }
+      if(!x.tags.length) delete x.tags;
+    }
+    (x.children||[]).forEach(walk);
+  })(mind.nodeData);
+  removeCustomTag(t);
+  hideTag(t);            /* 预设标签是常量，删不掉，只能隐藏起来不再出现在选项里 */
+  queueSave();
+  try{ mind.refresh(); }catch(e){}
+  scheduleTagDeco();
+  return n;
 }
 function allTagOptions(){
   var set = {};
   for(var i=0;i<PRESET_TAGS.length;i++) set[PRESET_TAGS[i]]=1;
   var cs = getCustomTags();
   for(var j=0;j<cs.length;j++) set[cs[j]]=1;
-  return Object.keys(set);
+  var hidden = getHiddenTags();
+  return Object.keys(set).filter(function(t){ return hidden.indexOf(t) < 0; });
 }
 function openTagModal(){
   if(!mind) return;
@@ -2808,13 +2926,29 @@ function renderTagChips(){
   var h = '';
   for(var i=0;i<opts.length;i++){
     var t = opts[i];
-    h += '<span class="tag-chip'+(nodeTags.indexOf(t)>=0?' on':'')+'" data-tag="'+escapeHtml(t)+'">'+escapeHtml(t)+'</span>';
+    h += '<span class="tag-chip'+(nodeTags.indexOf(t)>=0?' on':'')+'" data-tag="'+escapeHtml(t)+'">'+escapeHtml(t)+'<i class="tag-x" data-del="'+escapeHtml(t)+'" title="删除这个标签">✕</i></span>';
   }
   document.getElementById('tag-chips').innerHTML = h;
   var chips = document.getElementById('tag-chips').querySelectorAll('.tag-chip');
   for(var k=0;k<chips.length;k++){
     (function(el){
-      el.onclick = function(){ toggleNodeTag(tagTargetNode, el.getAttribute('data-tag')); renderTagChips(); };
+      el.onclick = function(ev){
+        var delBtn = ev.target && ev.target.classList && ev.target.classList.contains('tag-x') ? ev.target : null;
+        if(delBtn){
+          ev.stopPropagation();
+          var t2 = delBtn.getAttribute('data-del');
+          if(!confirm('删除标签「'+t2+'」？\n会从当前笔记所有节点上移除这个标签，之后选项里也不再出现。')){
+            return;
+          }
+          var cnt = deleteTagEverywhere(t2);
+          renderTagChips(); renderTagFilter();
+          document.getElementById('tag-msg').textContent = '已删除标签「'+t2+'」，从 '+cnt+' 处移除';
+          setStatus('已删除标签「'+t2+'」', true);
+          return;
+        }
+        toggleNodeTag(tagTargetNode, el.getAttribute('data-tag'));
+        renderTagChips();
+      };
     })(chips[k]);
   }
 }
@@ -2876,6 +3010,13 @@ function decorateNodeTags(){
       for(var s=0;s<stray.length;s++){ if(!stray[s].closest('.nd-tags')) stray[s].remove(); }
       /* 库原生 tags 的 span 无 class，这里按标签名补配色 class（重点黄 / 易错蓝 / 其余灰） */
       var nsp = tps[i].querySelectorAll('.tags span');
+      /* 只有「纯文本」节点才显示标签名：含公式、图片、Markdown 表格（即能打开编辑弹窗的那种）
+         的节点一律隐藏标签名，避免标签和设备/公式挤在同一行 */
+      var tp = String((no && no.topic) || '');
+      var hasFormula = /\$[^\$]+\$/.test(tp);
+      var hasRich = /!\[/.test(tp) || (tp.indexOf('|') >= 0 && tp.indexOf('\n') >= 0) || !!(no && no.dangerouslySetInnerHTML);
+      var tagsBox = tps[i].querySelector('.tags');
+      if(tagsBox) tagsBox.style.display = (hasFormula || hasRich) ? 'none' : '';
       for(var q=0;q<nsp.length;q++){
         var txt = String(nsp[q].textContent||'').trim();
         if(txt === '重点') nsp[q].className = 'nt-key';
@@ -3235,6 +3376,23 @@ function installDblClickInterceptor(){  try{
         openRichTextEdit(no, t);
       }
     }, true);
+    /* 快捷键 E：选中节点后按 E 直接开编辑弹窗（双击容易被图片放大/lightbox 抢走） */
+    if(!document._editKeyBound){
+      document._editKeyBound = true;
+      document.addEventListener('keydown', function(e){
+        if(e.key !== 'e' && e.key !== 'E') return;
+        if(e.ctrlKey || e.metaKey || e.altKey) return;
+        var t = e.target;
+        if(t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+        if(!mind || !mind.editable) return;
+        if(document.querySelector('.modal.show')) return;
+        var selEl = getSelectedEl();
+        if(!selEl || !selEl.nodeObj) return;
+        e.preventDefault();
+        e.stopPropagation();
+        openRichTextEdit(selEl.nodeObj, selEl);
+      }, true);
+    }
     /* 表格角标「放大编辑」：点一下直接开编辑弹窗（不用记双击） */
     if(!document._tbZoomBound){
       document._tbZoomBound = true;
@@ -4456,6 +4614,7 @@ document.addEventListener('DOMContentLoaded', function(){
   $('sortSel').addEventListener('change', function(){
     setSortMode(this.value);
     renderList();
+    if(this.value === 'custom') setStatus('已切到自定义排序：直接拖动侧栏笔记可调整顺序', true);
   });
 
   /* XMind 导入 */
