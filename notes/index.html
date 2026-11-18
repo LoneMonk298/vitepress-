@@ -482,7 +482,8 @@ html.dark .s-badge.run{color:#fbbf24}
   <div class="mbox">
     <h3>服务器同步</h3>
     <p>所有笔记数据同步到自有服务器，支持大文件（无 100KB 限制）。<br>
-    适合多设备备份：手机、电脑、平板数据互通。</p>
+    适合多设备备份：手机、电脑、平板数据互通。<br>
+    <span style="color:#d9822b">注意：截图存在本地图片库，同步只传文字结构，换设备后原截图位置会显示空白占位。</span></p>
     <div id="sync-status" class="mm-status"></div>
     <div class="row">
       <button id="btnDown">从云端拉取</button>
@@ -683,12 +684,18 @@ function inlineHtml(text){
   var ph = [];
   function put(html){ ph.push(html); return '\u0000'+(ph.length-1)+'\u0000'; }
   var escL = function(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); };
-  /* Markdown 图片 ![alt](url) 或 ![alt](url =300x200)（必须在链接之前） */
+  /* Markdown 图片 ![alt](url) 或 ![alt](url =300x200)（必须在链接之前）
+     url 支持 mmimg://<id>（图片库引用）：渲染时转 objectURL，拿不到先占位 */
   text = text.replace(/!\[([^\]]*)\]\(([^)\s]+)(?:\s*=(\d+)x(\d+))?\)/g, function(_, alt, u, w, h){
-    var url = u.replace(/"/g,'&quot;');
+    var isStore = u.indexOf(IMG_PREFIX) === 0;
+    var url = isStore ? mmImgSrc(String(u).slice(IMG_PREFIX.length)).replace(/"/g,'&quot;')
+                      : u.replace(/"/g,'&quot;');
     var a = escL(alt).replace(/"/g,'&quot;');
     var st = 'max-width:100%;border-radius:6px;display:block;margin:2px 0;';
-    if(w && h){
+    if(isStore && !(w && h)){
+      /* 图片库里取不到原始像素，未写尺寸时按上限约束，避免占位图撑成一行 */
+      st += 'max-width:340px;max-height:170px;object-fit:contain;';
+    } else if(w && h){
       /* 显式声明的尺寸同样按 340×170 上限等比收缩，避免早期写了原始像素的大图撑爆节点 */
       var ew = Number(w), eh = Number(h);
       var esc = Math.min(1, 340/ew, 170/eh);
@@ -706,7 +713,8 @@ function inlineHtml(text){
         st += 'max-width:340px;max-height:170px;object-fit:contain;';
       }
     }
-    return put('<img src="'+url+'" alt="'+a+'" style="'+st+'" decoding="async">');
+    return put('<img '+(isStore ? 'data-mmimg="'+escL(String(u).slice(IMG_PREFIX.length))+'" ' : '')
+      + 'src="'+url+'" alt="'+a+'" style="'+st+'" decoding="async">');
   });
   /* 笔记/节点跳转 [[目标笔记名]]、[[目标笔记名#关键词]]、[[#关键词]]（本篇内跳转） */
   text = text.replace(/\[\[([^\]]+)\]\]/g, function(_, nm){
@@ -967,6 +975,191 @@ function noteStoreDel(id){
     }
   });
 }
+/* ===== 图片库（图片与导图数据分离）=====
+   节点 topic 里只存 ![alt](mmimg://id =WxH) 引用，图片字节放 IndexedDB 的 imgs store。
+   这样每次保存/撤销深拷贝的树只有 KB 级，不会因为几张截图把内存吃爆。 */
+var IMG_PREFIX = 'mmimg://';
+function newImgId(){ return 'i'+Date.now().toString(36)+Math.random().toString(36).slice(2,8); }
+/* 图片库单独一个 DB：不动笔记库的版本号，避免同源其它标签页占着连接把版本升级 block 住
+   打开请求排队串行：一屏几十张图同时各开一次连接会让后续请求全挂住（实测） */
+var _imgDB = null, _imgOpening = false, _imgWait = [];
+function _imgOpen(cb){
+  if(!window.indexedDB){ cb&&cb(); return; }
+  if(_imgDB){ cb&&cb(); return; }
+  _imgWait.push(cb||function(){});
+  if(_imgOpening) return;
+  _imgOpening = true;
+  function flush(){
+    _imgOpening = false;
+    var q = _imgWait; _imgWait = [];
+    for(var i=0;i<q.length;i++){ try{ q[i](); }catch(e){} }
+  }
+  var req = indexedDB.open('mm-imgs', 1);
+  req.onupgradeneeded = function(e){
+    var db = e.target.result;
+    if(!db.objectStoreNames.contains('imgs')) db.createObjectStore('imgs', { keyPath:'id' });
+  };
+  req.onsuccess = function(e){ _imgDB = e.target.result; flush(); };
+  req.onerror = function(){ console.warn('图片库打开失败，截图将退回 base64'); flush(); };
+}
+function _imgOk(){ return !!_imgDB; }
+function imgStorePut(id, blob, cb){
+  _imgOpen(function(){
+    if(!_imgOk()){ cb&&cb(false); return; }
+    try{
+      var tx = _imgDB.transaction('imgs','readwrite');
+      tx.objectStore('imgs').put({ id:id, blob:blob, t:Date.now() });
+      tx.oncomplete = function(){ cb&&cb(true); };
+      tx.onerror = function(){ cb&&cb(false); };
+    }catch(e){ cb&&cb(false); }
+  });
+}
+function imgStoreGet(id, cb){
+  _imgOpen(function(){
+    if(!_imgOk()){ cb&&cb(null); return; }
+    try{
+      var rq = _imgDB.transaction('imgs','readonly').objectStore('imgs').get(id);
+      rq.onsuccess = function(){ cb&&cb(rq.result ? rq.result.blob : null); };
+      rq.onerror = function(){ cb&&cb(null); };
+    }catch(e){ cb&&cb(null); }
+  });
+}
+/* data URL → Blob（迁移历史截图用，无需网络） */
+function dataUrlToBlob(u){
+  try{
+    var m = /^data:([^;,]*)(;base64)?,[\s\S]*$/.exec(String(u||''));
+    if(!m) return null;
+    var mime = m[1] || 'image/png';
+    var body = String(u).slice(String(u).indexOf(',')+1);
+    if(m[2]){
+      var bin = atob(body), n = bin.length, arr = new Uint8Array(n);
+      for(var i=0;i<n;i++) arr[i] = bin.charCodeAt(i);
+      return new Blob([arr], {type:mime});
+    }
+    return new Blob([decodeURIComponent(body)], {type:mime});
+  }catch(e){ return null; }
+}
+/* mmimg 引用 → 可显示的 src：命中缓存直接给 objectURL，否则占位并异步加载后回填 */
+var PLACEHOLDER_IMG = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+var _imgUrlCache = {}, _imgPending = {}, _hydrateRaf = 0;
+function mmImgSrc(id){
+  if(_imgUrlCache[id]) return _imgUrlCache[id];
+  if(!_imgPending[id]){
+    _imgPending[id] = 1;
+    imgStoreGet(id, function(blob){
+      delete _imgPending[id];
+      if(!blob) return;
+      try{ _imgUrlCache[id] = URL.createObjectURL(blob); }catch(e){ return; }
+      scheduleHydrate();
+    });
+  }
+  return PLACEHOLDER_IMG;
+}
+function scheduleHydrate(){
+  if(_hydrateRaf) return;
+  var raf = window.requestAnimationFrame || function(f){ return setTimeout(f, 16); };
+  _hydrateRaf = raf(function(){ _hydrateRaf = 0; hydrateImages(); });
+}
+function hydrateImages(){
+  var imgs = document.querySelectorAll('img[data-mmimg]');
+  for(var i=0;i<imgs.length;i++){
+    var id = imgs[i].getAttribute('data-mmimg');
+    var u = id && _imgUrlCache[id];
+    if(u && imgs[i].getAttribute('src') !== u) imgs[i].setAttribute('src', u);
+  }
+}
+/* 打开笔记前把本篇所有图片一次性读进来：渲染时缓存已热，不会出现占位图/白框 */
+function preloadNoteImages(data, cb){
+  var ids = [];
+  (function walk(n){
+    if(!n) return;
+    var t = String(n.topic||'');
+    if(t.indexOf(IMG_PREFIX) >= 0){
+      var re = /mmimg:\/\/([A-Za-z0-9_-]+)/g, m;
+      while((m = re.exec(t))) ids.push(m[1]);
+    }
+    (n.children||[]).forEach(walk);
+  })(data.nodeData);
+  var uniq = [];
+  for(var i=0;i<ids.length;i++) if(uniq.indexOf(ids[i]) < 0 && !_imgUrlCache[ids[i]]) uniq.push(ids[i]);
+  if(!uniq.length || !window.indexedDB){ cb&&cb(); return; }
+  var pending = uniq.length, stopped = false;
+  /* 兜底：库里迟迟不返回（比如被别的标签页占着）也不卡住打开流程 */
+  var timer = setTimeout(function(){ if(!stopped){ stopped = true; cb&&cb(); } }, 3000);
+  uniq.forEach(function(id){
+    imgStoreGet(id, function(blob){
+      if(!stopped){
+        if(blob && !_imgUrlCache[id]){ try{ _imgUrlCache[id] = URL.createObjectURL(blob); }catch(e){} }
+        if(--pending === 0){ stopped = true; clearTimeout(timer); cb&&cb(); }
+      }
+    });
+  });
+}
+/* 把一段 topic 里的 base64 截图搬进图片库，返回替换后的文本 */
+function migrateTopicImages(topic, cb){
+  var txt = String(topic||'');
+  if(txt.indexOf('data:image') < 0){ cb(txt, 0); return; }
+  var re = /!\[([^\]]*)\]\((data:image\/[^ )]+)(?: =(\d+)x(\d+))?\)/g;
+  var list = [], m;
+  while((m = re.exec(txt))) list.push({ alt:m[1], data:m[2], w:m[3], h:m[4], start:m.index, end:re.lastIndex });
+  if(!list.length){ cb(txt, 0); return; }
+  var reps = new Array(list.length), pending = list.length, migrated = 0;
+  function maybeDone(){
+    if(pending > 0) return;
+    if(!migrated){ cb(txt, 0); return; }
+    var out = '', last = 0;
+    list.forEach(function(it, i){
+      if(!reps[i]) return;
+      out += txt.slice(last, it.start) + reps[i];
+      last = it.end;
+    });
+    out += txt.slice(last);
+    cb(out, migrated);
+  }
+  list.forEach(function(it, i){
+    var blob = dataUrlToBlob(it.data);
+    if(!blob){ pending--; maybeDone(); return; }
+    var dw = Number(it.w)||0, dh = Number(it.h)||0;
+    if(!dw || !dh){
+      var sz = imgSizeFromDataUrl(it.data);
+      if(sz){
+        var sc = Math.min(1, 340/sz.w, 170/sz.h);
+        dw = Math.max(40, Math.round(sz.w*sc)); dh = Math.max(24, Math.round(sz.h*sc));
+      }
+    }
+    var iid = newImgId();
+    imgStorePut(iid, blob, function(ok){
+      if(ok){ reps[i] = '!['+it.alt+']('+IMG_PREFIX+iid+(dw&&dh?' ='+dw+'x'+dh:'')+')'; migrated++; }
+      pending--; maybeDone();
+    });
+  });
+}
+/* 整篇笔记迁移；有改动返回数量（调用方负责落盘） */
+function hasBase64Image(data){
+  if(!data || !data.nodeData) return false;
+  var found = false;
+  (function walk(n){
+    if(found || !n) return;
+    if(String(n.topic||'').indexOf('data:image') >= 0){ found = true; return; }
+    (n.children||[]).forEach(walk);
+  })(data.nodeData);
+  return found;
+}
+function migrateNoteImages(data, cb){
+  if(!data || !data.nodeData){ cb(0); return; }
+  var nodes = [];
+  (function walk(n){ if(!n) return; nodes.push(n); (n.children||[]).forEach(walk); })(data.nodeData);
+  var list = nodes.filter(function(n){ return String(n.topic||'').indexOf('data:image') >= 0; });
+  if(!list.length){ cb(0); return; }
+  var pending = list.length, cnt = 0;
+  list.forEach(function(n){
+    migrateTopicImages(n.topic, function(newTopic, c){
+      if(c){ n.topic = newTopic; delete n.dangerouslySetInnerHTML; cnt += c; }
+      if(--pending === 0) cb(cnt);
+    });
+  });
+}
+
 /* 旧数据迁移：localStorage → IndexedDB（仅在 IndexedDB 可用时执行） */
 function migrateLocalToIDB(){
   if(!window.indexedDB) return;
@@ -1055,9 +1248,21 @@ function loadNote(note, cb){
   setStatus('加载中…', true);
   noteStoreGet(note.id, function(data){
     if(!data) data = newNodeData();
-    initMind(data);
-    setStatus('已载入「'+note.name+'」', true);
-    cb&&cb();
+    /* 先把图片读进缓存再渲染，避免先出一排 1px 占位再回填 */
+    preloadNoteImages(data, function(){
+      initMind(data);
+      setStatus('已载入「'+note.name+'」', true);
+      cb&&cb();
+      /* 后台把这篇里残留的 base64 截图搬进图片库（只在首次打开时发生，不阻塞渲染） */
+      if(!hasBase64Image(data)) return;
+      setStatus('正在优化图片存储…', true);
+      migrateNoteImages(data, function(cnt){
+        if(!cnt){ setStatus('已载入「'+note.name+'」', true); return; }
+        noteStorePut(note.id, data, function(){
+          setStatus('已把 '+cnt+' 张截图移入图片库，下次打开更快', true);
+        });
+      });
+    });
   });
 }
 
@@ -1233,14 +1438,20 @@ function stripBadgeHtml(s){
   return s.replace(/<span[^>]*>\s*<\/span>/gi, '').replace(/[ \t]+$/gm, '').replace(/\n{3,}/g, '\n\n').trim();
 }
 
-/* 递归为每个节点根据 topic 重新生成 dangerouslySetInnerHTML（编辑后 HTML 不丢失） */
+/* 递归为每个节点根据 topic 重新生成 dangerouslySetInnerHTML（编辑后 HTML 不丢失）
+   公式节点的 KaTeX 渲染很贵，合并成整本书后节点上千：按「节点 id + topic」缓存，
+   只有内容真的变了才重算（缓存不写进节点对象，避免被 getData 拷进存储） */
+var _inhCache = Object.create(null);
 function applyInlineHtml(data){
   var changed = false;
   (function walk(n){
     if(!n) return;
     var raw = stripBadgeHtml(String(n.topic||''));
     if(raw !== String(n.topic||'')){ n.topic = raw; _badgeFixCount++; changed = true; }
-    var h = inlineHtml(raw);
+    var hit = _inhCache[n.id], h;
+    /* 带图片引用的节点不缓存：图片 src 取决于图片库缓存是否就绪，缓存 HTML 会把占位固化 */
+    if(hit && hit.src === raw && raw.indexOf(IMG_PREFIX) < 0) h = hit.html;
+    else { h = inlineHtml(raw); if(raw.indexOf(IMG_PREFIX) < 0) _inhCache[n.id] = { src:raw, html:h }; }
     var plain = raw.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
     if(h && h !== plain){
       if(n.dangerouslySetInnerHTML !== h){ n.dangerouslySetInnerHTML = h; changed = true; }
@@ -1702,24 +1913,33 @@ function findNodeData(root, id){
   return res;
 }
 
-/* ===== 拖拽 / 粘贴截图 → 图片节点 ===== */
-function fileToDataUrl(file, cb){
-  function fallback(){
-    var fr = new FileReader();
-    fr.onload = function(){ cb(fr.result, 0, 0); };
-    fr.onerror = function(){ setStatus('图片读取失败', true); };
-    fr.readAsDataURL(file);
+/* ===== 拖拽 / 粘贴截图 → 图片节点 =====
+   图片不再转 base64 塞进节点文本：压缩后直接存 IndexedDB 图片库，节点只留 mmimg://id 引用。
+   GIF 保留原帧（不压缩），其余经 canvas 降采样转 WebP（长边 ≤1200）。 */
+function fileToImgRef(file, cb){
+  if(!/^image\//.test(file.type || '')){ setStatus('不是图片文件', true); return; }
+  function store(blob, w, h){
+    if(!blob){ setStatus('图片编码失败', true); return; }
+    var iid = newImgId();
+    imgStorePut(iid, blob, function(ok){
+      if(!ok){ setStatus('图片保存失败：本地数据库不可用', true); return; }
+      try{ _imgUrlCache[iid] = URL.createObjectURL(blob); }catch(e){}  /* 缓存命中，免去再读一次库 */
+      cb(IMG_PREFIX + iid, w || 0, h || 0);
+    });
   }
-  /* GIF 保留原帧；其余截图经 canvas 降采样转 WebP，压低 base64 体积
-     （内存、IndexedDB 存储、撤销快照同时受益）；压缩后宽高回传给节点写死尺寸 */
-  if(!/^image\//.test(file.type) || file.type === 'image/gif'){ fallback(); return; }
   var url = URL.createObjectURL(file);
   var img = new Image();
   img.onload = function(){
+    var w = img.naturalWidth || 1, h = img.naturalHeight || 1;
+    if((file.type||'') === 'image/gif'){
+      /* 动图不能用 canvas（会丢帧），直接存原文件 */
+      URL.revokeObjectURL(url);
+      store(file, w, h);
+      return;
+    }
     try{
       URL.revokeObjectURL(url);
       var MAX = 1200;
-      var w = img.naturalWidth || 1, h = img.naturalHeight || 1;
       var sc = Math.min(1, MAX / Math.max(w, h));
       var c = document.createElement('canvas');
       c.width = Math.max(1, Math.round(w*sc));
@@ -1728,14 +1948,23 @@ function fileToDataUrl(file, cb){
       g.fillStyle = '#ffffff';
       g.fillRect(0, 0, c.width, c.height);
       g.drawImage(img, 0, 0, c.width, c.height);
-      /* 老浏览器不支持 WebP 时 toDataURL 自动回退 image/png，结果仍可用 */
-      cb(c.toDataURL('image/webp', 0.85), c.width, c.height);
-    }catch(e){ fallback(); }
+      var done = function(blob){
+        if(blob){ store(blob, c.width, c.height); return; }
+        var fb = dataUrlToBlob(c.toDataURL('image/webp', 0.85));
+        store(fb, c.width, c.height);
+      };
+      if(c.toBlob) c.toBlob(done, 'image/webp', 0.85);
+      else done(null);
+    }catch(e){
+      setStatus('图片处理失败：'+e.message, true);
+    }
   };
-  img.onerror = function(){ URL.revokeObjectURL(url); fallback(); };
+  img.onerror = function(){ URL.revokeObjectURL(url); setStatus('图片读取失败', true); };
   img.src = url;
 }
-/* 在选中节点下插入一个 base64 内嵌图片节点；无选中则挂根节点 */
+/* 兼容旧调用名（内部已改为图片库引用） */
+function fileToDataUrl(file, cb){ fileToImgRef(file, cb); }
+/* 在选中节点下插入一个图片节点（srcRef 为图片库引用 mmimg://id 或外链 URL）；无选中则挂根节点 */
 function insertImageNode(dataUrl, alt, w, h){
   if(!mind || !mind.nodeData || !curNote){ setStatus('请先打开一篇笔记', true); return null; }
   if(filterBackup){ setStatus('过滤视图中不能加图片，取消过滤后再操作', true); return null; }
@@ -2169,7 +2398,9 @@ document.addEventListener('pointerdown', function(e){
   var lb = $('imgLightbox');
   if(lb && lb.classList.contains('show') && lb.contains(t)) return; /* 预览中的大图拖拽不受影响 */
   var src = t.getAttribute('src') || '';
-  if(src && (src.indexOf('data:image')===0 || /^https?:\/\//.test(src))){
+  var mmid = t.getAttribute('data-mmimg') || '';
+  if(mmid && !_imgUrlCache[mmid]){ mmImgSrc(mmid); return; }  /* 图片还没从库里读出来，先触发加载 */
+  if(src && (src.indexOf('data:image')===0 || src.indexOf('blob:')===0 || src.indexOf('mmimg://')===0 || /^https?:\/\//.test(src))){
     e.preventDefault(); e.stopImmediatePropagation();
     openLightbox(src, t.getAttribute('alt'));
   }
@@ -2181,7 +2412,9 @@ document.addEventListener('click', function(e){
   var lb = $('imgLightbox');
   if(lb && lb.classList.contains('show') && lb.contains(t)) return;
   var src = t.getAttribute('src') || '';
-  if(src && (src.indexOf('data:image')===0 || /^https?:\/\//.test(src))){
+  var mmid = t.getAttribute('data-mmimg') || '';
+  if(mmid && !_imgUrlCache[mmid]){ mmImgSrc(mmid); return; }
+  if(src && (src.indexOf('data:image')===0 || src.indexOf('blob:')===0 || src.indexOf('mmimg://')===0 || /^https?:\/\//.test(src))){
     e.preventDefault(); e.stopImmediatePropagation();
     openLightbox(src, t.getAttribute('alt'));
   }
@@ -3014,6 +3247,13 @@ function queueSave(){
          再 getData() 深拷贝存盘（getData 本身是 JSON 深拷贝，改拷贝不会影响 mind.nodeData） */
       var htmlChanged = applyInlineHtml(mind);
       var data = mind.getData();
+      /* 派生字段不带进存储：dangerouslySetInnerHTML 是 KaTeX/插图渲染出来的 HTML，
+         每个节点几十 KB，存了也是打开时重建，纯属给 IndexedDB 和内存加负担 */
+      (function strip(n){
+        if(!n) return;
+        if(n.dangerouslySetInnerHTML) delete n.dangerouslySetInnerHTML;
+        (n.children||[]).forEach(strip);
+      })(data.nodeData);
       noteStorePut(curNote.id, data);
       /* 记录最近编辑时间（供统计面板展示） */
       curNote.updated = Date.now();
@@ -3021,7 +3261,7 @@ function queueSave(){
       for(var i=0;i<arr.length;i++) if(arr[i].id===curNote.id) arr[i].updated = curNote.updated;
       saveNotes(arr);
       /* 只在 HTML 真的变化时重建 DOM，避免 undo/redo 后库已 refresh 过我们又重复刷新导致视图乱跑 */
-      if(htmlChanged){ try{ mind.refresh(); }catch(e){} }
+      if(htmlChanged){ try{ mind.refresh(); }catch(e){} hydrateImages(); }
       setStatus('已自动保存', true);
     }catch(e){ setStatus('保存失败：'+e.message); }
   }, 800);
@@ -3534,7 +3774,8 @@ function doMerge(){
       var d = data && data.nodeData;
       if(d){
         var rt = String(d.topic||'');
-        var br = { id:mgNewId(), topic:note.name, expanded:true, children:[] };
+        /* 章节默认折叠：MindElixir 折叠节点的子孙不生成 DOM，整本书合并后 DOM 数骤降 */
+        var br = { id:mgNewId(), topic:note.name, expanded:false, children:[] };
         if(d.children && d.children.length){
           if(rt && rt !== note.name){
             /* 中心主题与笔记名不同：保留原中心主题，再挂其子节点 */
@@ -3558,14 +3799,19 @@ function doMerge(){
     renewNodeIds(root);
     var id = 'n'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
     var now = Date.now();
-    noteStorePut(id, { nodeData:root, arrows:[], summaries:[], direction:'right' }, function(){
-      var arr = loadNotes();
-      arr.push({ id:id, name:name, folder:'未分类', created:now, updated:now });
-      saveNotes(arr);
-      renderList();
-      $('modalMerge').classList.remove('show');
-      for(var z=0;z<arr.length;z++) if(arr[z].id===id){ loadNote(arr[z]); break; }
-      setStatus('已合并 '+root.children.length+' 篇为新笔记「'+name+'」'+(empty?'（跳过 '+empty+' 篇空笔记':'')+'）', true);
+    var data = { nodeData:root, arrows:[], summaries:[], direction:'right' };
+    /* 合并会把几篇的截图堆到同一棵树：先迁进图片库，避免新笔记一出生就背着几十 MB base64 */
+    migrateNoteImages(data, function(cnt){
+      if(cnt) setStatus('正在把 '+cnt+' 张截图移入图片库…', true);
+      noteStorePut(id, data, function(){
+        var arr = loadNotes();
+        arr.push({ id:id, name:name, folder:'未分类', created:now, updated:now });
+        saveNotes(arr);
+        renderList();
+        $('modalMerge').classList.remove('show');
+        for(var z=0;z<arr.length;z++) if(arr[z].id===id){ loadNote(arr[z]); break; }
+        setStatus('已合并 '+root.children.length+' 篇为新笔记「'+name+'」'+(empty?'（跳过 '+empty+' 篇空笔记':'')+'，各章默认折叠，点节点左侧三角展开', true);
+      });
     });
   }
 }
