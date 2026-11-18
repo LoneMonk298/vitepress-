@@ -193,10 +193,28 @@ html.dark #map me-tpc .tags span.nt-err{background:rgba(15,23,42,.6);color:#93c5
 .mm-hint{font-size:12px;color:var(--text2);line-height:1.7;margin:10px 0 0;padding:10px;background:var(--bg);border-radius:8px;border:1px solid var(--bd)}
 .mm-hint code{background:rgba(0,0,0,.06);padding:1px 5px;border-radius:3px;font-family:monospace;font-size:11.5px}
 html.dark .mm-hint code{background:rgba(255,255,255,.08)}
+/* Markdown 表格（节点内原地渲染：替代截图，可选中复制、可编辑） */
+.md-tb-wrap{display:block;max-width:560px;overflow-x:auto;overflow-y:hidden;margin:3px 0;border-radius:6px}
+.md-tb-bar{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:10.5px;color:#8b8bb0;padding:2px 2px 4px;font-weight:400}
+.md-tb-zoom{cursor:pointer;color:#5b63d3;border:1px solid rgba(102,126,234,.4);border-radius:5px;padding:1px 7px;background:#fff;font-size:10.5px;white-space:nowrap;user-select:none}
+.md-tb-zoom:hover{background:#667eea;color:#fff;border-color:#667eea}
+html.dark .md-tb-bar{color:#8b8bb0}
+html.dark .md-tb-zoom{background:#262636;color:#a9b0f5;border-color:rgba(140,150,240,.45)}
+#rt-preview .md-tb-bar{display:none}
+.md-tb{border-collapse:collapse;font-size:11.5px;line-height:1.45;background:#fff;font-weight:400}
+.md-tb th,.md-tb td{border:1px solid #e5e4f2;padding:5px 8px;text-align:left;vertical-align:top;white-space:normal;min-width:52px}
+.md-tb th{background:#f4f2fc;color:#5b4fa8;font-weight:600;white-space:nowrap;position:sticky;top:0}
+.md-tb tr:nth-child(even) td{background:#fcfcff}
+html.dark .md-tb{background:#1e1e2a;color:#e4e4f0}
+html.dark .md-tb th,html.dark .md-tb td{border-color:#33334a}
+html.dark .md-tb th{background:#2a2740;color:#c4bcf5}
+html.dark .md-tb tr:nth-child(even) td{background:#232331}
 /* 富文本节点编辑弹窗 */
-#modalEditRt .mbox{max-width:600px}
+#modalEditRt .mbox{max-width:min(940px,94vw);width:min(940px,94vw)}
 #rt-topic-input{min-height:140px;font-family:"SF Mono","Consolas",monospace;font-size:13px;line-height:1.6;resize:vertical}
-#rt-preview{min-height:60px;max-height:200px;overflow:auto;padding:10px;border:1px dashed var(--bd);border-radius:6px;background:var(--bg);font-size:14px;line-height:1.6;word-break:break-word}
+#rt-preview{min-height:120px;max-height:52vh;overflow:auto;padding:10px;border:1px dashed var(--bd);border-radius:6px;background:var(--bg);font-size:14px;line-height:1.6;word-break:break-word}
+#rt-preview .md-tb-wrap{max-width:100%}
+#rt-preview .md-tb{font-size:13px}
 #rt-preview .hint{color:var(--text2);font-size:12px}
 /* XMind 导入区 */
 .imp-xmind{margin-top:14px;border-top:1px dashed var(--bd);padding-top:12px}
@@ -460,13 +478,14 @@ html.dark .s-badge.run{color:#fbbf24}
 <div class="modal" id="modalEditRt">
   <div class="mbox">
     <h3>编辑节点内容</h3>
-    <p>支持 $公式$、![图片](链接)、[[笔记名]]、<b>**粗体**</b>、<i>*斜体*</i>、<del>~~删除线~~</del>。<br>
-       在文本框里<b>选中几个字</b>再点下方 B / I / S 按钮，只包裹选中部分；节点上直接 Ctrl+B / I / D 则作用于整行。</p>
+    <p>支持 $公式$、![图片](链接)、[[笔记名]]、Markdown 表格、<b>**粗体**</b>、<i>*斜体*</i>、<del>~~删除线~~</del>。<br>
+       表格直接粘贴 Markdown 文本即可（第一行表头，第二行 <code>|---|---|</code>），不用再截图；预览区就是节点里显示的效果。</p>
     <label>节点内容</label>
-    <div style="display:flex;gap:6px;margin-bottom:6px">
+    <div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap">
       <button type="button" id="rtBtnB" title="粗体：**文字**" style="font-weight:700;padding:2px 10px">B</button>
       <button type="button" id="rtBtnI" title="斜体：*文字*" style="font-style:italic;padding:2px 10px">I</button>
       <button type="button" id="rtBtnS" title="删除线：~~文字~~" style="text-decoration:line-through;padding:2px 10px">S</button>
+      <button type="button" id="rtBtnTable" title="在光标处插入一个 3 列 2 行的空表格" style="padding:2px 10px">＋ 表格</button>
     </div>
     <textarea id="rt-topic-input" spellcheck="false"></textarea>
     <label>预览</label>
@@ -684,6 +703,23 @@ function inlineHtml(text){
   var ph = [];
   function put(html){ ph.push(html); return '\u0000'+(ph.length-1)+'\u0000'; }
   var escL = function(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); };
+  /* Markdown 表格块（≥2 行连续的 | 行）：整块抽成真表格，再走行内语法。
+     必须在图片/链接之前，否则 | 与换行会被压平成一行文字 */
+  if(text.indexOf('\n') >= 0 && text.indexOf('|') >= 0){
+    var ls0 = text.split('\n'), out0 = [], buf0 = [];
+    var flush0 = function(){
+      if(buf0.length >= 2) out0.push(put(mdTableHtml(buf0)));
+      else if(buf0.length === 1) out0.push(buf0[0]);
+      buf0 = [];
+    };
+    for(var z0=0; z0<ls0.length; z0++){
+      var L0 = ls0[z0];
+      if(/^\s*\|/.test(L0) && L0.indexOf('|', L0.indexOf('|')+1) >= 0) buf0.push(L0);
+      else { flush0(); out0.push(L0); }
+    }
+    flush0();
+    text = out0.join('\n');
+  }
   /* Markdown 图片 ![alt](url) 或 ![alt](url =300x200)（必须在链接之前）
      url 支持 mmimg://<id>（图片库引用）：渲染时转 objectURL，拿不到先占位 */
   text = text.replace(/!\[([^\]]*)\]\(([^)\s]+)(?:\s*=(\d+)x(\d+))?\)/g, function(_, alt, u, w, h){
@@ -780,6 +816,53 @@ function parseTableRow(row){
     out.push(c);
   }
   return out;
+}
+/* 表格单元格：走一遍行内语法（粗体/公式/标签），拿到的已是成品 HTML */
+function mdCellHtml(s){
+  var v = String(s==null?'':s).trim();
+  if(!v) return '';
+  return inlineHtml(v) || v.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+/* Markdown 表格块 → 节点内可读的真表格（不压缩、不糊，可直接选中复制） */
+function mdTableHtml(lines){
+  if(!lines || !lines.length) return '';
+  var header = parseTableRow(lines[0]);
+  var start = 1;
+  if(lines.length > 1){
+    var sep = lines[1].replace(/^\s*\|/, '').replace(/\|\s*$/, '');
+    if(sep.indexOf('-') >= 0 && /^[\s:|\-]+$/.test(sep)) start = 2;
+  }
+  if(!header.length) return lines.join('\n');
+  var cols = header.length, rows = [], i, r;
+  for(i=start;i<lines.length;i++){
+    r = parseTableRow(lines[i]);
+    if(r.length > cols) cols = r.length;
+    rows.push(r);
+  }
+  while(header.length < cols) header.push('');
+  var h = '<div class="md-tb-wrap">'
+    + '<div class="md-tb-bar"><span>表格 · '+cols+' 列 × '+rows.length+' 行</span>'
+    + '<span class="md-tb-zoom">放大编辑</span></div>'
+    + '<table class="md-tb"><thead><tr>';
+  for(i=0;i<cols;i++) h += '<th>'+mdCellHtml(header[i])+'</th>';
+  h += '</tr></thead><tbody>';
+  for(var k=0;k<rows.length;k++){
+    h += '<tr>';
+    for(i=0;i<cols;i++) h += '<td>'+mdCellHtml(rows[k][i])+'</td>';
+    h += '</tr>';
+  }
+  h += '</tbody></table></div>';
+  return h;
+}
+/* 判断一段粘贴文本是不是 Markdown 表格（≥2 行以 | 开头） */
+function isMdTableText(t){
+  if(!t) return false;
+  var ls = String(t).replace(/\r/g,'').split('\n');
+  var n = 0;
+  for(var i=0;i<ls.length;i++){
+    if(/^\s*\|/.test(ls[i]) && ls[i].indexOf('|', ls[i].indexOf('|')+1) >= 0) n++;
+  }
+  return n >= 2;
 }
 function mdToNodeData(md){
   var counter = 0;
@@ -2035,6 +2118,41 @@ function insertImageNode(dataUrl, alt, w, h){
   setStatus('已插入图片节点', true);
   return node;
 }
+/* 在选中节点下插入一个 Markdown 表格节点：清晰不糊、可双击编辑，替代表格截图 */
+function insertTableNode(mdText){
+  if(!mind || !mind.nodeData || !curNote){ setStatus('请先打开一篇笔记', true); return null; }
+  if(filterBackup){ setStatus('过滤视图中不能加表格，取消过滤后再操作', true); return null; }
+  var t = String(mdText||'').replace(/\r/g,'').replace(/^\s*\n+/,'').replace(/\n+\s*$/,'');
+  if(!isMdTableText(t)){ setStatus('没识别到 Markdown 表格：需要至少两行以 | 开头', true); return null; }
+  var parent = mind.nodeData;
+  var selEl = getSelectedEl();
+  if(selEl && selEl.nodeObj){
+    var found = findNodeData(mind.nodeData, selEl.nodeObj.id);
+    if(found) parent = found;
+  }
+  if(!parent.children) parent.children = [];
+  var id = 'n' + Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+  var node = { id:id, topic:t, expanded:true, children:[] };
+  var h = inlineHtml(t);
+  if(h && h !== escapeHtml(t)) node.dangerouslySetInnerHTML = h;
+  parent.children.push(node);
+  /* 父链展开：否则插在折叠节点下时表格不可见（看起来像没插入） */
+  var up = parent;
+  while(up && up !== mind.nodeData){ up.expanded = true; up = up.parent; }
+  try{ mind.bus.fire('operation', {name:'addChild', obj:node}); }catch(e){}
+  queueSave();
+  setTimeout(function(){
+    var dom = document.querySelector('#map [data-nodeid="'+id+'"]');
+    if(dom){
+      try{ mind.selectNode(dom); }catch(e){}
+      try{ centerElInMap(dom); }catch(e2){}
+    }
+  }, 260);
+  setStatus('已插入表格节点（双击可改内容）', true);
+  return node;
+}
+/* 同一次粘贴可能被多个监听重复触发：同文本 500ms 内只落一次 */
+var _tblPasteTxt = '', _tblPasteTs = 0;
 
 /* ===== 复习进度记忆（按笔记分别记录，方便一天天复习）===== */
 function loadPosAll(){
@@ -2991,11 +3109,26 @@ function openRichTextEdit(nodeObj, nodeEle){
   if(bI) bI.onclick = function(){ wrapRtSelection('*','*'); };
   var bS = document.getElementById('rtBtnS');
   if(bS) bS.onclick = function(){ wrapRtSelection('~~','~~'); };
+  var bT = document.getElementById('rtBtnTable');
+  if(bT) bT.onclick = function(){ insertRtTableTemplate(); };
   document.getElementById('modalEditRt').classList.add('show');
   setTimeout(function(){ ta.focus(); }, 50);
 }
-function updateRtPreview(){
+/* 在编辑框光标处插入一个空白 Markdown 表格模板 */
+function insertRtTableTemplate(){
   var ta = document.getElementById('rt-topic-input');
+  if(!ta) return;
+  var tpl = '| 维度 | 概念 A | 概念 B |\n|---|---|---|\n| 作用层级 |  |  |\n| 核心原理 |  |  |';
+  var s = ta.selectionStart, e = ta.selectionEnd, v = ta.value;
+  var pre = (s > 0 && v.slice(0, s).slice(-1) !== '\n') ? '\n\n' : '';
+  var post = (v.slice(e) && v.slice(e).charAt(0) !== '\n') ? '\n' : '';
+  ta.value = v.slice(0,s) + pre + tpl + post + v.slice(e);
+  ta.focus();
+  var caret = s + pre.length + tpl.length;
+  ta.selectionStart = caret; ta.selectionEnd = caret;
+  updateRtPreview();
+}
+function updateRtPreview(){  var ta = document.getElementById('rt-topic-input');
   var pv = document.getElementById('rt-preview');
   if(!ta || !pv) return;
   var val = ta.value;
@@ -3026,8 +3159,7 @@ function cancelRichTextEdit(){
   if(modal) modal.classList.remove('show');
   rtEditTarget = null;
 }
-function installDblClickInterceptor(){
-  try{
+function installDblClickInterceptor(){  try{
     var mapEl = document.querySelector('#map .map-canvas');
     if(!mapEl){ mapEl = document.querySelector('#map'); if(!mapEl) return; } if(mapEl._dblClickInstalled) return;
     mapEl._dblClickInstalled = true;
@@ -3045,6 +3177,21 @@ function installDblClickInterceptor(){
         openRichTextEdit(no, t);
       }
     }, true);
+    /* 表格角标「放大编辑」：点一下直接开编辑弹窗（不用记双击） */
+    if(!document._tbZoomBound){
+      document._tbZoomBound = true;
+      document.addEventListener('click', function(e){
+        var b = e.target;
+        while(b && b !== document.body && !(b.classList && b.classList.contains('md-tb-zoom'))) b = b.parentElement;
+        if(!b || b === document.body) return;
+        var t = b;
+        while(t && t !== document.body && t.tagName !== 'ME-TPC') t = t.parentElement;
+        if(!t || t.tagName !== 'ME-TPC') return;
+        e.stopPropagation();
+        e.preventDefault();
+        if(t.nodeObj) openRichTextEdit(t.nodeObj, t);
+      }, true);
+    }
   }catch(err){}
 }
 
@@ -3191,7 +3338,23 @@ function initMind(data){
       for(var i=0;i<items.length;i++){
         if(items[i].type && /^image\//.test(items[i].type)){ file = items[i].getAsFile(); if(file) break; }
       }
-      if(!file) return;   /* 非图片：放行给输入框/编辑框默认行为 */
+      if(!file){
+        /* 纯文本 Markdown 表格：直接落成表格节点，避免编辑框把换行压平、表格语法失效 */
+        var txt = e.clipboardData && e.clipboardData.getData ? e.clipboardData.getData('text/plain') : '';
+        if(txt && isMdTableText(txt)){
+          e.preventDefault();
+          e.stopPropagation();
+          if(_tblPasteTxt === txt && Date.now() - _tblPasteTs < 500) return;   /* 同一次粘贴只落一次 */
+          _tblPasteTxt = txt; _tblPasteTs = Date.now();
+          try{
+            flushEditorIfPasted();
+            insertTableNode(txt);
+          }catch(err){
+            setStatus('表格粘贴失败：'+(err && err.message ? err.message : err), true);
+          }
+        }
+        return;   /* 其它纯文本：放行给输入框/编辑框默认行为 */
+      }
       e.preventDefault();
       e.stopPropagation();
       flushEditorIfPasted();
