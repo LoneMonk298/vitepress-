@@ -213,13 +213,20 @@ html.dark .mm-hint code{background:rgba(255,255,255,.08)}
 .lb-tip.fade{opacity:0}
 .lb-close{position:fixed;top:16px;right:20px;width:40px;height:40px;border:none;border-radius:50%;background:rgba(255,255,255,.15);color:#fff;font-size:22px;cursor:pointer;z-index:1001;line-height:1}
 .lb-close:hover{background:rgba(255,255,255,.3)}
-/* 内嵌网页预览面板（demo）：全屏模式 / 右侧贴边抽屉模式 */
-#modalWeb{padding:0;background:rgba(0,0,0,.72)}
+/* 内嵌网页预览面板：全屏模式 / 右侧贴边抽屉模式 */
+#modalWeb{padding:0;background:rgba(0,0,0,.72);align-items:stretch;overflow:hidden}
 #modalWeb.show{display:flex}
 .wv-shell{flex:1;display:flex;flex-direction:column;min-width:0;min-height:0;background:var(--card)}
 /* 抽屉模式：贴右侧、宽度随窗口自适应，左侧导图保持可见可点（面板本身不接收遮罩点击） */
 #modalWeb.dock{background:transparent;pointer-events:none;justify-content:flex-end;align-items:stretch}
 #modalWeb.dock .wv-shell{flex:0 0 auto;width:clamp(360px, 42vw, 720px);max-width:64vw;border-left:1px solid var(--bd);box-shadow:-10px 0 34px rgba(0,0,0,.45);pointer-events:auto}
+/* 抽屉折叠：收起后只留右侧一条可点开的窄条 */
+#wvCollapse{display:none}
+#modalWeb.dock #wvCollapse{display:inline-block}
+#modalWeb.collapsed .wv-shell{display:none}
+.wv-reopen{display:none;position:absolute;right:0;top:50%;transform:translateY(-50%);pointer-events:auto;writing-mode:vertical-rl;letter-spacing:1px;padding:14px 5px;border-radius:8px 0 0 8px;background:var(--card);color:var(--text);border:1px solid var(--bd);border-right:none;box-shadow:-6px 0 18px rgba(0,0,0,.35);cursor:pointer;font-size:12px;z-index:6}
+.wv-reopen:hover{background:var(--bg)}
+#modalWeb.collapsed .wv-reopen{display:flex;align-items:center}
 .wv-bar{display:flex;align-items:center;gap:8px;padding:10px 14px;background:var(--card);border-bottom:1px solid var(--bd);z-index:2}
 .wv-url{flex:1;font-size:12.5px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .wv-btn{padding:6px 12px;border:1px solid var(--bd);border-radius:7px;background:var(--bg);color:var(--text);font-size:12.5px;cursor:pointer;white-space:nowrap}
@@ -369,6 +376,7 @@ html.dark .s-badge.run{color:#fbbf24}
         <button id="btnMore" class="ico" title="更多操作：云同步 / 编辑源 / 导出 / 重置">⋯</button>
         <div id="moreMenu" class="more-menu hidden">
           <button id="btnMerge">合并笔记</button>
+          <button id="btnRaw">导出文本（给 AI）</button>
           <button id="btnSync">云同步</button>
           <button id="btnEditSrc">编辑源</button>
           <button id="btnExport">导出</button>
@@ -535,11 +543,13 @@ html.dark .s-badge.run{color:#fbbf24}
       <span class="wv-url" id="wvUrl"></span>
       <button class="wv-btn" id="wvOpen">新标签打开</button>
       <button class="wv-btn" id="wvDock" title="切换为右侧贴边抽屉，导图仍可操作">右侧抽屉</button>
+      <button class="wv-btn" id="wvCollapse" title="收起抽屉，只留右侧窄条">收起 ›</button>
       <button class="wv-btn" id="wvClose">关闭 ×</button>
     </div>
     <iframe id="wvFrame" title="内嵌网页预览" sandbox="allow-scripts allow-same-origin allow-popups allow-forms"></iframe>
     <div class="wv-tip">若页面白屏，说明该网站禁止被内嵌，请点「新标签打开」</div>
   </div>
+  <button class="wv-reopen" id="wvReopen" title="展开网页抽屉">‹ 网页</button>
 </div>
 
 <div class="modal" id="modalMerge">
@@ -555,6 +565,26 @@ html.dark .s-badge.run{color:#fbbf24}
     <div class="row">
       <button id="mgCancel">取消</button>
       <button class="pri" id="mgOk">合并</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="modalRaw">
+  <div class="mbox" style="max-width:680px">
+    <h3>导出文本大纲（给 AI 重新梳理）</h3>
+    <p>按缩进列表输出节点原文，保留 <code>**粗体**</code>、<code>$公式$</code>、<code>#标签</code>、<code>[[链接]]</code> 语法；base64 图片折叠成 <code>[图片]</code>，便于整段粘给 AI 让它重排层级。</p>
+    <label>导出范围</label>
+    <select id="rw-scope">
+      <option value="cur">当前笔记</option>
+      <option value="all">全部笔记（按笔记分节）</option>
+    </select>
+    <label>预览（可直接复制）</label>
+    <textarea id="rw-text" readonly spellcheck="false" style="height:280px;font-family:ui-monospace,Consolas,monospace;font-size:12px;white-space:pre"></textarea>
+    <div class="mm-hint" id="rw-hint" style="margin-top:8px"></div>
+    <div class="row">
+      <button id="rw-copy">复制全文</button>
+      <button id="rw-dl">下载 .md</button>
+      <button class="pri" id="rw-close">关闭</button>
     </div>
   </div>
 </div>
@@ -2099,6 +2129,7 @@ function getWvMode(){ try{ return localStorage.getItem(WV_MODE_KEY) === 'dock' ?
 function applyWvMode(mode){
   var m = $('modalWeb'); if(!m) return;
   m.classList.toggle('dock', mode === 'dock');
+  m.classList.remove('collapsed');   /* 切换形态时总是先展开 */
   var b = $('wvDock');
   if(b){ b.textContent = mode === 'dock' ? '全屏' : '右侧抽屉'; b.title = mode === 'dock' ? '切换回全屏预览' : '切换为右侧贴边抽屉，导图仍可操作'; }
   try{ localStorage.setItem(WV_MODE_KEY, mode); }catch(e){}
@@ -2106,6 +2137,12 @@ function applyWvMode(mode){
 function toggleWvMode(){
   var m = $('modalWeb'); if(!m) return;
   applyWvMode(m.classList.contains('dock') ? 'full' : 'dock');
+}
+/* 抽屉折叠：收起为右侧窄条，点窄条重新展开（仅抽屉形态可用） */
+function setWvCollapsed(v){
+  var m = $('modalWeb'); if(!m) return;
+  if(!m.classList.contains('dock')){ m.classList.remove('collapsed'); return; }
+  m.classList.toggle('collapsed', !!v);
 }
 function openWebview(url){
   var m = $('modalWeb'), f = $('wvFrame');
@@ -2164,6 +2201,8 @@ document.addEventListener('click', function(e){
   var m = $('modalWeb'); if(!m) return;
   $('wvClose').onclick = closeWebview;
   var dockBtn = $('wvDock'); if(dockBtn) dockBtn.onclick = function(e){ e.stopPropagation(); toggleWvMode(); };
+  var cBtn = $('wvCollapse'); if(cBtn) cBtn.onclick = function(e){ e.stopPropagation(); setWvCollapsed(true); };
+  var rBtn = $('wvReopen'); if(rBtn) rBtn.onclick = function(e){ e.stopPropagation(); setWvCollapsed(false); };
   m.addEventListener('click', function(e){ if(e.target===m) closeWebview(); });
 })();
 /* Lightbox 内部交互 */
@@ -3547,6 +3586,86 @@ function doMerge(){
   }
 }
 
+/* ===== 导出文本大纲（raw，给 AI 重新梳理层级） =====
+   输出缩进列表，保留节点原文（含 **粗体** / $公式$ / #标签 / [[链接]]），
+   只把 base64 图片折叠成 [图片]，并把节点内的换行压平，避免破坏缩进结构 */
+function rawTopicText(s){
+  return String(s==null?'':s)
+    .replace(/!\[[^\]]*\]\(data:[^)]*\)/g,'[图片]')
+    .replace(/!\[[^\]]*\]\([^)]*\)/g,'[图片]')
+    .replace(/\r?\n/g,' ')
+    .replace(/\s+/g,' ')
+    .trim();
+}
+function outlineTextOf(data, headPrefix, headText){
+  var root = (data && data.nodeData) || {};
+  var rt = rawTopicText(root.topic);
+  var name = headText == null ? rt : rawTopicText(headText);
+  var out = [headPrefix + name];
+  var base = 0;
+  /* 笔记名与根节点文字不一致时，根节点文字单独占一层，避免信息丢失 */
+  if(headText != null && rt && rt !== name){ out.push('- ' + rt); base = 1; }
+  (function walk(n, lvl){
+    (n.children||[]).forEach(function(c){
+      out.push('  '.repeat(lvl + base) + '- ' + rawTopicText(c.topic));
+      walk(c, lvl+1);
+    });
+  })(root, 0);
+  return out.join('\n');
+}
+function openRawModal(){
+  $('rw-scope').value = 'cur';
+  $('modalRaw').classList.add('show');
+  refreshRawPreview();
+}
+function refreshRawPreview(){
+  var ta = $('rw-text'), hint = $('rw-hint');
+  if(!ta) return;
+  hint.textContent = '';
+  if($('rw-scope').value === 'cur'){
+    if(!mind || !curNote){ ta.value = '请先打开一篇笔记'; return; }
+    if(filterActive()){ ta.value = '当前处于过滤视图，导出的是剪枝数据；请先取消过滤再导出'; return; }
+    ta.value = outlineTextOf(mind.getData(), '# ');
+    hint.textContent = '当前笔记：' + (curNote.name||'') + '，' + (ta.value.split('\n').length) + ' 行';
+  } else {
+    ta.value = '读取中…';
+    noteStoreGetAll(function(map){
+      var ns = loadNotes(), parts = [];
+      ns.forEach(function(n){
+        var d = map && map[n.id];
+        if(!d || !d.nodeData) return;
+        parts.push(outlineTextOf(d, '## ', n.name));
+      });
+      ta.value = parts.length ? parts.join('\n\n') : '没有可导出的笔记';
+      hint.textContent = '共 ' + parts.length + ' 篇，' + ta.value.split('\n').length + ' 行';
+    });
+  }
+}
+function downloadRawText(){
+  var txt = $('rw-text').value || '';
+  if(!txt) return;
+  var nm = ($('rw-scope').value === 'cur' && curNote ? curNote.name : '全部笔记') + '-大纲.md';
+  var blob = new Blob([txt], {type:'text/markdown;charset=utf-8'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url; a.download = nm; a.click();
+  setTimeout(function(){ URL.revokeObjectURL(url); }, 2000);
+  setStatus('已下载 ' + nm, true);
+}
+function copyRawText(){
+  var ta = $('rw-text'); if(!ta) return;
+  var txt = ta.value || '';
+  if(!txt) return;
+  function done(ok){ setStatus(ok ? '全文已复制，直接粘给 AI 即可' : '复制失败，请手动全选复制', !ok); }
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(txt).then(function(){ done(true); }, function(){ fallback(); });
+  } else fallback();
+  function fallback(){
+    try{ ta.removeAttribute('readonly'); ta.focus(); ta.select(); var ok = document.execCommand('copy'); ta.setAttribute('readonly',''); done(!!ok); }
+    catch(e){ done(false); }
+  }
+}
+
 /* ===== 云同步 ===== */
 var SYNC_CONFIG_KEY='mm_notes_sync_config';
 var syncConfig = { keyId:'', accessKey:'', binId:'' };
@@ -3771,6 +3890,11 @@ document.addEventListener('DOMContentLoaded', function(){
   };
   $('btnExport').onclick = exportNote;
   $('btnMerge').onclick = openMergeModal;
+  $('btnRaw').onclick = openRawModal;
+  $('rw-close').onclick = function(){ $('modalRaw').classList.remove('show'); };
+  $('rw-scope').onchange = refreshRawPreview;
+  $('rw-dl').onclick = downloadRawText;
+  $('rw-copy').onclick = copyRawText;
   $('mgCancel').onclick = function(){ $('modalMerge').classList.remove('show'); };
   $('mgOk').onclick = doMerge;
   $('btnReset').onclick = function(){
