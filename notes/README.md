@@ -283,9 +283,16 @@ localStorage:
 
 IndexedDB（mm-notes-db / notes，keyPath=id）:
   mm_notes:<id>        → 单篇笔记完整数据 {nodeData, arrows, summaries, direction, theme}
-                         （含图片 base64 时可达数 MB~十几 MB，localStorage 5MB 装不下，
+                         （结构+文字，截图不再内嵌；localStorage 5MB 装不下，
                          因此笔记正文存 IndexedDB，配额为 GB 级；旧 localStorage 数据首次
                          打开自动迁移，不支持 IndexedDB 的浏览器回退 localStorage 存储）
+
+IndexedDB（mm-imgs / imgs，keyPath=id）:
+  <imgId>              → {id, blob, t}，截图字节（WebP，长边 ≤1200；GIF 存原文件）
+                         节点 topic 里只保留 ![alt](mmimg://<id> =宽x高) 引用，
+                         渲染时换成 URL.createObjectURL(blob) 并缓存复用。
+                         独立 DB：不上调笔记库版本号，避免同源其它标签页占用连接
+                         导致版本升级被 block（表现为「一直加载中」）。
 ```
 
 **关键不变式**：`nodeData` 里每个节点的 `topic` 字段永远是原始纯文本（含 `$...$`、`[[x]]`、`![...](...)`、`#标签` 语法），`dangerouslySetInnerHTML` 是派生的视图层。每次加载都从 `topic` 重新生成 HTML（`applyInlineHtml`），保证编辑→保存→重新打开不丢失公式/链接/图片/标签。
