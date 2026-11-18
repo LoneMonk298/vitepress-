@@ -2035,7 +2035,7 @@ function findNodeData(root, id){
 
 /* ===== 拖拽 / 粘贴截图 → 图片节点 =====
    图片不再转 base64 塞进节点文本：压缩后直接存 IndexedDB 图片库，节点只留 mmimg://id 引用。
-   GIF 保留原帧（不压缩），其余经 canvas 降采样转 WebP（长边 ≤1200）。 */
+   GIF 保留原帧（不压缩），其余经 canvas 降采样转 WebP（长边 ≤1600，质量 0.9——图已外置存储，清晰度优先）。 */
 function fileToImgRef(file, cb){
   if(!/^image\//.test(file.type || '')){ setStatus('不是图片文件', true); return; }
   function store(blob, w, h){
@@ -2059,7 +2059,7 @@ function fileToImgRef(file, cb){
     }
     try{
       URL.revokeObjectURL(url);
-      var MAX = 1200;
+      var MAX = 1600;
       var sc = Math.min(1, MAX / Math.max(w, h));
       var c = document.createElement('canvas');
       c.width = Math.max(1, Math.round(w*sc));
@@ -2070,10 +2070,10 @@ function fileToImgRef(file, cb){
       g.drawImage(img, 0, 0, c.width, c.height);
       var done = function(blob){
         if(blob){ store(blob, c.width, c.height); return; }
-        var fb = dataUrlToBlob(c.toDataURL('image/webp', 0.85));
+        var fb = dataUrlToBlob(c.toDataURL('image/webp', 0.9));
         store(fb, c.width, c.height);
       };
-      if(c.toBlob) c.toBlob(done, 'image/webp', 0.85);
+      if(c.toBlob) c.toBlob(done, 'image/webp', 0.9);
       else done(null);
     }catch(e){
       setStatus('图片处理失败：'+e.message, true);
