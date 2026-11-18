@@ -1256,8 +1256,11 @@ function loadNote(note, cb){
       /* 后台把这篇里残留的 base64 截图搬进图片库（只在首次打开时发生，不阻塞渲染） */
       if(!hasBase64Image(data)) return;
       setStatus('正在优化图片存储…', true);
+      var seq0 = _saveSeq;
       migrateNoteImages(data, function(cnt){
         if(!cnt){ setStatus('已载入「'+note.name+'」', true); return; }
+        /* 迁移期间用户若已编辑过，存储里是新树，不能拿迁移后的旧树覆盖回去 */
+        if(_saveSeq !== seq0){ setStatus('截图已整理，下次打开自动生效', true); return; }
         noteStorePut(note.id, data, function(){
           setStatus('已把 '+cnt+' 张截图移入图片库，下次打开更快', true);
         });
@@ -3236,6 +3239,7 @@ function scheduleLayoutRefresh(){
     }catch(e){}
   }, 150);
 }
+var _saveSeq = 0;   /* 每次落盘自增，供图片迁移判断「期间是否有过编辑」 */
 function queueSave(){
   if(!curNote) return;
   /* 过滤视图是剪枝后的临时渲染，任何写入都会丢节点：过滤期间一律不保存 */
@@ -3254,7 +3258,7 @@ function queueSave(){
         if(n.dangerouslySetInnerHTML) delete n.dangerouslySetInnerHTML;
         (n.children||[]).forEach(strip);
       })(data.nodeData);
-      noteStorePut(curNote.id, data);
+      noteStorePut(curNote.id, data, function(){ _saveSeq++; });
       /* 记录最近编辑时间（供统计面板展示） */
       curNote.updated = Date.now();
       var arr = loadNotes();
