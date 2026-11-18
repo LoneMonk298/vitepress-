@@ -81,9 +81,9 @@ html.dark .ol-tag[data-t="易错"]{background:rgba(219,234,254,.16);color:#93c5f
 .tbar-group{display:flex;gap:3px;align-items:center;padding:0 4px;border-left:1px solid var(--bd);margin-left:2px}
 .tbar-group button{padding:5px 7px;font-size:12px}
 .more-wrap{position:relative;flex:none}
-.more-menu{position:absolute;right:0;top:calc(100% + 6px);min-width:118px;background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:5px;display:flex;flex-direction:column;gap:2px;box-shadow:0 10px 26px rgba(0,0,0,.14);z-index:80}
+.more-menu{position:absolute;right:0;top:calc(100% + 6px);min-width:130px;background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:5px;display:flex;flex-direction:column;gap:2px;box-shadow:0 10px 26px rgba(0,0,0,.14);z-index:80}
 .more-menu.hidden{display:none}
-.more-menu button{border:none;background:transparent;text-align:left;padding:7px 10px;border-radius:7px;font-size:12.5px}
+.more-menu button{border:none;background:transparent;text-align:left;padding:7px 10px;border-radius:7px;font-size:12.5px;white-space:nowrap}
 .more-menu button:hover{background:rgba(102,126,234,.12);color:var(--pri);border-color:transparent}
 .zoom-ic{font-size:14px;font-weight:600;line-height:1}
 .zoom-val{font-size:11px;color:var(--text2);min-width:38px;text-align:center;font-variant-numeric:tabular-nums}
@@ -233,13 +233,15 @@ html.dark .mm-hint code{background:rgba(255,255,255,.08)}
 .wv-btn:hover{border-color:var(--text2)}
 #wvFrame{flex:1;width:100%;border:none;background:#fff;min-height:0}
 .wv-tip{padding:6px 14px;font-size:11.5px;color:var(--text2);background:var(--card);text-align:center}
-/* 合并笔记弹窗 */
+/* 合并笔记弹窗（注意：.mbox label 有 display:block/margin，这里用 .mbox .mg-row 提高优先级覆盖） */
 .mg-list{max-height:46vh;overflow-y:auto;border:1px solid var(--bd);border-radius:8px;margin-top:6px}
-.mg-row{display:flex;align-items:center;gap:9px;padding:9px 12px;border-bottom:1px solid var(--bd);font-size:13px;cursor:pointer}
-.mg-row:last-child{border-bottom:none}
-.mg-row:hover{background:var(--bg)}
-.mg-row input{flex:none;width:auto;margin:0}
-.mg-row .mg-folder{font-size:11px;color:var(--text2);margin-left:auto;white-space:nowrap}
+.mbox .mg-row{display:flex;align-items:center;gap:12px;padding:11px 13px;margin:0;border-bottom:1px solid var(--bd);font-size:13px;color:var(--text);cursor:pointer}
+.mbox .mg-row:last-child{border-bottom:none}
+.mbox .mg-row:hover{background:var(--bg)}
+.mbox .mg-row input{flex:none;width:auto;margin:0;padding:0}
+.mbox .mg-row .mg-name{flex:1 1 0%;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.5;font-size:13px;color:var(--text)}
+.mbox .mg-row .mg-folder{flex:none;margin-left:12px;max-width:38%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;color:var(--text2);background:var(--bg);border:1px solid var(--bd);border-radius:99px;padding:2px 9px;line-height:1.4}
+.mbox .mg-row:hover .mg-folder{background:transparent}
 /* 统计面板 */
 .stat-cards{display:flex;gap:10px;margin-bottom:14px}
 .stat-card{flex:1;background:var(--bg);border:1px solid var(--bd);border-radius:10px;padding:12px 8px;text-align:center}
@@ -373,13 +375,12 @@ html.dark .s-badge.run{color:#fbbf24}
       <button id="btnStats" title="统计与复习进度（含标签总览）">统计</button>
       <button id="btnRename">改名</button>
       <div class="more-wrap">
-        <button id="btnMore" class="ico" title="更多操作：云同步 / 编辑源 / 导出 / 重置">⋯</button>
+        <button id="btnMore" class="ico" title="更多操作：合并 / 导出文本 / 云同步 / 编辑源 / 重置">⋯</button>
         <div id="moreMenu" class="more-menu hidden">
           <button id="btnMerge">合并笔记</button>
-          <button id="btnRaw">导出文本（给 AI）</button>
+          <button id="btnRaw">导出文本</button>
           <button id="btnSync">云同步</button>
           <button id="btnEditSrc">编辑源</button>
-          <button id="btnExport">导出</button>
           <button id="btnReset">重置</button>
         </div>
       </div>
@@ -3108,23 +3109,6 @@ function centerElInMap(el){
   }
 }
 
-/* ===== 导出 ===== */
-function exportNote(){
-  if(!curNote||!mind) return;
-  if(filterActive()){ setStatus('过滤视图中导出的是剪枝数据，请先点顶部「过滤」徽标取消过滤', true); return; }
-  var data = mind.getData();
-  var exp = { _note: curNote ? { name:curNote.name, folder:curNote.folder||'未分类' } : {} };
-  for(var kk in data) exp[kk] = data[kk];
-  var blob = new Blob([JSON.stringify(exp,null,2)],{type:'application/json'});
-  var url = URL.createObjectURL(blob);
-  var a = document.createElement('a');
-  a.href = url;
-  a.download = (curNote.name||'note')+'.json';
-  a.click();
-  URL.revokeObjectURL(url);
-  setStatus('已导出 JSON', true);
-}
-
 /* ===== 统计与复习进度 ===== */
 function countNodes(nodeData){
   if(!nodeData) return 0;
@@ -3519,8 +3503,8 @@ function openMergeModal(){
   var h = '';
   for(var i=0;i<ns.length;i++){
     h += '<label class="mg-row"><input type="checkbox" value="'+ns[i].id+'">'
-       + '<span>'+escapeHtml(ns[i].name)+'</span>'
-       + '<span class="mg-folder">'+escapeHtml(ns[i].folder||'未分类')+'</span></label>';
+       + '<span class="mg-name" title="'+escapeHtml(ns[i].name)+'">'+escapeHtml(ns[i].name)+'</span>'
+       + '<span class="mg-folder" title="'+escapeHtml(ns[i].folder||'未分类')+'">'+escapeHtml(ns[i].folder||'未分类')+'</span></label>';
   }
   list.innerHTML = h;
   $('mg-name').value = curNote ? (curNote.name + ' 总图') : '总复习';
@@ -3888,7 +3872,6 @@ document.addEventListener('DOMContentLoaded', function(){
       renderList();
     }
   };
-  $('btnExport').onclick = exportNote;
   $('btnMerge').onclick = openMergeModal;
   $('btnRaw').onclick = openRawModal;
   $('rw-close').onclick = function(){ $('modalRaw').classList.remove('show'); };
