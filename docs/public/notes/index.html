@@ -3491,10 +3491,17 @@ function installDblClickInterceptor(){  try{
       }, true);
     }
     /* 选中节点后把焦点交还画布：库的 Tab/Enter 只在 keydown 的 target 是 #map 本身时才处理，
-       点在节点（尤其跳转链接）上时焦点落在节点/链接上，快捷键会整个失效 */
+       点在节点（尤其跳转链接）上时焦点落在节点/链接上，快捷键会整个失效。
+       注意只在点击落在 #map 区域内时才回填：侧栏（排序下拉、笔记列表）和弹窗里的点击
+       不能被抢焦点，否则 select 的下拉刚弹出就被关掉（表现为「单击闪一下就消失，得按住不放」） */
     if(!document._mapFocusBound){
       document._mapFocusBound = true;
-      document.addEventListener('mouseup', function(){ setTimeout(ensureMapFocus, 0); }, true);
+      document.addEventListener('mouseup', function(e){
+        var t = e.target;
+        if(!t || !t.closest) return;
+        if(!t.closest('#map')) return;
+        setTimeout(ensureMapFocus, 0);
+      }, true);
     }
   }catch(err){}
 }
@@ -3504,7 +3511,8 @@ function installDblClickInterceptor(){  try{
 function ensureMapFocus(){
   try{
     var ae = document.activeElement;
-    if(ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable)) return;
+    /* 输入类与下拉控件都不能抢焦点（SELECT 被抢会立刻收起原生下拉菜单） */
+    if(ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.tagName === 'SELECT' || ae.isContentEditable)) return;
     if(document.querySelector('.modal.show')) return;
     var m = document.querySelector('#map .map-canvas');
     if(!m){ m = document.getElementById('map'); }
