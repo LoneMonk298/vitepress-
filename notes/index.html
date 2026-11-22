@@ -524,7 +524,11 @@ html.dark .s-badge.run{color:#fbbf24}
       <button id="btnDown">从云端拉取</button>
       <button class="pri" id="btnUp">推送到云端</button>
     </div>
-    <div id="sync-last-time" style="font-size:12px;color:var(--text2);margin-top:12px"></div>
+    <label style="display:flex;align-items:center;gap:8px;margin-top:14px;font-size:13px;color:var(--text);cursor:pointer">
+      <input type="checkbox" id="sync-silent-toggle" style="width:auto">
+      打开页面时静默同步（自动推送，不弹窗）
+    </label>
+    <div id="sync-last-time" style="font-size:12px;color:var(--text2);margin-top:10px"></div>
     <div class="row"><button id="btnCloseSync">关闭</button></div>
   </div>
 </div>
@@ -4551,10 +4555,18 @@ async function syncPush(){
 }
 
 /* 逐篇推送。silent=true 时不弹状态、不确认，用于后台静默同步 */
+/* 全局推送状态：即使弹窗关闭，推送仍在后台进行 */
+var _syncRunning = false;
+var _syncCancel = false;
+
 async function syncPushAll(silent){
+  if(_syncRunning){ return {ok:false, count:0, fail:0, busy:true}; }
+  _syncRunning = true;
+  _syncCancel = false;
   var p = await buildSyncPayload();
   if(!p.count){
     if(!silent) updateSyncStatus('error','本机还没有任何笔记数据');
+    _syncRunning = false;
     return {ok:false, count:0};
   }
   var ids = Object.keys(p.payload);
@@ -4563,11 +4575,13 @@ async function syncPushAll(silent){
     syncProgressShow();
     syncProgressSet(0, ids.length, '（共 '+ids.length+' 篇，'+nImg+' 张图）');
     updateSyncStatus('info','正在推送 '+ids.length+' 篇笔记（含 '+nImg+' 张图片）…');
+  } else if(window._syncToast){
+    _syncToast('后台同步 '+ids.length+' 篇…');
   }
-  var ok = 0, fail = 0, done = 0;
+  var ok = 0, fail = 0, done = 0, failList = [];
   for(var i=0;i<ids.length;i++){
+    if(_syncCancel){ break; }
     var nid = ids[i];
-    /* 收集本篇用到的图片 */
     var noteImgs = {};
     var d = p.payload[nid];
     if(d && d.nodeData){
@@ -4582,29 +4596,39 @@ async function syncPushAll(silent){
       Object.keys(found).forEach(function(iid){ if(p.imgs[iid]) noteImgs[iid] = p.imgs[iid]; });
     }
     var body = JSON.stringify({ id:nid, data:d, imgs:noteImgs });
-    try{
-      var resp = await fetch(SYNC_URL,{ method:'POST', headers:{'Content-Type':'application/json'}, body:body });
-      if(!resp.ok) throw new Error('HTTP '+resp.status);
-      ok++;
-    }catch(e){
-      fail++;
-      console.warn('同步失败 '+nid, e.message);
+    var success = false;
+    /* 失败重试：最多 3 次，退避 1s/2s/4s */
+    for(var attempt=0; attempt<3; attempt++){
+      if(attempt>0){ await new Promise(function(r){ setTimeout(r, 1000*attempt); }); }
+      try{
+        var resp = await fetch(SYNC_URL,{ method:'POST', headers:{'Content-Type':'application/json'}, body:body });
+        if(resp.ok){ success = true; break; }
+        throw new Error('HTTP '+resp.status);
+      }catch(e){
+        if(attempt === 2){ console.warn('同步失败 '+nid+'（3次）', e.message); }
+      }
     }
+    if(success){ ok++; }
+    else{ fail++; failList.push(nid); }
     done++;
-    if(!silent) syncProgressSet(done, ids.length, '（成功 '+ok+'，失败 '+fail+'）');
+    var label = '（成功 '+ok+'，失败 '+fail+'）' + (failList.length?(' 失败: '+failList.length+' 篇'):'');
+    if(!silent) syncProgressSet(done, ids.length, label);
+    else if(window._syncToast && done % 3 === 0) _syncToast('后台同步 '+done+'/'+ids.length+'…');
   }
+  _syncRunning = false;
   if(!silent){
     syncProgressHide();
     if(fail === 0) updateSyncStatus('success','推送成功！'+ok+' 篇笔记已同步');
-    else updateSyncStatus('error','推送完成：'+ok+' 篇成功，'+fail+' 篇失败');
+    else updateSyncStatus('error','推送完成：'+ok+' 篇成功，'+fail+' 篇失败'+(failList.length?'。可重新推送重试':''));
+  } else if(window._syncToast){
+    if(fail === 0) _syncToast('同步完成：'+ok+' 篇');
+    else _syncToast('同步完成：'+ok+' 篇成功，'+fail+' 篇失败（可重新推送）');
   }
   var now = new Date().toLocaleString('zh-CN');
   localStorage.setItem('mm_notes_last_sync', now);
   var lt=$('sync-last-time'); if(lt) lt.textContent = '上次同步: '+now;
-  return {ok: fail===0, count: ok, fail: fail};
-}
-
-async function syncPull(){
+  return {ok: fail===0, count: ok, fail: fail, failList: failList};
+}async function syncPull(){
   updateSyncStatus('info','正在拉取…');
   try{
     var response = await fetch(SYNC_URL,{
@@ -4659,21 +4683,40 @@ async function syncPull(){
   }
 }
 
-/* 后台静默同步：页面加载后自动推送一次，不打扰用户 */
+/* 页面级轻提示：弹窗关闭后推送进度仍可见 */
+function _syncToast(msg){
+  var t = document.getElementById('syncToast');
+  if(!t){
+    t = document.createElement('div');
+    t.id = 'syncToast';
+    t.style.cssText = 'position:fixed;top:14px;right:14px;z-index:200;background:var(--card);color:var(--text);border:1px solid var(--bd);padding:8px 14px;border-radius:8px;font-size:13px;box-shadow:0 4px 16px #0003;opacity:0;transition:opacity .3s;max-width:70vw;pointer-events:none';
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  t.style.opacity = '1';
+  clearTimeout(t._t);
+  t._t = setTimeout(function(){ t.style.opacity = '0'; }, 4000);
+}
+
+/* 后台静默同步：页面加载后自动推送一次（受开关控制） */
 var _silentSyncDone = false;
 function silentSync(){
   if(_silentSyncDone) return;
-  if(!localStorage.getItem('mm_notes_list')) return;
   _silentSyncDone = true;
+  if(localStorage.getItem('mm_silent_sync') === '0'){ return; }
+  if(!localStorage.getItem('mm_notes_list')) return;
   setTimeout(function(){
-    try{ syncPushAll(true).then(function(r){
-      if(r && r.ok){ console.log('[同步] 静默同步完成', r.count, '篇'); }
-      else if(r && r.fail){ console.warn('[同步] 静默同步部分失败', r.fail, '篇'); }
-    }).catch(function(e){ console.warn('[同步] 静默同步失败', e); }); }catch(e){}
+    try{
+      syncPushAll(true).then(function(r){
+        if(r && r.ok){ console.log('[同步] 静默同步完成', r.count, '篇'); }
+        else if(r && r.fail){ console.warn('[同步] 静默同步部分失败', r.fail, '篇'); }
+      }).catch(function(e){ console.warn('[同步] 静默同步失败', e); });
+    }catch(e){}
   }, 4000);
-}
-function openSyncModal(){
+}function openSyncModal(){
   updateSyncStatus('','');
+  var st = $('sync-silent-toggle');
+  if(st) st.checked = localStorage.getItem('mm_silent_sync') !== '0';
   var lastSync = localStorage.getItem('mm_notes_last_sync');
   $('sync-last-time').textContent = lastSync ? '上次同步: '+lastSync : '';
   $('modalSync').classList.add('show');
@@ -4808,7 +4851,13 @@ document.addEventListener('DOMContentLoaded', function(){
     loadNote(curNote);
   };
   $('btnSync').onclick = openSyncModal;
-  $('btnCloseSync').onclick = function(){ $('modalSync').classList.remove('show'); };
+  $('btnCloseSync').onclick = function(){
+    var st = $('sync-silent-toggle');
+    if(st) localStorage.setItem('mm_silent_sync', st.checked ? '1' : '0');
+    $('modalSync').classList.remove('show');
+  };
+  var _st = $('sync-silent-toggle');
+  if(_st) _st.onchange = function(){ localStorage.setItem('mm_silent_sync', _st.checked ? '1' : '0'); };
   $('btnStats').onclick = openStats;
   $('btnCloseStats').onclick = function(){ $('modalStats').classList.remove('show'); };
   /* 点统计面板外部（遮罩）自动关闭，省去滚到底部找关闭按钮 */
