@@ -512,7 +512,7 @@ html.dark .s-badge.run{color:#fbbf24}
     <h3>服务器同步</h3>
     <p>所有笔记数据同步到自有服务器，支持大文件（无 100KB 限制）。<br>
     适合多设备备份：手机、电脑、平板数据互通。<br>
-    <span style="color:#d9822b">注意：截图存在本地图片库，同步只传文字结构，换设备后原截图位置会显示空白占位。</span></p>
+    <span style="color:#2f855a">图片也一起同步（含截图），换设备后图片正常显示。</span></p>
     <div id="sync-status" class="mm-status"></div>
     <div class="row">
       <button id="btnDown">从云端拉取</button>
@@ -1111,6 +1111,46 @@ function imgStoreGet(id, cb){
       rq.onerror = function(){ cb&&cb(null); };
     }catch(e){ cb&&cb(null); }
   });
+}
+function imgStoreGetAll(cb){
+  _imgOpen(function(){
+    if(!_imgOk()){ cb&&cb({}); return; }
+    try{
+      var rq = _imgDB.transaction('imgs','readonly').objectStore('imgs').getAll();
+      rq.onsuccess = function(){
+        var map = {};
+        (rq.result||[]).forEach(function(r){ map[r.id] = r.blob; });
+        cb&&cb(map);
+      };
+      rq.onerror = function(){ cb&&cb({}); };
+    }catch(e){ cb&&cb({}); }
+  });
+}
+/* Blob → base64 */
+function blobToBase64(blob, cb){
+  var fr = new FileReader();
+  fr.onload = function(){ cb&&cb(fr.result); };
+  fr.onerror = function(){ cb&&cb(null); };
+  fr.readAsDataURL(blob);
+}
+/* base64(data URL) → Blob */
+function base64ToBlob(dataUrl){
+  try{
+    var m = /^data:([^;,]+)(;base64)?,([\s\S]*)$/.exec(String(dataUrl||''));
+    if(!m) return null;
+    var mime = m[1] || 'image/png';
+    var bin = m[3];
+    if(!m[2]){
+      bin = decodeURIComponent(bin);
+      var bytes = new Uint8Array(bin.length);
+      for(var i=0;i<bin.length;i++) bytes[i] = bin.charCodeAt(i) & 0xff;
+      return new Blob([bytes], { type:mime });
+    }
+    var bstr = atob(bin);
+    var arr = new Uint8Array(bstr.length);
+    for(var j=0;j<bstr.length;j++) arr[j] = bstr.charCodeAt(j);
+    return new Blob([arr], { type:mime });
+  }catch(e){ return null; }
 }
 /* data URL → Blob（迁移历史截图用，无需网络） */
 function dataUrlToBlob(u){
@@ -4453,11 +4493,38 @@ function buildSyncPayload(){
     noteStoreGetAll(function(map){
       var payload={}, n=0;
       var ids = Object.keys(map);
+      /* 收集所有用到的图片引用 */
+      var imgRefs = {};
+      function collectImgIds(node){
+        if(!node) return;
+        var t = String(node.topic||'');
+        var m, re = /mmimg:\/\/([A-Za-z0-9_\-]+)/g;
+        while((m = re.exec(t))) imgRefs[m[1]] = 1;
+        (node.children||[]).forEach(collectImgIds);
+      }
       for(var i=0;i<ids.length;i++){
         var d = map[ids[i]];
-        if(d && d.nodeData){ stripHtml(d.nodeData); payload[ids[i]] = d; n++; }
+        if(d && d.nodeData){
+          stripHtml(d.nodeData);
+          payload[ids[i]] = d;
+          n++;
+          collectImgIds(d.nodeData);
+        }
       }
-      resolve({ payload:payload, count:n });
+      var imgIds = Object.keys(imgRefs);
+      imgStoreGetAll(function(imgMap){
+        var imgs = {}, got = 0, done = 0;
+        if(!imgIds.length){ resolve({ payload:payload, count:n, imgs:imgs }); return; }
+        imgIds.forEach(function(iid){
+          var blob = imgMap[iid];
+          if(!blob){ done++; if(++got === imgIds.length) resolve({ payload:payload, count:n, imgs:imgs }); return; }
+          blobToBase64(blob, function(b64){
+            if(b64) imgs[iid] = b64;
+            done++;
+            if(done === imgIds.length) resolve({ payload:payload, count:n, imgs:imgs });
+          });
+        });
+      });
     });
   });
 }
@@ -4470,9 +4537,10 @@ async function syncPush(){
     updateSyncStatus('error','本机还没有任何笔记数据');
     return;
   }
-  var bodyStr = JSON.stringify(p.payload);
+  var nImg = Object.keys(p.imgs||{}).length;
+  var bodyStr = JSON.stringify({ payload:p.payload, imgs:p.imgs, count:p.count });
   var sizeKB = new Blob([bodyStr]).size / 1024;
-  updateSyncStatus('info','正在推送 '+sizeKB.toFixed(0)+'KB（'+p.count+' 篇）…');
+  updateSyncStatus('info','正在推送 '+sizeKB.toFixed(0)+'KB（'+p.count+' 篇，含 '+nImg+' 张图片）…');
   try{
     var response = await fetch(SYNC_URL,{
       method:'POST',
@@ -4509,6 +4577,19 @@ async function syncPull(){
       updateSyncStatus('info','已取消');
       return;
     }
+    /* 先把图片恢复到图片库（mm-imgs），再覆盖笔记 */
+    var imgMap = result.imgs || {};
+    var imgIds = Object.keys(imgMap);
+    var nImg = 0;
+    if(imgIds.length){
+      await Promise.all(imgIds.map(function(iid){
+        return new Promise(function(res){
+          var blob = base64ToBlob(imgMap[iid]);
+          if(!blob){ res(); return; }
+          imgStorePut(iid, blob, function(){ nImg++; res(); });
+        });
+      }));
+    }
     var n=0;
     await Promise.all(pullIds.map(function(f){
       return new Promise(function(res){
@@ -4517,7 +4598,7 @@ async function syncPull(){
         noteStorePut(f, d, function(){ n++; res(); });
       });
     }));
-    updateSyncStatus('success','拉取成功！已载入 '+n+' 篇笔记（公式/链接已重建）');
+    updateSyncStatus('success','拉取成功！已载入 '+n+' 篇笔记、'+nImg+' 张图片');
     renderList();
     if(curNote) loadNote(curNote);
     var now = new Date().toLocaleString('zh-CN');
