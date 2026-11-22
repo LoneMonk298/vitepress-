@@ -4559,6 +4559,13 @@ async function syncPush(){
 var _syncRunning = false;
 var _syncCancel = false;
 
+/* 全局推送状态：即使弹窗关闭，推送仍在后台进行 */
+var _syncRunning = false;
+var _syncCancel = false;
+
+/* 服务器上已有哪些图片（避免重复上传） */
+var _serverImgs = null;
+
 async function syncPushAll(silent){
   if(_syncRunning){ return {ok:false, count:0, fail:0, busy:true}; }
   _syncRunning = true;
@@ -4573,31 +4580,57 @@ async function syncPushAll(silent){
   var nImg = Object.keys(p.imgs||{}).length;
   if(!silent){
     syncProgressShow();
-    syncProgressSet(0, ids.length, '（共 '+ids.length+' 篇，'+nImg+' 张图）');
-    updateSyncStatus('info','正在推送 '+ids.length+' 篇笔记（含 '+nImg+' 张图片）…');
+    syncProgressSet(0, ids.length + nImg, '（准备同步 '+ids.length+' 篇、'+nImg+' 张图）');
+    updateSyncStatus('info','正在同步 '+ids.length+' 篇笔记（含 '+nImg+' 张图片）…');
   } else if(window._syncToast){
-    _syncToast('后台同步 '+ids.length+' 篇…');
+    _syncToast('后台同步 '+ids.length+' 篇、'+nImg+' 张图…');
   }
+
+  /* ===== 第一步：先上传所有图片（逐张独立请求） ===== */
+  var imgIds = Object.keys(p.imgs||{});
+  var imgOk = 0, imgFail = 0, imgDone = 0;
+  if(imgIds.length){
+    /* 拉取服务器已有图片 ID 列表（避免重复传） */
+    var exist = {};
+    try{
+      var sr = await fetch(SYNC_URL,{ method:'GET' });
+      if(sr.ok){
+        var sj = await sr.json();
+        exist = sj.imgs || {};
+      }
+    }catch(e){}
+    for(var k=0;k<imgIds.length;k++){
+      if(_syncCancel) break;
+      var iid = imgIds[k];
+      if(exist[iid]){ imgOk++; imgDone++; continue; } /* 服务器已有，跳过 */
+      var b64 = p.imgs[iid];
+      var okFlag = false;
+      for(var att=0; att<3; att++){
+        if(att>0){ await new Promise(function(r){ setTimeout(r, 800*att); }); }
+        try{
+          var ir = await fetch(SYNC_URL.replace('/notes/sync','/notes/img/')+encodeURIComponent(iid),{
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({ base64:b64 })
+          });
+          if(ir.ok){ okFlag = true; break; }
+        }catch(e){}
+      }
+      if(okFlag){ imgOk++; } else { imgFail++; }
+      imgDone++;
+      var il = '图片 '+imgDone+'/'+imgIds.length+'（成功 '+imgOk+'，失败 '+imgFail+'）';
+      if(!silent) syncProgressSet(imgDone, ids.length + imgIds.length, il);
+      else if(window._syncToast && imgDone % 5 === 0) _syncToast('上传图片 '+imgDone+'/'+imgIds.length+'…');
+    }
+  }
+
+  /* ===== 第二步：逐篇上传笔记（纯文字结构，小请求） ===== */
   var ok = 0, fail = 0, done = 0, failList = [];
   for(var i=0;i<ids.length;i++){
-    if(_syncCancel){ break; }
+    if(_syncCancel) break;
     var nid = ids[i];
-    var noteImgs = {};
     var d = p.payload[nid];
-    if(d && d.nodeData){
-      var found = {};
-      (function walk(n){
-        if(!n) return;
-        var t = String(n.topic||'');
-        var m, re = /mmimg:\/\/([A-Za-z0-9_\-]+)/g;
-        while((m = re.exec(t))) found[m[1]] = 1;
-        (n.children||[]).forEach(walk);
-      })(d.nodeData);
-      Object.keys(found).forEach(function(iid){ if(p.imgs[iid]) noteImgs[iid] = p.imgs[iid]; });
-    }
-    var body = JSON.stringify({ id:nid, data:d, imgs:noteImgs });
+    var body = JSON.stringify({ id:nid, data:d, imgs:{} });
     var success = false;
-    /* 失败重试：最多 3 次，退避 1s/2s/4s */
     for(var attempt=0; attempt<3; attempt++){
       if(attempt>0){ await new Promise(function(r){ setTimeout(r, 1000*attempt); }); }
       try{
@@ -4611,23 +4644,24 @@ async function syncPushAll(silent){
     if(success){ ok++; }
     else{ fail++; failList.push(nid); }
     done++;
-    var label = '（成功 '+ok+'，失败 '+fail+'）' + (failList.length?(' 失败: '+failList.length+' 篇'):'');
-    if(!silent) syncProgressSet(done, ids.length, label);
-    else if(window._syncToast && done % 3 === 0) _syncToast('后台同步 '+done+'/'+ids.length+'…');
+    var label = '笔记 '+done+'/'+ids.length+'（成功 '+ok+'，失败 '+fail+'）' + (failList.length?(' 失败: '+failList.length+' 篇'):'');
+    if(!silent) syncProgressSet(imgDone + done, ids.length + imgIds.length, label);
+    else if(window._syncToast && done % 3 === 0) _syncToast('同步笔记 '+done+'/'+ids.length+'…');
   }
   _syncRunning = false;
+  var totalFail = fail + imgFail;
   if(!silent){
     syncProgressHide();
-    if(fail === 0) updateSyncStatus('success','推送成功！'+ok+' 篇笔记已同步');
-    else updateSyncStatus('error','推送完成：'+ok+' 篇成功，'+fail+' 篇失败'+(failList.length?'。可重新推送重试':''));
+    if(totalFail === 0) updateSyncStatus('success','推送成功！'+ok+' 篇笔记、'+imgOk+' 张图片已同步');
+    else updateSyncStatus('error','推送完成：'+ok+' 篇笔记、'+imgOk+' 张图成功；'+fail+' 篇、'+imgFail+' 张图失败'+(failList.length?'。可重新推送重试':''));
   } else if(window._syncToast){
-    if(fail === 0) _syncToast('同步完成：'+ok+' 篇');
-    else _syncToast('同步完成：'+ok+' 篇成功，'+fail+' 篇失败（可重新推送）');
+    if(totalFail === 0) _syncToast('同步完成：'+ok+' 篇、'+imgOk+' 张图');
+    else _syncToast('同步完成：'+ok+' 篇成功，'+totalFail+' 项失败（可重新推送）');
   }
   var now = new Date().toLocaleString('zh-CN');
   localStorage.setItem('mm_notes_last_sync', now);
   var lt=$('sync-last-time'); if(lt) lt.textContent = '上次同步: '+now;
-  return {ok: fail===0, count: ok, fail: fail, failList: failList};
+  return {ok: totalFail===0, count: ok, fail: totalFail, failList: failList};
 }async function syncPull(){
   updateSyncStatus('info','正在拉取…');
   try{
