@@ -528,6 +528,10 @@ html.dark .s-badge.run{color:#fbbf24}
       <input type="checkbox" id="sync-silent-toggle" style="width:auto">
       打开页面时静默同步（自动推送，不弹窗）
     </label>
+    <label style="display:flex;align-items:center;gap:8px;margin-top:8px;font-size:13px;color:var(--text);cursor:pointer">
+      <input type="checkbox" id="sync-selective-toggle" style="width:auto">
+      只推修改过的笔记（本地删掉的会从云端一并删除）
+    </label>
     <div id="sync-last-time" style="font-size:12px;color:var(--text2);margin-top:10px"></div>
     <div class="row"><button id="btnCloseSync">关闭</button></div>
   </div>
@@ -4507,11 +4511,12 @@ function stripHtml(n){
   if(n.children) for(var i=0;i<n.children.length;i++) stripHtml(n.children[i]);
   return n;
 }
-function buildSyncPayload(){
+function buildSyncPayload(onlyIds){
   return new Promise(function(resolve){
     noteStoreGetAll(function(map){
       var payload={}, n=0;
       var ids = Object.keys(map);
+      if(onlyIds){ ids = ids.filter(function(x){ return onlyIds.indexOf(x) >= 0; }); }
       /* 收集所有用到的图片引用 */
       var imgRefs = {};
       function collectImgIds(node){
@@ -4566,15 +4571,54 @@ var _syncCancel = false;
 /* 服务器上已有哪些图片（避免重复上传） */
 var _serverImgs = null;
 
-async function syncPushAll(silent){
+/* 全局推送状态：即使弹窗关闭，推送仍在后台进行 */
+var _syncRunning = false;
+var _syncCancel = false;
+
+/* 云端是否已有数据（决定首次同步是否全量） */
+async function syncGetServerState(){
+  try{
+    var r = await fetch(SYNC_URL,{ method:'GET' });
+    if(!r.ok) return { imgs:{}, noteIds:[] };
+    var j = await r.json();
+    return { imgs: j.imgs || {}, noteIds: Object.keys(j.payload || {}) };
+  }catch(e){ return { imgs:{}, noteIds:[] }; }
+}
+
+/* 本地笔记 ID + 修改时间 */
+function localNoteList(){
+  var arr = [];
+  try{
+    arr = JSON.parse(localStorage.getItem(LS_LIST) || '[]');
+  }catch(e){}
+  return arr;
+}
+
+async function syncPushAll(silent, selective){
   if(_syncRunning){ return {ok:false, count:0, fail:0, busy:true}; }
   _syncRunning = true;
   _syncCancel = false;
-  var p = await buildSyncPayload();
-  if(!p.count){
+  var localNotes = localNoteList();
+  if(!localNotes.length){
     if(!silent) updateSyncStatus('error','本机还没有任何笔记数据');
     _syncRunning = false;
     return {ok:false, count:0};
+  }
+  /* 选择性推送：只推上次同步后修改过的笔记 */
+  var pushIds = localNotes.map(function(x){ return x.id; });
+  if(selective){
+    var last = localStorage.getItem('mm_notes_last_sync') || '';
+    if(last){
+      var lastMs = new Date(last).getTime();
+      var newer = localNotes.filter(function(x){ return (x.updated||x.created||0) > lastMs; }).map(function(x){ return x.id; });
+      pushIds = newer;
+    }
+  }
+  var p = await buildSyncPayload(pushIds);
+  if(!p.count){
+    if(!silent) updateSyncStatus('info', selective && localStorage.getItem('mm_notes_last_sync') ? '自上次同步后没有新修改的笔记' : '本机还没有任何笔记数据');
+    _syncRunning = false;
+    return {ok:true, count:0};
   }
   var ids = Object.keys(p.payload);
   var nImg = Object.keys(p.imgs||{}).length;
@@ -4590,19 +4634,12 @@ async function syncPushAll(silent){
   var imgIds = Object.keys(p.imgs||{});
   var imgOk = 0, imgFail = 0, imgDone = 0;
   if(imgIds.length){
-    /* 拉取服务器已有图片 ID 列表（避免重复传） */
-    var exist = {};
-    try{
-      var sr = await fetch(SYNC_URL,{ method:'GET' });
-      if(sr.ok){
-        var sj = await sr.json();
-        exist = sj.imgs || {};
-      }
-    }catch(e){}
+    var sv = await syncGetServerState();
+    var exist = sv.imgs;
     for(var k=0;k<imgIds.length;k++){
       if(_syncCancel) break;
       var iid = imgIds[k];
-      if(exist[iid]){ imgOk++; imgDone++; continue; } /* 服务器已有，跳过 */
+      if(exist[iid]){ imgOk++; imgDone++; continue; } /* 云端已有，跳过 */
       var b64 = p.imgs[iid];
       var okFlag = false;
       for(var att=0; att<3; att++){
@@ -4648,20 +4685,39 @@ async function syncPushAll(silent){
     if(!silent) syncProgressSet(imgDone + done, ids.length + imgIds.length, label);
     else if(window._syncToast && done % 3 === 0) _syncToast('同步笔记 '+done+'/'+ids.length+'…');
   }
+
+  /* ===== 第三步：清理云端孤儿笔记（本地已删除的） ===== */
+  var removed = -1;
+  if(!fail && !imgFail){
+    try{
+      var dr = await fetch(SYNC_URL+'/delete',{
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ keep: localNotes.map(function(x){ return x.id; }) })
+      });
+      if(dr.ok){
+        var dj = await dr.json();
+        removed = dj.removed || 0;
+      }
+    }catch(e){ console.warn('[同步] 清理云端失败', e); }
+  }
+
   _syncRunning = false;
   var totalFail = fail + imgFail;
   if(!silent){
     syncProgressHide();
-    if(totalFail === 0) updateSyncStatus('success','推送成功！'+ok+' 篇笔记、'+imgOk+' 张图片已同步');
-    else updateSyncStatus('error','推送完成：'+ok+' 篇笔记、'+imgOk+' 张图成功；'+fail+' 篇、'+imgFail+' 张图失败'+(failList.length?'。可重新推送重试':''));
+    if(totalFail === 0){
+      var msg = '推送成功！'+ok+' 篇笔记、'+imgOk+' 张图片已同步';
+      if(removed > 0) msg += '；云端已删除 '+removed+' 篇本地已不存在的笔记';
+      updateSyncStatus('success', msg);
+    }else updateSyncStatus('error','推送完成：'+ok+' 篇笔记、'+imgOk+' 张图成功；'+fail+' 篇、'+imgFail+' 张图失败'+(failList.length?'。可重新推送重试':''));
   } else if(window._syncToast){
-    if(totalFail === 0) _syncToast('同步完成：'+ok+' 篇、'+imgOk+' 张图');
+    if(totalFail === 0) _syncToast('同步完成：'+ok+' 篇'+(removed>0?('，云端删 '+removed+' 篇'):''));
     else _syncToast('同步完成：'+ok+' 篇成功，'+totalFail+' 项失败（可重新推送）');
   }
   var now = new Date().toLocaleString('zh-CN');
   localStorage.setItem('mm_notes_last_sync', now);
   var lt=$('sync-last-time'); if(lt) lt.textContent = '上次同步: '+now;
-  return {ok: totalFail===0, count: ok, fail: totalFail, failList: failList};
+  return {ok: totalFail===0, count: ok, fail: totalFail, failList: failList, removed: removed};
 }async function syncPull(){
   updateSyncStatus('info','正在拉取…');
   try{
@@ -4741,7 +4797,7 @@ function silentSync(){
   if(!localStorage.getItem('mm_notes_list')) return;
   setTimeout(function(){
     try{
-      syncPushAll(true).then(function(r){
+      syncPushAll(true, localStorage.getItem('mm_sync_selective') === '1').then(function(r){
         if(r && r.ok){ console.log('[同步] 静默同步完成', r.count, '篇'); }
         else if(r && r.fail){ console.warn('[同步] 静默同步部分失败', r.fail, '篇'); }
       }).catch(function(e){ console.warn('[同步] 静默同步失败', e); });
@@ -4751,6 +4807,8 @@ function silentSync(){
   updateSyncStatus('','');
   var st = $('sync-silent-toggle');
   if(st) st.checked = localStorage.getItem('mm_silent_sync') !== '0';
+  var ss = $('sync-selective-toggle');
+  if(ss) ss.checked = localStorage.getItem('mm_sync_selective') === '1';
   var lastSync = localStorage.getItem('mm_notes_last_sync');
   $('sync-last-time').textContent = lastSync ? '上次同步: '+lastSync : '';
   $('modalSync').classList.add('show');
@@ -4886,12 +4944,15 @@ document.addEventListener('DOMContentLoaded', function(){
   };
   $('btnSync').onclick = openSyncModal;
   $('btnCloseSync').onclick = function(){
-    var st = $('sync-silent-toggle');
+    var st = $('sync-silent-toggle'), ss = $('sync-selective-toggle');
     if(st) localStorage.setItem('mm_silent_sync', st.checked ? '1' : '0');
+    if(ss) localStorage.setItem('mm_sync_selective', ss.checked ? '1' : '0');
     $('modalSync').classList.remove('show');
   };
   var _st = $('sync-silent-toggle');
   if(_st) _st.onchange = function(){ localStorage.setItem('mm_silent_sync', _st.checked ? '1' : '0'); };
+  var _ss = $('sync-selective-toggle');
+  if(_ss) _ss.onchange = function(){ localStorage.setItem('mm_sync_selective', _ss.checked ? '1' : '0'); };
   $('btnStats').onclick = openStats;
   $('btnCloseStats').onclick = function(){ $('modalStats').classList.remove('show'); };
   /* 点统计面板外部（遮罩）自动关闭，省去滚到底部找关闭按钮 */
