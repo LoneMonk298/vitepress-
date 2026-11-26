@@ -246,7 +246,21 @@ html.dark .md-tb tr:nth-child(even) td{background:#232331}
 .wv-shell{flex:1;display:flex;flex-direction:column;min-width:0;min-height:0;background:var(--card)}
 /* 抽屉模式：贴右侧、宽度随窗口自适应，左侧导图保持可见可点（面板本身不接收遮罩点击） */
 #modalWeb.dock{background:transparent;pointer-events:none;justify-content:flex-end;align-items:stretch}
-#modalWeb.dock .wv-shell{flex:0 0 auto;width:clamp(360px, 42vw, 720px);max-width:64vw;border-left:1px solid var(--bd);box-shadow:-10px 0 34px rgba(0,0,0,.45);pointer-events:auto}
+#modalWeb.dock .wv-shell{flex:0 0 auto;width:clamp(360px, 42vw, 720px);max-width:64vw;border-left:1px solid var(--bd);box-shadow:-10px 0 34px rgba(0,0,0,.45);pointer-events:auto;position:relative}
+/* 抽屉左边缘拖拽手柄：按住左右拖动改宽度，双击回到自适应默认
+   热区做宽到 18px（原来 12px 且视觉只有中间一小段 4px 细线，很难发现） */
+.wv-resizer{display:none}
+#modalWeb.dock .wv-resizer{display:block;position:absolute;left:0;top:0;bottom:0;width:18px;cursor:col-resize;z-index:9}
+#modalWeb.dock .wv-resizer::after{content:'';position:absolute;left:6px;top:0;bottom:0;width:3px;border-radius:2px;background:var(--bd);opacity:.6;transition:background .15s,opacity .15s}
+#modalWeb.dock .wv-resizer::before{content:'⋮';position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-size:14px;line-height:1;color:var(--text2);opacity:.75;pointer-events:none}
+#modalWeb.dock .wv-resizer:hover::after,#modalWeb.resizing .wv-resizer::after{background:var(--pri);opacity:1}
+#modalWeb.dock .wv-resizer:hover::before{color:var(--pri);opacity:1}
+#modalWeb.resizing{cursor:col-resize}
+#modalWeb.resizing .wv-shell{transition:none}
+#modalWeb.resizing iframe,#modalWeb.resizing .wv-bar .wv-btn{pointer-events:none}
+/* 拖拽时跟随鼠标的宽度读数 */
+.wv-wbadge{position:absolute;left:16px;top:54px;padding:3px 9px;border-radius:7px;background:rgba(17,24,39,.88);color:#fff;font-size:12px;font-variant-numeric:tabular-nums;opacity:0;transition:opacity .12s;pointer-events:none;z-index:10}
+.wv-wbadge.show{opacity:1}
 /* 抽屉折叠：收起后只留右侧一条可点开的窄条 */
 #wvCollapse{display:none}
 #modalWeb.dock #wvCollapse{display:inline-block}
@@ -584,6 +598,8 @@ html.dark .s-badge.run{color:#fbbf24}
 
 <div class="modal" id="modalWeb">
   <div class="wv-shell">
+    <div class="wv-resizer" id="wvResizer" title="按住左右拖动调整抽屉宽度，双击恢复自适应"></div>
+    <div class="wv-wbadge" id="wvWBadge"></div>
     <div class="wv-bar">
       <span class="wv-url" id="wvUrl"></span>
       <button class="wv-btn" id="wvOpen">新标签打开</button>
@@ -2780,7 +2796,35 @@ function closeLightbox(){
 /* ===== 内嵌网页预览面板（demo）：全屏 / 右侧抽屉两种形态 =====
    抽屉形态为后续右侧笔记卡片、Anki 背诵面板预留：贴右边缘、宽度随窗口自适应、左侧导图仍可操作 */
 var WV_MODE_KEY = 'mm_webview_mode';
+var WV_W_KEY = 'mm_webview_w';       /* 抽屉拖拽后的宽度（px），空 = 用自适应默认值 */
 function getWvMode(){ try{ return localStorage.getItem(WV_MODE_KEY) === 'dock' ? 'dock' : 'full'; }catch(e){ return 'full'; } }
+function getWvW(){ var v = parseInt(localStorage.getItem(WV_W_KEY)||'', 10); return (v > 240 ? v : 0); }
+/* 把记忆的宽度套到抽屉上；没有记忆就交还给 CSS 的 clamp 自适应。
+   只在抽屉形态用 px 宽度，全屏形态交回 flex:1（否则 inline width 会干扰铺满 */
+function applyWvWidth(){
+  var modal = $('modalWeb');
+  var shell = document.querySelector('#modalWeb .wv-shell');
+  if(!shell) return;
+  var dock = !!(modal && modal.classList.contains('dock'));
+  var w = dock ? getWvW() : 0;
+  if(w){
+    /* 上限按视口 92% 收，避免拖到把导图完全盖住 */
+    var capped = Math.min(w, Math.round(window.innerWidth * 0.92));
+    shell.style.width = capped + 'px';
+    shell.style.maxWidth = '92vw';
+  } else {
+    shell.style.width = '';
+    shell.style.maxWidth = '';
+  }
+}
+function showWvBadge(w){
+  var b = $('wvWBadge'); if(!b) return;
+  b.textContent = Math.round(w) + 'px · ' + Math.round(w / window.innerWidth * 100) + '%';
+  b.classList.add('show');
+}
+function hideWvBadge(){
+  var b = $('wvWBadge'); if(b) b.classList.remove('show');
+}
 function applyWvMode(mode){
   var m = $('modalWeb'); if(!m) return;
   m.classList.toggle('dock', mode === 'dock');
@@ -2788,6 +2832,52 @@ function applyWvMode(mode){
   var b = $('wvDock');
   if(b){ b.textContent = mode === 'dock' ? '全屏' : '右侧抽屉'; b.title = mode === 'dock' ? '切换回全屏预览' : '切换为右侧贴边抽屉，导图仍可操作'; }
   try{ localStorage.setItem(WV_MODE_KEY, mode); }catch(e){}
+  applyWvWidth();
+}
+/* 抽屉左边缘拖拽调宽（只在 dock 形态生效），双击恢复默认 */
+function bindWvResize(){
+  var r = $('wvResizer'); if(!r || r._resizeBound) return; r._resizeBound = true;
+  r.addEventListener('mousedown', function(e){
+    var modal = $('modalWeb');
+    if(!modal || !modal.classList.contains('dock')) return;
+    if(e.button !== 0) return;
+    e.preventDefault(); e.stopPropagation();
+    var shell = modal.querySelector('.wv-shell');
+    if(!shell) return;
+    var sx = e.clientX, sw = shell.getBoundingClientRect().width;
+    modal.classList.add('resizing');
+    document.body.style.userSelect = 'none';
+    showWvBadge(sw);
+    function mv(ev){
+      /* 手柄在左边缘：鼠标往左 → 抽屉变宽 */
+      var w = Math.round(sw + (sx - ev.clientX));
+      var min = 280, max = Math.round(window.innerWidth * 0.92);
+      w = Math.max(min, Math.min(max, w));
+      shell.style.width = w + 'px';
+      shell.style.maxWidth = '92vw';
+      showWvBadge(w);
+    }
+    function up(){
+      document.removeEventListener('mousemove', mv, true);
+      document.removeEventListener('mouseup', up, true);
+      modal.classList.remove('resizing');
+      document.body.style.userSelect = '';
+      hideWvBadge();
+      var w = Math.round(shell.getBoundingClientRect().width);
+      try{ localStorage.setItem(WV_W_KEY, String(w)); }catch(err){}
+      setStatus('抽屉宽度已记住：' + w + 'px（双击边缘恢复自适应）', true);
+    }
+    document.addEventListener('mousemove', mv, true);
+    document.addEventListener('mouseup', up, true);
+  });
+  r.addEventListener('dblclick', function(e){
+    e.preventDefault(); e.stopPropagation();
+    try{ localStorage.removeItem(WV_W_KEY); }catch(err){}
+    var shell = document.querySelector('#modalWeb .wv-shell');
+    if(shell){ shell.style.width = ''; shell.style.maxWidth = ''; }
+    hideWvBadge();
+    setStatus('已恢复自适应宽度', true);
+  });
 }
 function toggleWvMode(){
   var m = $('modalWeb'); if(!m) return;
@@ -2806,6 +2896,7 @@ function openWebview(url){
   f.src = url;
   m.classList.add('show');
   applyWvMode(getWvMode());
+  bindWvResize();
   $('wvOpen').onclick = function(){ try{ window.open(url, '_blank','noopener'); }catch(e){} };
 }
 function closeWebview(){
@@ -2862,6 +2953,11 @@ document.addEventListener('click', function(e){
   var dockBtn = $('wvDock'); if(dockBtn) dockBtn.onclick = function(e){ e.stopPropagation(); toggleWvMode(); };
   var cBtn = $('wvCollapse'); if(cBtn) cBtn.onclick = function(e){ e.stopPropagation(); setWvCollapsed(true); };
   var rBtn = $('wvReopen'); if(rBtn) rBtn.onclick = function(e){ e.stopPropagation(); setWvCollapsed(false); };
+  bindWvResize();                       /* 拖拽调宽手柄：初始化就绑好，不依赖先打开过一次 */
+  window.addEventListener('resize', function(){
+    /* 窗口变窄时把记忆宽度收进 92vw，避免抽屉盖住整个导图 */
+    if($('modalWeb') && $('modalWeb').classList.contains('dock')) applyWvWidth();
+  });
   m.addEventListener('click', function(e){ if(e.target===m) closeWebview(); });
 })();
 /* Lightbox 内部交互 */
