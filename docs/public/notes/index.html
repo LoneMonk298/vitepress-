@@ -248,13 +248,15 @@ html.dark .md-tb tr:nth-child(even) td{background:#232331}
 #modalWeb.dock{background:transparent;pointer-events:none;justify-content:flex-end;align-items:stretch}
 #modalWeb.dock .wv-shell{flex:0 0 auto;width:clamp(360px, 42vw, 720px);max-width:64vw;border-left:1px solid var(--bd);box-shadow:-10px 0 34px rgba(0,0,0,.45);pointer-events:auto;position:relative}
 /* 抽屉左边缘拖拽手柄：按住左右拖动改宽度，双击回到自适应默认
-   热区做宽到 18px（原来 12px 且视觉只有中间一小段 4px 细线，很难发现） */
+   热区做宽到 18px，但视觉完全透明（默认不可见、只在悬停/拖动时浮现，不干扰阅读） */
 .wv-resizer{display:none}
-#modalWeb.dock .wv-resizer{display:block;position:absolute;left:0;top:0;bottom:0;width:18px;cursor:col-resize;z-index:9}
-#modalWeb.dock .wv-resizer::after{content:'';position:absolute;left:6px;top:0;bottom:0;width:3px;border-radius:2px;background:var(--bd);opacity:.6;transition:background .15s,opacity .15s}
-#modalWeb.dock .wv-resizer::before{content:'⋮';position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-size:14px;line-height:1;color:var(--text2);opacity:.75;pointer-events:none}
-#modalWeb.dock .wv-resizer:hover::after,#modalWeb.resizing .wv-resizer::after{background:var(--pri);opacity:1}
-#modalWeb.dock .wv-resizer:hover::before{color:var(--pri);opacity:1}
+#modalWeb.dock .wv-resizer{display:block;position:absolute;left:0;top:0;bottom:0;width:18px;cursor:col-resize;z-index:9;background:transparent}
+#modalWeb.dock .wv-resizer::after{content:'';position:absolute;left:6px;top:0;bottom:0;width:3px;border-radius:2px;background:var(--pri);opacity:0;transition:opacity .18s}
+#modalWeb.dock .wv-resizer::before{content:'⋮';position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-size:14px;line-height:1;color:var(--pri);opacity:0;transition:opacity .18s;pointer-events:none}
+#modalWeb.dock .wv-resizer:hover::after{opacity:.55}
+#modalWeb.dock .wv-resizer:hover::before{opacity:.85}
+#modalWeb.resizing .wv-resizer::after{opacity:1}
+#modalWeb.resizing .wv-resizer::before{opacity:.9}
 #modalWeb.resizing{cursor:col-resize}
 #modalWeb.resizing .wv-shell{transition:none}
 #modalWeb.resizing iframe,#modalWeb.resizing .wv-bar .wv-btn{pointer-events:none}
@@ -3240,15 +3242,23 @@ function decorateNodeTags(){
       /* 防御：清掉正文里散落的旧徽标（不在 .nd-tags 容器内的 .nd-tag） */
       var stray = tps[i].querySelectorAll('.nd-tag');
       for(var s=0;s<stray.length;s++){ if(!stray[s].closest('.nd-tags')) stray[s].remove(); }
+      /* 库的 ge() 在有 dangerouslySetInnerHTML 时直接 return，不会渲染 .tags
+         → 含公式 / 图片 / Markdown 表格 / 链接的节点标签会被库吞掉。
+         这里按 nodeObj（缺失时退回 data-nodeid）自己补一个 .tags，标签与内容不再互斥 */
+      var nid = (no && no.id) || (tps[i].dataset && tps[i].dataset.nodeid ? String(tps[i].dataset.nodeid).replace(/^me/,'') : '');
+      var noTags = (no && no.tags && no.tags.length) ? no.tags : (nid ? tagsBy[nid] : null);
+      var tagsBox = tps[i].querySelector('.tags');
+      if(!tagsBox && noTags && noTags.length){
+        tagsBox = document.createElement('div');
+        tagsBox.className = 'tags';
+        var tHtml = '';
+        for(var ti=0;ti<noTags.length;ti++) tHtml += '<span>'+escapeHtml(noTags[ti])+'</span>';
+        tagsBox.innerHTML = tHtml;
+        tps[i].appendChild(tagsBox);
+      }
+      if(tagsBox && tagsBox.style.display) tagsBox.style.display = '';
       /* 库原生 tags 的 span 无 class，这里按标签名补配色 class（重点黄 / 易错蓝 / 其余灰） */
       var nsp = tps[i].querySelectorAll('.tags span');
-      /* 只有「纯文本」节点才显示标签名：含公式、图片、Markdown 表格（即能打开编辑弹窗的那种）
-         的节点一律隐藏标签名，避免标签和设备/公式挤在同一行 */
-      var tp = String((no && no.topic) || '');
-      var hasFormula = /\$[^\$]+\$/.test(tp);
-      var hasRich = /!\[/.test(tp) || (tp.indexOf('|') >= 0 && tp.indexOf('\n') >= 0) || !!(no && no.dangerouslySetInnerHTML);
-      var tagsBox = tps[i].querySelector('.tags');
-      if(tagsBox) tagsBox.style.display = (hasFormula || hasRich) ? 'none' : '';
       for(var q=0;q<nsp.length;q++){
         var txt = String(nsp[q].textContent||'').trim();
         if(txt === '重点') nsp[q].className = 'nt-key';
